@@ -1,0 +1,14 @@
+[package]
+name = "x509-parser"
+version = "0.1.0"
+authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
+
+[lib]
+name = "x509_parser"
+
+[dependencies]
+nom = "1.2.4"
+# der-parser = { git = "ssh://git@git.wzdftpd.net:22/der-parser-rs.git" }
+
+[dependencies.der-parser]
+path = "/home/pollux/CODE/RUST/der-parser"
