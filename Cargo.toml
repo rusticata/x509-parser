@@ -7,8 +7,8 @@ authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 name = "x509_parser"
 
 [dependencies]
-nom = "1.2.4"
-# der-parser = { git = "ssh://git@git.wzdftpd.net:22/der-parser-rs.git" }
+nom = {version = "^2.0", features=["verbose-errors"] }
+der-parser = "^0"
 
-[dependencies.der-parser]
-path = "/home/pollux/CODE/RUST/der-parser"
+# [dependencies.der-parser]
+# path = "../der-parser"

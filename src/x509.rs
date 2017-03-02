@@ -1,12 +1,19 @@
 use der_parser::der::*;
+use nom::IResult;
 
+#[derive(Debug)]
+pub struct X509Certificate<'a> {
+    der: DerObject<'a>,
+}
 
-named!(pub x509_parser<DerObject>,
-    chain!(
-        obj:    parse_der,
-    || { obj }
+            // XXX validate X509 structure, or find a way to parse a described ASN.1 grammar
+pub fn x509_parser(i:&[u8]) -> IResult<&[u8],X509Certificate> {
+    do_parse!(
+        i,
+        obj:    parse_der >>
+        ( X509Certificate { der:obj } )
     )
-);
+}
 
 
 
