@@ -1,4 +1,4 @@
-use der_parser::der::*;
+use der_parser::*;
 use nom::{IResult,Err,ErrorKind};
 
 #[allow(non_snake_case)]
@@ -259,8 +259,8 @@ fn test_x509_parser() {
     match res {
         IResult::Done(e, cert) => {
             assert_eq!(e,empty);
-            println!("tbsCertificate: {:?}", cert.tbsCertificate);
-            println!("signatureAlgorithm: {:?}", cert.signatureAlgorithm);
+            println!("tbsCertificate: {:?}", cert.tbsCertificate.as_pretty(0,2));
+            println!("signatureAlgorithm: {:?}", cert.signatureAlgorithm.as_pretty(0,2));
         },
         _ => panic!("x509 parsing failed: {:?}", res),
     }
