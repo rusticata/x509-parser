@@ -10,7 +10,7 @@ x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.o
 
 ## Important
 
-*This parser is still very incomplete*
+*This parser is still experimental and very incomplete*
 
 ## License
 
