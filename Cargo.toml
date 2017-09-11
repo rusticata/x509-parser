@@ -9,7 +9,7 @@ name = "x509_parser"
 [dependencies]
 nom = {version = "^3.1", features=["verbose-errors"] }
 rusticata-macros = "^0"
-der-parser = "^0.4"
+der-parser = "^0.4.1"
 
 # [dependencies.der-parser]
 # path = "../der-parser"
