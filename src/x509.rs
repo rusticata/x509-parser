@@ -133,8 +133,13 @@ pub fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],DerObject> {
 }
 
 #[inline]
+fn der_read_opt_der(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
+    parse_der_optional!(i, parse_der)
+}
+
+#[inline]
 pub fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(i, parse_der_oid, parse_der)
+    parse_der_sequence_defined!(i, parse_der_oid, der_read_opt_der)
 }
 
 #[inline]
