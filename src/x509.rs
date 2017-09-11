@@ -42,7 +42,7 @@ fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],DerObject> {
 
 #[inline]
 fn parse_rdn(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_set_defined!(i, parse_attr_type_and_value)
+    parse_der_set_of!(i, parse_attr_type_and_value)
 }
 
 #[inline]
