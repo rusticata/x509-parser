@@ -24,7 +24,12 @@ impl<'a> X509Certificate<'a> {
 
 #[inline]
 fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject> {
-    alt_complete!(i, parse_der_utf8string | parse_der_printablestring | parse_der_ia5string)
+    alt_complete!(i,
+                  parse_der_utf8string |
+                  parse_der_printablestring |
+                  parse_der_ia5string |
+                  parse_der_t61string |
+                  parse_der_bmpstring)
 }
 
 #[inline]
