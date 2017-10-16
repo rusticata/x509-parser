@@ -2,6 +2,7 @@ use std::str;
 use std::fmt;
 use std::convert::From;
 
+use nom::IResult;
 use num::bigint::BigUint;
 use time::{strptime,Tm};
 
@@ -9,6 +10,7 @@ use der_parser::*;
 use der_parser::oid::Oid;
 use objects::*;
 use error::X509Error;
+use x509_parser::parse_ext_basicconstraints;
 
 
 #[derive(Debug)]
@@ -268,6 +270,29 @@ impl<'a> TbsCertificate<'a> {
     /// Extensions are stored uninterpreted
     pub fn extensions(&self) -> &Vec<X509Extension<'a>> {
         &self.extensions
+    }
+
+    /// Returns true if certificate has `basicConstraints CA:true`
+    ///
+    ///   id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
+    ///   BasicConstraints ::= SEQUENCE {
+    ///        cA                      BOOLEAN DEFAULT FALSE,
+    ///        pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
+    pub fn is_ca(&self) -> bool {
+        // filter on ext: OId(basicConstraints)
+        self.extensions.iter().find(|ext| {
+            ext.oid == Oid::from(&[2, 5, 29, 19])
+        }).and_then(|ext| {
+            // parse DER sequence
+            if let IResult::Done(_,seq) = parse_ext_basicconstraints(ext.value) {
+                // we parsed a sequence, so we know there is one, non-empty
+                let seq = seq.as_sequence().unwrap();
+                // if seq.len() == 0 { return None; }
+                if let Ok(b) = seq[0].as_bool() { Some(b) } else { None }
+            } else {
+                None
+            }
+        }).unwrap_or(false)
     }
 }
 

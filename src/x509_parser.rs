@@ -9,6 +9,19 @@ use nom::{IResult,Err,ErrorKind};
 use der_parser::*;
 use x509::*;
 
+pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],DerObject> {
+    parse_der_sequence_defined!(
+        i,
+        parse_der_bool,
+        der_read_opt_integer,
+    )
+}
+
+#[inline]
+fn der_read_opt_integer(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
+    parse_der_optional!(i, parse_der_integer)
+}
+
 #[inline]
 fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject> {
     alt_complete!(i,
@@ -155,6 +168,7 @@ mod tests {
     use nom::IResult;
     // use nom::HexDisplay;
     use objects::*;
+    use rusticata_macros::debug::HexSlice;
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 
@@ -184,7 +198,10 @@ fn test_x509_parser() {
                     Ok(nid) => println!("Extension OID: {:?}", nid2sn(nid)),
                     Err(_)  => println!("Extension OID: {:?} (Unknown)", ext.oid),
                 }
+                println!("    critical: {}",ext.critical);
+                println!("    value: {:?}",HexSlice{d:ext.value});
             }
+            println!("CA? {}",tbs_cert.is_ca());
         },
         _ => panic!("x509 parsing failed: {:?}", res),
     }
