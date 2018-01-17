@@ -14,7 +14,7 @@ name = "x509_parser"
 
 [dependencies]
 nom = {version = "^3.1", features=["verbose-errors"] }
-rusticata-macros = "^0"
+rusticata-macros = "^0.4"
 num = "0.1"
 time = "0.1"
 der-parser = { version = "^0.4.2", features=["bigint"] }

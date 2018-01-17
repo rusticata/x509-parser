@@ -3,7 +3,7 @@
 //! Based on RFC5280
 //!
 
-use nom::{IResult,Err,ErrorKind};
+use nom::{IResult,ErrorKind};
 // use nom::HexDisplay;
 
 use der_parser::*;
