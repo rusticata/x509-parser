@@ -103,35 +103,38 @@ pub struct TbsCertificate<'a> {
 /// Create the vector of extensions from the DER sequence
 /// Consumes the input value
 fn extract_extensions<'a>(o: &mut DerObject<'a>) -> Result<Vec<X509Extension<'a>>,X509Error> {
-    let mut extensions = Vec::new();
-    let mut cs = o.as_context_specific()?;
-    if let Some(ref mut obj_seq) = cs.1 {
-        if let DerObjectContent::Sequence(ref mut v) = obj_seq.content {
-            while let Some(mut ext) = v.pop() {
-                let v_ext = match ext.content {
-                    DerObjectContent::Sequence(ref mut x) => x,
-                    _ => return Err(X509Error::InvalidExtensions),
-                };
-                let obj_val = v_ext.pop().ok_or(X509Error::InvalidExtensions)?;
-                let obj_cri = v_ext.pop().ok_or(X509Error::InvalidExtensions)?;
-                let obj_oid = v_ext.pop().ok_or(X509Error::InvalidExtensions)?;
-                let oid = obj_oid.as_oid()?;
-                let crit_obj = obj_cri.as_context_specific()?;
-                let crit = match crit_obj.1 {
-                    Some(co) => co.as_bool()?,
-                    None     => false, // default critical value
-                };
-                let val = obj_val.as_slice()?;
-                extensions.push(X509Extension{
-                    oid:      oid.clone(),
-                    critical: crit,
-                    value:    val,
-                });
+    match o.content {
+        DerObjectContent::ContextSpecific(_,None) => Ok(Vec::new()),
+        DerObjectContent::ContextSpecific(_, Some(ref mut obj_seq)) => {
+            let mut extensions = Vec::new();
+            if let DerObjectContent::Sequence(ref mut v) = obj_seq.content {
+                while let Some(mut ext) = v.pop() {
+                    let v_ext = match ext.content {
+                        DerObjectContent::Sequence(ref mut x) => x,
+                        _ => return Err(X509Error::InvalidExtensions),
+                    };
+                    let obj_val = v_ext.pop().ok_or(X509Error::InvalidExtensions)?;
+                    let obj_cri = v_ext.pop().ok_or(X509Error::InvalidExtensions)?;
+                    let obj_oid = v_ext.pop().ok_or(X509Error::InvalidExtensions)?;
+                    let oid = obj_oid.as_oid()?;
+                    let crit_obj = obj_cri.as_context_specific()?;
+                    let crit = match crit_obj.1 {
+                        Some(co) => co.as_bool()?,
+                        None     => false, // default critical value
+                    };
+                    let val = obj_val.as_slice()?;
+                    extensions.push(X509Extension{
+                        oid:      oid.clone(),
+                        critical: crit,
+                        value:    val,
+                    });
+                }
+                return Ok(extensions);
             }
-            return Ok(extensions);
-        }
+            Err(X509Error::InvalidExtensions)
+        },
+        _ => Err(X509Error::InvalidExtensions),
     }
-    Err(X509Error::InvalidExtensions)
 }
 
 impl<'a> TbsCertificate<'a> {
