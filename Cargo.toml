@@ -9,8 +9,15 @@ homepage = "https://github.com/rusticata/x509-parser"
 repository = "https://github.com/rusticata/x509-parser.git"
 categories = ["parsing"]
 
-[lib]
-name = "x509_parser"
+include = [
+  "LICENSE-*",
+  ".gitignore",
+  ".travis.yml",
+  "Cargo.toml",
+  "src/*.rs",
+  "tests/*.rs",
+  "assets/*.der"
+]
 
 [dependencies]
 nom = {version = "^3.1", features=["verbose-errors"] }
@@ -22,3 +29,6 @@ der-parser = { version = "^0.5.0", features=["bigint"] }
 # [dependencies.der-parser]
 # path = "../der-parser"
 # features = ["bigint"]
+
+[badges]
+travis-ci = { repository = "rusticata/x509-parser" }
