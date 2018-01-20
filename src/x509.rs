@@ -13,14 +13,14 @@ use error::X509Error;
 use x509_parser::parse_ext_basicconstraints;
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
     pub oid:  Oid,
     pub critical: bool,
     pub value: &'a[u8],
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct AlgorithmIdentifier<'a> {
     pub algorithm:  Oid,
     pub parameters: DerObject<'a>,
@@ -46,7 +46,7 @@ impl<'a> AlgorithmIdentifier<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct X509Name<'a> {
     pub obj: DerObject<'a>,
 }
@@ -85,7 +85,7 @@ impl<'a> fmt::Display for X509Name<'a> {
 ///        extensions      [3]  EXPLICIT Extensions OPTIONAL
 ///                             -- If present, version MUST be v3
 ///        }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TbsCertificate<'a> {
     version: DerObject<'a>,
     serial: DerObject<'a>,
@@ -349,7 +349,7 @@ fn x509name_to_string(obj: &DerObject) -> Result<String,X509Error> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct X509Certificate<'a> {
     tbs_certificate: DerObject<'a>,
     signature_algorithm: DerObject<'a>,
