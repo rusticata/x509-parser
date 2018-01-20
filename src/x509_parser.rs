@@ -10,10 +10,10 @@ use der_parser::*;
 use x509::*;
 
 pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(
+    parse_der_sequence_defined_m!(
         i,
-        parse_der_bool,
-        der_read_opt_integer,
+        parse_der_bool >>
+        der_read_opt_integer
     )
 }
 
@@ -34,8 +34,8 @@ fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject> {
 
 #[inline]
 fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(i,
-                                parse_der_oid,
+    parse_der_sequence_defined_m!(i,
+                                parse_der_oid >>
                                 parse_directory_string
                                )
 }
@@ -62,16 +62,16 @@ fn parse_choice_of_time(i:&[u8]) -> IResult<&[u8],DerObject> {
 
 #[inline]
 fn parse_validity(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(i,
-                                parse_choice_of_time,
+    parse_der_sequence_defined_m!(i,
+                                parse_choice_of_time >>
                                 parse_choice_of_time
                                )
 }
 
 #[inline]
 fn parse_subject_public_key_info(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(i,
-                                parse_algorithm_identifier,
+    parse_der_sequence_defined_m!(i,
+                                parse_algorithm_identifier >>
                                 parse_der_bitstring
                                )
 }
@@ -98,10 +98,10 @@ fn der_read_opt_bool(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
 
 #[inline]
 fn parse_extension(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(
+    parse_der_sequence_defined_m!(
         i,
-        parse_der_oid,
-        der_read_opt_bool,
+        parse_der_oid >>
+        der_read_opt_bool >>
         parse_der_octetstring
     )
 }
@@ -118,17 +118,17 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],DerObject> {
 
 
 pub fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(i,
-        parse_version,
-        parse_der_integer, // serialNumber
-        parse_algorithm_identifier,
-        parse_name, // issuer
-        parse_validity,
-        parse_name, // subject
-        parse_subject_public_key_info,
-        parse_issuer_unique_id,
-        parse_subject_unique_id,
-        parse_extensions,
+    parse_der_sequence_defined_m!(i,
+        parse_version >>
+        parse_der_integer >> // serialNumber
+        parse_algorithm_identifier >>
+        parse_name >> // issuer
+        parse_validity >>
+        parse_name >> // subject
+        parse_subject_public_key_info >>
+        parse_issuer_unique_id >>
+        parse_subject_unique_id >>
+        parse_extensions
     )
 }
 
@@ -139,7 +139,7 @@ fn der_read_opt_der(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
 
 #[inline]
 pub fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined!(i, parse_der_oid, der_read_opt_der)
+    parse_der_sequence_defined_m!(i, parse_der_oid >> der_read_opt_der)
 }
 
 #[inline]
@@ -150,13 +150,12 @@ pub fn parse_signature_value(i:&[u8]) -> IResult<&[u8],DerObject> {
 // XXX validate X509 structure
 pub fn x509_parser(i:&[u8]) -> IResult<&[u8],X509Certificate> {
     map_res!(i,
-         parse_der_defined!(
-             0x10,
-             parse_tbs_certificate,
-             parse_algorithm_identifier,
+         parse_der_sequence_defined_m!(
+             parse_tbs_certificate >>
+             parse_algorithm_identifier >>
              parse_der_bitstring
          ),
-         |(_hdr,o)| X509Certificate::from_der_object(o)
+         X509Certificate::from_der_object
     )
 }
 

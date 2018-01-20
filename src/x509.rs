@@ -357,17 +357,22 @@ pub struct X509Certificate<'a> {
 }
 
 impl<'a> X509Certificate<'a> {
-    pub fn from_der_object(mut v: Vec<DerObject>) -> Result<X509Certificate,X509Error> {
-        // note, reverse order
-        let obj_sig = v.pop().ok_or(X509Error::InvalidCertificate)?;
-        let obj_alg = v.pop().ok_or(X509Error::InvalidCertificate)?;
-        let obj_crt = v.pop().ok_or(X509Error::InvalidCertificate)?;
-        let slice = obj_sig.as_slice()?;
-        Ok(X509Certificate{
-            tbs_certificate:     obj_crt,
-            signature_algorithm: obj_alg,
-            signature_value:     slice,
-        })
+    pub fn from_der_object(mut o: DerObject) -> Result<X509Certificate,X509Error> {
+        match o.content {
+            DerObjectContent::Sequence(ref mut v) => {
+                // note, reverse order
+                let obj_sig = v.pop().ok_or(X509Error::InvalidCertificate)?;
+                let obj_alg = v.pop().ok_or(X509Error::InvalidCertificate)?;
+                let obj_crt = v.pop().ok_or(X509Error::InvalidCertificate)?;
+                let slice = obj_sig.as_slice()?;
+                Ok(X509Certificate{
+                    tbs_certificate:     obj_crt,
+                    signature_algorithm: obj_alg,
+                    signature_value:     slice,
+                })
+            },
+            _ => Err(X509Error::InvalidCertificate),
+        }
     }
 
     pub fn tbs_certificate(&self) -> Result<TbsCertificate,X509Error> {
