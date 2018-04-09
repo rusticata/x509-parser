@@ -8,13 +8,21 @@ use nom::{IResult,ErrorKind};
 
 use der_parser::*;
 use x509::*;
+use x509_extensions::*;
 
-pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],DerObject> {
-    parse_der_sequence_defined_m!(
+pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints> {
+    parse_der_struct!(
         i,
-        parse_der_bool >>
-        der_read_opt_integer
-    )
+        TAG DerTag::Sequence,
+        ca: map_res!(parse_der_bool, |x:DerObject| x.as_bool()) >>
+        pl: map!(der_read_opt_integer, |x:DerObject| {
+            match x.as_context_specific() {
+                Ok((_,Some(obj))) => obj.as_u32().ok(),
+                _                 => None
+            }
+        }) >>
+        ( BasicConstraints{ ca:ca, path_len_contraint:pl } )
+    ).map(|x| x.1)
 }
 
 #[inline]

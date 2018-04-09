@@ -287,11 +287,8 @@ impl<'a> TbsCertificate<'a> {
             ext.oid == Oid::from(&[2, 5, 29, 19])
         }).and_then(|ext| {
             // parse DER sequence
-            if let IResult::Done(_,seq) = parse_ext_basicconstraints(ext.value) {
-                // we parsed a sequence, so we know there is one, non-empty
-                let seq = seq.as_sequence().unwrap();
-                // if seq.len() == 0 { return None; }
-                if let Ok(b) = seq[0].as_bool() { Some(b) } else { None }
+            if let IResult::Done(_,bc) = parse_ext_basicconstraints(ext.value) {
+                Some(bc.ca)
             } else {
                 None
             }

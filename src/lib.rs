@@ -18,3 +18,5 @@ pub mod nid;
 pub mod objects;
 mod x509_parser;
 pub use x509_parser::*;
+mod x509_extensions;
+pub use x509_extensions::*;
