@@ -25,6 +25,7 @@
 //! # }
 //! ```
 
+use std::str;
 use base64;
 use nom::IResult;
 
@@ -40,39 +41,35 @@ pub struct Pem {
 /// Read a PEM-encoded structure, and decode the base64 data
 ///
 /// Allocates a new buffer for the decoded data.
-pub fn pem_to_der(i:&[u8]) -> IResult<&[u8],Pem> {
+pub fn pem_to_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],Pem> {
     do_parse!(
         i,
+           tag_s!("-----BEGIN ") >>
         l: map_res!(
-                delimited!(
-                    tag_s!("-----BEGIN "),
-                    take_until!("-"),
-                    tag_s!("-----")
-                ),
-                |x:&[u8]| String::from_utf8(x.to_vec())
+                take_until!("-"),
+                |x:&'a[u8]| str::from_utf8(x)
            ) >>
+           tag_s!("-----") >>
         r: map_res!(
-            take_until!("-----END"),
-            |lines:&[u8]| {
-                let v = lines.split(|&x| x==0xa).fold(
-                    Vec::new(),
-                    |mut acc,line| {
-                        if !line.is_empty() { acc.extend_from_slice(line); }
-                        acc
-                    }
-                    );
-                base64::decode(&v)
-            }
-            ) >>
-            delimited!(
-               tag_s!("-----END "),
-               take_until!("-"),
-               tag_s!("-----")
-            ) >>
-            opt!(tag!(b"\n")) >>
+               take_until!("-----END"),
+               |lines:&[u8]| {
+                   let v = lines.split(|&x| x==0xa).fold(
+                       Vec::new(),
+                       |mut acc,line| {
+                           if !line.is_empty() { acc.extend_from_slice(line); }
+                           acc
+                       }
+                       );
+                   base64::decode(&v)
+               }
+           ) >>
+           tag_s!("-----END ") >>
+           take_until!("-") >>
+           tag_s!("-----") >>
+           opt!(tag!(b"\n")) >>
         (
             Pem{
-                label:    l,
+                label:    l.to_string(),
                 contents: r
             }
         )
