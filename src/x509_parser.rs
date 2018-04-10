@@ -199,11 +199,12 @@ fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>> {
     ).map(|x| x.1)
 }
 
+/// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        v: many0!(parse_extension) >>
+        v: many1!(parse_extension) >>
         ( v )
     ).map(|x| x.1)
 }
