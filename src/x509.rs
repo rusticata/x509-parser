@@ -57,8 +57,12 @@ impl<'a> fmt::Display for X509Name<'a> {
 
 
 
-/// From RF5280:
+/// The sequence TBSCertificate contains information associated with the
+/// subject of the certificate and the CA that issued it.
 ///
+/// RFC5280 definition:
+///
+/// <pre>
 ///   TBSCertificate  ::=  SEQUENCE  {
 ///        version         [0]  EXPLICIT Version DEFAULT v1,
 ///        serialNumber         CertificateSerialNumber,
@@ -74,6 +78,7 @@ impl<'a> fmt::Display for X509Name<'a> {
 ///        extensions      [3]  EXPLICIT Extensions OPTIONAL
 ///                             -- If present, version MUST be v3
 ///        }
+/// </pre>
 #[derive(Debug, PartialEq)]
 pub struct TbsCertificate<'a> {
     pub version: u32,

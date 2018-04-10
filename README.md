@@ -17,10 +17,11 @@ x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.o
 
 ### 0.2.0
 
-## License
-
 - Rewrite X.509 structures and parsing code to work in one pass
   **Warning: this is a breaking change**
+- Add some documentation
+
+## License
 
 Licensed under either of
 
