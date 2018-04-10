@@ -9,6 +9,8 @@
 //! The main parsing method is [`x509_parser`](fn.x509_parser.html), which takes a DER-encoded
 //! certificate as input, and builds a [`X509Certificate`](x509/struct.X509Certificate.html) object.
 //!
+//! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
+//!
 //! # Examples
 //!
 //! Parsing a certificate in DER format:
@@ -48,6 +50,7 @@ extern crate rusticata_macros;
 #[macro_use]
 extern crate der_parser;
 
+extern crate base64;
 extern crate num;
 extern crate time;
 
@@ -61,3 +64,5 @@ mod x509_parser;
 pub use x509_parser::*;
 mod x509_extensions;
 pub use x509_extensions::*;
+
+pub mod pem;

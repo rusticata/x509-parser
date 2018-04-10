@@ -19,6 +19,7 @@ x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.o
 
 - Rewrite X.509 structures and parsing code to work in one pass
   **Warning: this is a breaking change**
+- Add support for PEM-encoded certificates
 - Add some documentation
 
 ## License

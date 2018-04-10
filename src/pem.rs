@@ -1,0 +1,80 @@
+//! Decoding functions for PEM-encoded data
+//!
+//! # Examples
+//!
+//! Parsing a certificate in DER format:
+//!
+//! ```rust,no_run
+//! # extern crate nom;
+//! # #[macro_use] extern crate x509_parser;
+//! use nom::IResult;
+//! use x509_parser::pem::pem_to_der;
+//!
+//! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
+//!
+//! # fn main() {
+//! let res = pem_to_der(IGCA_PEM);
+//! match res {
+//!     IResult::Done(rem, pem) => {
+//!         assert!(rem.is_empty());
+//!         //
+//!         assert_eq!(pem.label, String::from("CERTIFICATE"));
+//!     },
+//!     _ => panic!("PEM parsing failed: {:?}", res),
+//! }
+//! # }
+//! ```
+
+use base64;
+use nom::IResult;
+
+/// Representation of PEM data
+#[derive(PartialEq,Debug)]
+pub struct Pem {
+    /// The PEM label
+    pub label:    String,
+    /// The PEM decoded data
+    pub contents: Vec<u8>,
+}
+
+/// Read a PEM-encoded structure, and decode the base64 data
+///
+/// Allocates a new buffer for the decoded data.
+pub fn pem_to_der(i:&[u8]) -> IResult<&[u8],Pem> {
+    do_parse!(
+        i,
+        l: map_res!(
+                delimited!(
+                    tag_s!("-----BEGIN "),
+                    take_until!("-"),
+                    tag_s!("-----")
+                ),
+                |x:&[u8]| String::from_utf8(x.to_vec())
+           ) >>
+        r: map_res!(
+            take_until!("-----END"),
+            |lines:&[u8]| {
+                let v = lines.split(|&x| x==0xa).fold(
+                    Vec::new(),
+                    |mut acc,line| {
+                        if !line.is_empty() { acc.extend_from_slice(line); }
+                        acc
+                    }
+                    );
+                base64::decode(&v)
+            }
+            ) >>
+            delimited!(
+               tag_s!("-----END "),
+               take_until!("-"),
+               tag_s!("-----")
+            ) >>
+            opt!(tag!(b"\n")) >>
+        (
+            Pem{
+                label:    l,
+                contents: r
+            }
+        )
+    )
+}
