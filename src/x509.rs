@@ -1,13 +1,12 @@
 use std::fmt;
-use std::convert::From;
 
 use nom::IResult;
 use num::bigint::BigUint;
 use time::Tm;
 
-use der_parser::*;
+use der_parser::{DerObject,BitStringObject};
 use der_parser::oid::Oid;
-use objects::*;
+use objects::{oid2nid,nid2sn};
 use error::X509Error;
 use x509_parser::parse_ext_basicconstraints;
 
@@ -177,9 +176,8 @@ pub struct X509Certificate<'a> {
 
 #[cfg(test)]
 mod tests {
-    //use super::*;
-    //use der::*;
     use x509::*;
+    use der_parser::*;
     use der_parser::oid::Oid;
 
 #[test]
