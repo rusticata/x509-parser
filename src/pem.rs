@@ -59,7 +59,7 @@ pub fn pem_to_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],Pem> {
                            if !line.is_empty() { acc.extend_from_slice(line); }
                            acc
                        }
-                       );
+                   );
                    base64::decode(&v)
                }
            ) >>
