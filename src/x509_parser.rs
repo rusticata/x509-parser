@@ -16,14 +16,14 @@ pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        ca: map_res!(parse_der_bool, |x:DerObject| x.as_bool()) >>
-        pl: map!(der_read_opt_integer, |x:DerObject| {
+        ca:                 map_res!(parse_der_bool, |x:DerObject| x.as_bool()) >>
+        path_len_contraint: map!(der_read_opt_integer, |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_u32().ok(),
                 _                 => None
             }
         }) >>
-        ( BasicConstraints{ ca:ca, path_len_contraint:pl } )
+        ( BasicConstraints{ ca, path_len_contraint } )
     ).map(|x| x.1)
 }
 
@@ -157,7 +157,7 @@ fn bitstring_to_unique_id<'a>(x: DerObject<'a>) -> Result<Option<UniqueIdentifie
     }
 }
 
-fn parse_issuer_unique_id<'a>(i:&'a[u8]) -> IResult<&'a[u8],Option<UniqueIdentifier<'a>>> {
+fn parse_issuer_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
     map_res!(
         i,
         apply!(parse_der_implicit, 1, der_read_bitstring_content),
@@ -165,7 +165,7 @@ fn parse_issuer_unique_id<'a>(i:&'a[u8]) -> IResult<&'a[u8],Option<UniqueIdentif
     )
 }
 
-fn parse_subject_unique_id<'a>(i:&'a[u8]) -> IResult<&'a[u8],Option<UniqueIdentifier<'a>>> {
+fn parse_subject_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
     map_res!(
         i,
         apply!(parse_der_implicit, 2, der_read_bitstring_content),
@@ -181,19 +181,19 @@ fn der_read_opt_bool(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
 fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>> {
     parse_der_struct!(
         i,
-        oid:  map_res!(parse_der_oid,|x:DerObject| x.as_oid_val()) >>
-        crit: map_res!(der_read_opt_bool, |x:DerObject| {
+        oid:      map_res!(parse_der_oid,|x:DerObject| x.as_oid_val()) >>
+        critical: map_res!(der_read_opt_bool, |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_bool(),
                 _                 => Ok(false)   // default critical value
             }
         }) >>
-        val:  map_res!(parse_der_octetstring, |x:DerObject<'a>| x.as_slice()) >>
+        value:    map_res!(parse_der_octetstring, |x:DerObject<'a>| x.as_slice()) >>
         (
             X509Extension{
-                oid:      oid,
-                critical: crit,
-                value:    val,
+                oid,
+                critical,
+                value
             }
         )
     ).map(|x| x.1)
@@ -228,28 +228,28 @@ pub fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        vers:    parse_version >>
-        serial:  map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
-        sig:     parse_algorithm_identifier >>
-        issuer:  parse_name >>
-        valid:   parse_validity >>
-        subject: parse_name >>
-        spki:    parse_subject_public_key_info >>
-        i_uid:   parse_issuer_unique_id >>
-        s_uid:   parse_subject_unique_id >>
-        ext:     parse_extensions >>
+        version:     parse_version >>
+        serial:      map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
+        signature:   parse_algorithm_identifier >>
+        issuer:      parse_name >>
+        validity:    parse_validity >>
+        subject:     parse_name >>
+        subject_pki: parse_subject_public_key_info >>
+        issuer_uid:  parse_issuer_unique_id >>
+        subject_uid: parse_subject_unique_id >>
+        extensions:  parse_extensions >>
         (
             TbsCertificate{
-                version: vers,
-                serial: serial,
-                signature: sig,
-                issuer: issuer,
-                validity: valid,
-                subject: subject,
-                subject_pki: spki,
-                issuer_uid: i_uid,
-                subject_uid: s_uid,
-                extensions: ext
+                version,
+                serial,
+                signature,
+                issuer,
+                validity,
+                subject,
+                subject_pki,
+                issuer_uid,
+                subject_uid,
+                extensions
             }
         )
     ).map(|x| x.1)

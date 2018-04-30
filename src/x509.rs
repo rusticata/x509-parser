@@ -129,7 +129,7 @@ impl<'a> TbsCertificate<'a> {
 ///
 /// RDNs are separated with ","
 /// Multiple RDNs are separated with "+"
-fn x509name_to_string(rdn_seq: &Vec<RelativeDistinguishedName>) -> Result<String,X509Error> {
+fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String,X509Error> {
     rdn_seq.iter().fold(
         Ok(String::new()),
         |acc, rdn| {
