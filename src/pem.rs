@@ -7,7 +7,6 @@
 //! ```rust,no_run
 //! # extern crate nom;
 //! # #[macro_use] extern crate x509_parser;
-//! use nom::IResult;
 //! use x509_parser::pem::pem_to_der;
 //!
 //! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
@@ -15,7 +14,7 @@
 //! # fn main() {
 //! let res = pem_to_der(IGCA_PEM);
 //! match res {
-//!     IResult::Done(rem, pem) => {
+//!     Ok((rem, pem)) => {
 //!         assert!(rem.is_empty());
 //!         //
 //!         assert_eq!(pem.label, String::from("CERTIFICATE"));

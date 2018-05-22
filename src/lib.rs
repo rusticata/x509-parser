@@ -18,7 +18,6 @@
 //! ```rust,no_run
 //! # extern crate nom;
 //! # #[macro_use] extern crate x509_parser;
-//! use nom::IResult;
 //! use x509_parser::x509_parser;
 //!
 //! static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
@@ -26,7 +25,7 @@
 //! # fn main() {
 //! let res = x509_parser(IGCA_DER);
 //! match res {
-//!     IResult::Done(rem, cert) => {
+//!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());
 //!         //
 //!         assert_eq!(cert.tbs_certificate.version, 2);

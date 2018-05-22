@@ -11,8 +11,8 @@ fn test01() {
 
 named!(parser02<&[u8],()>,
     do_parse!(
-        hdr: take!(1) >>
-        data: take!(18446744073709551615) >>
+        _hdr: take!(1) >>
+        _data: take!(18446744073709551615) >>
         ( () )
     )
 );

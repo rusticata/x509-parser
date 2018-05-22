@@ -3,7 +3,6 @@ extern crate der_parser;
 extern crate x509_parser;
 extern crate rusticata_macros;
 
-use nom::IResult;
 use der_parser::oid::Oid;
 use x509_parser::{x509_parser,X509Extension};
 
@@ -16,7 +15,7 @@ fn test_x509_parser() {
     let res = x509_parser(IGCA_DER);
     // println!("res: {:?}", res);
     match res {
-        IResult::Done(e, cert) => {
+        Ok((e, cert)) => {
             assert_eq!(e,empty);
             //
             let tbs_cert = cert.tbs_certificate;

@@ -1,6 +1,5 @@
 use std::fmt;
 
-use nom::IResult;
 use num::bigint::BigUint;
 use time::Tm;
 
@@ -115,7 +114,7 @@ impl<'a> TbsCertificate<'a> {
             ext.oid == Oid::from(&[2, 5, 29, 19])
         }).and_then(|ext| {
             // parse DER sequence
-            if let IResult::Done(_,bc) = parse_ext_basicconstraints(ext.value) {
+            if let Ok((_,bc)) = parse_ext_basicconstraints(ext.value) {
                 Some(bc.ca)
             } else {
                 None

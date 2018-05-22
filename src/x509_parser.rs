@@ -4,7 +4,7 @@
 //!
 
 use std::str;
-use nom::{IResult,ErrorKind};
+use nom::{IResult,Err,ErrorKind};
 use time::{strptime,Tm};
 
 use der_parser::*;
@@ -24,7 +24,7 @@ pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints> {
             }
         }) >>
         ( BasicConstraints{ ca, path_len_contraint } )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 #[inline]
@@ -49,25 +49,25 @@ fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],AttributeTypeAndValue> {
         oid: map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
         val: parse_directory_string >>
         ( AttributeTypeAndValue{ attr_type:oid, attr_value:val } )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 fn parse_rdn(i:&[u8]) -> IResult<&[u8],RelativeDistinguishedName> {
     parse_der_struct!(
         i,
         TAG DerTag::Set,
-        v: many1!(parse_attr_type_and_value) >>
+        v: many1!(complete!(parse_attr_type_and_value)) >>
         ( RelativeDistinguishedName{ set:v } )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        v: many1!(parse_rdn) >>
+        v: many1!(complete!(parse_rdn)) >>
         ( X509Name{ rdn_seq:v } )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 pub fn parse_version(i:&[u8]) -> IResult<&[u8],u32> {
@@ -116,7 +116,7 @@ fn parse_validity(i:&[u8]) -> IResult<&[u8],Validity> {
         (
             Validity{ not_before:start,not_after:end }
         )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPublicKeyInfo<'a>> {
@@ -136,7 +136,7 @@ fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPublic
                 subject_public_key: spk
             }
         )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 #[inline]
@@ -196,7 +196,7 @@ fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>> {
                 value
             }
         )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
@@ -204,21 +204,20 @@ fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        v: many1!(parse_extension) >>
+        v: many1!(complete!(parse_extension)) >>
         ( v )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
     match der_read_element_header(i) {
-        IResult::Done(rem,hdr) => {
+        Ok((rem,hdr)) => {
             if hdr.tag != 3 {
-                return IResult::Error(error_code!(ErrorKind::Custom(DER_TAG_ERROR)));
+                return Err(Err::Error(error_position!(i, ErrorKind::Custom(DER_TAG_ERROR))));
             }
             parse_extension_sequence(rem)
         }
-        IResult::Incomplete(i) => IResult::Incomplete(i),
-        IResult::Error(e)      => IResult::Error(e),
+        Err(e)        => Err(e)
     }
     // parse_der_explicit(i, 3, parse_extension_sequence)
 }
@@ -252,7 +251,7 @@ pub fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
                 extensions
             }
         )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 pub fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier> {
@@ -266,7 +265,7 @@ pub fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier>
                 parameters: params
             }
         )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
 
 // XXX validate X509 structure
@@ -289,5 +288,5 @@ pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
                 signature_value: sig
             }
         )
-    ).map(|x| x.1)
+    ).map(|(rem,x)| (rem,x.1))
 }
