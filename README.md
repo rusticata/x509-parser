@@ -15,6 +15,10 @@ x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.o
 
 ## Changes
 
+### 0.3.0
+
+- Upgrade to nom 4
+
 ### 0.2.0
 
 - Rewrite X.509 structures and parsing code to work in one pass
