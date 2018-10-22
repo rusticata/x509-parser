@@ -6,7 +6,7 @@
 //! The code is available on [Github](https://github.com/rusticata/x509-parser)
 //! and is part of the [Rusticata](https://github.com/rusticata) project.
 //!
-//! The main parsing method is [`x509_parser`](fn.x509_parser.html), which takes a DER-encoded
+//! The main parsing method is [`parse_x509_der`](fn.parse_x509_der.html), which takes a DER-encoded
 //! certificate as input, and builds a [`X509Certificate`](x509/struct.X509Certificate.html) object.
 //!
 //! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
@@ -18,12 +18,12 @@
 //! ```rust,no_run
 //! # extern crate nom;
 //! # #[macro_use] extern crate x509_parser;
-//! use x509_parser::x509_parser;
+//! use x509_parser::parse_x509_der;
 //!
 //! static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 //!
 //! # fn main() {
-//! let res = x509_parser(IGCA_DER);
+//! let res = parse_x509_der(IGCA_DER);
 //! match res {
 //!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());

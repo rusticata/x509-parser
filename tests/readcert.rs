@@ -4,7 +4,7 @@ extern crate x509_parser;
 extern crate rusticata_macros;
 
 use der_parser::oid::Oid;
-use x509_parser::{x509_parser,X509Extension};
+use x509_parser::{parse_x509_der,X509Extension};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 
@@ -12,7 +12,7 @@ static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 fn test_x509_parser() {
     let empty = &b""[..];
     //assert_eq!(x509_parser(IGCA_DER), IResult::Done(empty, (1)));
-    let res = x509_parser(IGCA_DER);
+    let res = parse_x509_der(IGCA_DER);
     // println!("res: {:?}", res);
     match res {
         Ok((e, cert)) => {

@@ -269,7 +269,10 @@ pub fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier>
 }
 
 // XXX validate X509 structure
-pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
+/// Parse a DER-encoded X.509 Certificate
+///
+/// Note that only parsing is done, not validation.
+pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -290,3 +293,9 @@ pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
         )
     ).map(|(rem,x)| (rem,x.1))
 }
+
+#[deprecated(since="0.4.0", note="please use `parse_x509_der` instead")]
+pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
+    parse_x509_der(i)
+}
+
