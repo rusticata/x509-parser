@@ -57,7 +57,6 @@ pub use x509::*;
 pub mod x509;
 
 pub mod error;
-pub mod nid;
 pub mod objects;
 mod x509_parser;
 pub use x509_parser::*;
