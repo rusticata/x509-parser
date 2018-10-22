@@ -1,6 +1,6 @@
 use std::fmt;
 
-use num::bigint::BigUint;
+use num_bigint::BigUint;
 use time::Tm;
 
 use der_parser::{DerObject,BitStringObject};

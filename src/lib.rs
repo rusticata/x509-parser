@@ -50,7 +50,7 @@ extern crate rusticata_macros;
 extern crate der_parser;
 
 extern crate base64;
-extern crate num;
+extern crate num_bigint;
 extern crate time;
 
 pub use x509::*;
