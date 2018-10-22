@@ -70,7 +70,7 @@ fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-pub fn parse_version(i:&[u8]) -> IResult<&[u8],u32> {
+fn parse_version(i:&[u8]) -> IResult<&[u8],u32> {
     map_res!(
         i,
         apply!(parse_der_explicit, 0, parse_der_integer),
@@ -223,7 +223,7 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
 }
 
 
-pub fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
+fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -254,7 +254,7 @@ pub fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-pub fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier> {
+fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier> {
     parse_der_struct!(
         i,
         oid:    map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
