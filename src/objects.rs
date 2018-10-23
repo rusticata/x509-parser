@@ -1,4 +1,4 @@
-//! X.509 objects definitions: OID, short and long names, NID (internal ID)
+//! X.509 helper objects definitions: OID, short and long names, NID (internal ID)
 //!
 //! Most definitions taken from OpenSSL: /usr/include/openssl/objects.h
 //! Note: values does not match openssl, for ex. NIDs
@@ -11,9 +11,9 @@ use der_parser::oid::Oid;
 
 use error::NidError;
 
-/// ASN.1 node identifier
+/// ASN.1 node internal identifier
 ///
-/// This enumeration lists the node IDs used (and/or supported) in x.509 certificates.
+/// This enumeration lists the node IDs used (and/or supported) in X.509 certificates.
 /// It is not guaranteed to be exhaustive.
 #[derive(Debug,PartialEq,Clone,Copy)]
 #[repr(u8)]

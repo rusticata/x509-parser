@@ -2,12 +2,13 @@
 //!
 //! # Examples
 //!
-//! Parsing a certificate in DER format:
+//! Parsing a certificate in PEM format:
 //!
 //! ```rust,no_run
 //! # extern crate nom;
 //! # #[macro_use] extern crate x509_parser;
 //! use x509_parser::pem::pem_to_der;
+//! use x509_parser::parse_x509_der;
 //!
 //! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
 //!
@@ -18,6 +19,9 @@
 //!         assert!(rem.is_empty());
 //!         //
 //!         assert_eq!(pem.label, String::from("CERTIFICATE"));
+//!         //
+//!         let res_x509 = parse_x509_der(&pem.contents);
+//!         assert!(res_x509.is_ok());
 //!     },
 //!     _ => panic!("PEM parsing failed: {:?}", res),
 //! }

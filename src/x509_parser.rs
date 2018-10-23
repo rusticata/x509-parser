@@ -12,6 +12,17 @@ use x509::*;
 use x509_extensions::*;
 use error::X509Error;
 
+/// Parse a "Basic Constraints" extension
+///
+/// <pre>
+///   id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
+///   BasicConstraints ::= SEQUENCE {
+///        cA                      BOOLEAN DEFAULT FALSE,
+///        pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
+/// </pre>
+///
+/// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
+/// unsigned integer, and parsing will fail if value if larger.
 pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints> {
     parse_der_struct!(
         i,

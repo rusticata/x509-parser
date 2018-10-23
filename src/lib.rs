@@ -46,7 +46,6 @@ extern crate nom;
 
 extern crate rusticata_macros;
 
-#[macro_use]
 extern crate der_parser;
 
 extern crate base64;

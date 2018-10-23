@@ -1,3 +1,8 @@
+//! X.509 objects
+//!
+//! Based on RFC5280
+//!
+
 use std::fmt;
 
 use num_bigint::BigUint;
@@ -103,11 +108,6 @@ pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
 impl<'a> TbsCertificate<'a> {
     /// Returns true if certificate has `basicConstraints CA:true`
-    ///
-    ///   id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
-    ///   BasicConstraints ::= SEQUENCE {
-    ///        cA                      BOOLEAN DEFAULT FALSE,
-    ///        pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
     pub fn is_ca(&self) -> bool {
         // filter on ext: OId(basicConstraints)
         self.extensions.iter().find(|ext| {
@@ -165,7 +165,9 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String,X5
     })
 }
 
-
+/// An X.509 v3 Certificate.
+///
+/// X.509 v3 certificates are defined in [RFC5280](https://tools.ietf.org/html/rfc5280).
 #[derive(Debug, PartialEq)]
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
