@@ -18,6 +18,9 @@ x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.o
 ### 0.4.0
 
 - Upgrade to der-parser 1.1, and Use num-bigint over num
+- Rename x509_parser to parse_x509_der
+- Do not export subparsers
+- Improve documentation
 
 ### 0.3.0
 
