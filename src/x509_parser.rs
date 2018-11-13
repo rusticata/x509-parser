@@ -221,6 +221,10 @@ fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
 }
 
 fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
+    if i.len() == 0 {
+        return Ok((&[], Vec::new()));
+    }
+
     match der_read_element_header(i) {
         Ok((rem,hdr)) => {
             if hdr.tag != 3 {
