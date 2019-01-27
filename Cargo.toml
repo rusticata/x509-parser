@@ -20,7 +20,7 @@ include = [
 ]
 
 [dependencies]
-base64 = "0.9.0"
+base64 = "0.10"
 nom = {version = "4.0", features=["verbose-errors"] }
 rusticata-macros = "1.0"
 num-bigint = "0.2"
