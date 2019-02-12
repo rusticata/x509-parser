@@ -7,6 +7,7 @@ use der_parser::oid::Oid;
 use x509_parser::{parse_x509_der,X509Extension};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
 
 #[test]
 fn test_x509_parser() {
@@ -68,6 +69,22 @@ fn test_x509_parser() {
             //
             assert_eq!(tbs_cert.is_ca(), true);
         },
+        _ => panic!("x509 parsing failed: {:?}", res),
+    }
+}
+
+#[test]
+fn test_x509_parser_no_extensions() {
+    let empty = &b""[..];
+    let res = parse_x509_der(NO_EXTENSIONS_DER);
+    match res {
+        Ok((e, cert)) => {
+            assert_eq!(e, empty);
+
+            let tbs_cert = cert.tbs_certificate;
+            assert_eq!(tbs_cert.version, 2);
+            assert_eq!(tbs_cert.extensions.len(), 0);
+        }
         _ => panic!("x509 parsing failed: {:?}", res),
     }
 }
