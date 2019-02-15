@@ -15,6 +15,10 @@ x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.o
 
 ## Changes
 
+### 0.4.1
+
+- Fix case where certificate has no extensions
+
 ### 0.4.0
 
 - Upgrade to der-parser 1.1, and Use num-bigint over num
