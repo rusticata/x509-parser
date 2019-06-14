@@ -113,6 +113,17 @@ fn der_to_utctime(obj:DerObject) -> Result<Tm,X509Error> {
                 Err(X509Error::InvalidDate)
             },
         }
+    } else if let DerObjectContent::GeneralizedTime(s) = obj.content {
+        let xs = str::from_utf8(s)
+            .or(Err(X509Error::InvalidDate))?;
+        match strptime(xs,"%Y%m%d%H%M%S%Z") {
+            Ok(mut tm) => {
+                Ok(tm)
+            },
+            Err(_e) => {
+                Err(X509Error::InvalidDate)
+            },
+        }
     } else {
         Err(X509Error::InvalidDate)
     }
