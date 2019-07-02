@@ -141,7 +141,8 @@ fn parse_validity(i:&[u8]) -> IResult<&[u8],Validity> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPublicKeyInfo<'a>> {
+/// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
+pub fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPublicKeyInfo<'a>> {
     parse_der_struct!(
         i,
         alg: parse_algorithm_identifier >>
