@@ -133,6 +133,7 @@ const OBJ_EMAIL : &[u64]   = pkcs9!(1);
 
 // XXX ...
 
+const OBJ_RSAENCRYPTION : &[u64] = pkcs1!(1);
 const OBJ_RSASHA1 : &[u64] = pkcs1!(5);
 
 // other constants
@@ -174,6 +175,7 @@ const OID_REGISTRY : &[OidEntry] = &[
     OidEntry{ sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9, oid:OBJ_PKCS9 },
     OidEntry{ sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress, oid:OBJ_EMAIL },
 
+    OidEntry{ sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption, oid:OBJ_RSAENCRYPTION },
     OidEntry{ sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1, oid:OBJ_RSASHA1 },
 
     OidEntry{ sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier, oid:OBJ_SKI },

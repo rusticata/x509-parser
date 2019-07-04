@@ -4,7 +4,8 @@ extern crate x509_parser;
 extern crate rusticata_macros;
 
 use der_parser::oid::Oid;
-use x509_parser::{parse_x509_der,X509Extension};
+use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension};
+use x509_parser::objects::{nid2obj, Nid};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
@@ -87,4 +88,18 @@ fn test_x509_parser_no_extensions() {
         }
         _ => panic!("x509 parsing failed: {:?}", res),
     }
+}
+
+#[test]
+fn test_parse_subject_public_key_info() {
+    let res = parse_subject_public_key_info(&IGCA_DER[339..]).expect("Parse public key info").1;
+    let oid = nid2obj(&Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
+    assert_eq!(res.algorithm.algorithm, oid);
+    let (tag, p) = res.algorithm.parameters.as_context_specific().expect("algorithm parameters");
+    assert_eq!(tag, 0);
+    let params = p.expect("algorithm parameters");
+    assert_eq!(params.tag, 5);
+    let spk = res.subject_public_key;
+    println!("spk.data.len {}", spk.data.len());
+    assert_eq!(spk.data.len(), 270);
 }
