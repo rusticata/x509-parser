@@ -46,6 +46,11 @@ match res {
 
 ## Changes
 
+### 0.4.3
+
+- Make `parse_subject_public_key_info` public
+- Add function `sn2oid` (get an OID by short name)
+
 ### 0.4.2
 
 - Support GeneralizedTime conversion
