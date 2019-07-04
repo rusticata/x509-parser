@@ -254,6 +254,16 @@ pub fn oid2sn(obj: &Oid) -> Result<&'static str,NidError> {
         .ok_or(NidError)
 }
 
+/// Given a short name, returns the matching OID
+pub fn sn2oid(sn: &str) -> Result<Oid, NidError> {
+    // XXX pattern matching would be faster, but harder to maintain
+    OID_REGISTRY
+        .iter()
+        .find(|ref o| o.sn == sn)
+        .map(|ref o| Oid::from(o.oid))
+        .ok_or(NidError)
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -273,6 +283,13 @@ fn test_obj2nid() {
 fn test_nid2sn() {
     assert_eq!(nid2sn(Nid::Undef), Ok("UNDEF"));
     assert_eq!(nid2sn(Nid::RsaSha1), Ok("RSA-SHA1"));
+}
+
+#[test]
+fn test_sn2oid() {
+    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]);
+    assert_eq!(sn2oid("RSA-SHA1"), Ok(oid));
+    assert_eq!(sn2oid("invalid sn"), Err(NidError));
 }
 
 }
