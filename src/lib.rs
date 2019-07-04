@@ -1,6 +1,6 @@
 //! # X.509 Parser
 //!
-//! A X.509 ([RFC5280]) parser, implemented with the [nom](https://github.com/Geal/nom)
+//! A X.509 v3 ([RFC5280]) parser, implemented with the [nom](https://github.com/Geal/nom)
 //! parser combinator framework.
 //!
 //! The code is available on [Github](https://github.com/rusticata/x509-parser)

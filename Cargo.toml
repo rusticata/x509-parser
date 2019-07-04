@@ -1,16 +1,18 @@
 [package]
 name = "x509-parser"
-version = "0.4.2"
+version = "0.4.3"
 description = "Parser for the X.509 v3 format (RFC 5280 certificates)"
 license = "MIT/Apache-2.0"
 keywords = ["X509","Certificate","parser","nom"]
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 homepage = "https://github.com/rusticata/x509-parser"
 repository = "https://github.com/rusticata/x509-parser.git"
-categories = ["parsing"]
+categories = ["parser-implementations"]
+readme = "README.md"
 
 include = [
   "LICENSE-*",
+  "README.md",
   ".gitignore",
   ".travis.yml",
   "Cargo.toml",

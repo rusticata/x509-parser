@@ -5,13 +5,44 @@
 [![Build Status](https://travis-ci.org/rusticata/x509-parser.svg?branch=master)](https://travis-ci.org/rusticata/x509-parser)
 [![Crates.io Version](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
 
-## Overview
+<!-- cargo-sync-readme start -->
 
-x509-parser is a parser for the X.509 v3 format ([RFC 5280](https://tools.ietf.org/html/rfc5280)).
+# X.509 Parser
 
-## Important
+A X.509 v3 ([RFC5280]) parser, implemented with the [nom](https://github.com/Geal/nom)
+parser combinator framework.
 
-*This parser is still experimental and very incomplete*
+The code is available on [Github](https://github.com/rusticata/x509-parser)
+and is part of the [Rusticata](https://github.com/rusticata) project.
+
+The main parsing method is [`parse_x509_der`](fn.parse_x509_der.html), which takes a DER-encoded
+certificate as input, and builds a [`X509Certificate`](x509/struct.X509Certificate.html) object.
+
+For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
+
+# Examples
+
+Parsing a certificate in DER format:
+
+```rust,no_run
+use x509_parser::parse_x509_der;
+
+static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+
+let res = parse_x509_der(IGCA_DER);
+match res {
+    Ok((rem, cert)) => {
+        assert!(rem.is_empty());
+        //
+        assert_eq!(cert.tbs_certificate.version, 2);
+    },
+    _ => panic!("x509 parsing failed: {:?}", res),
+}
+```
+
+[RFC5280]: https://tools.ietf.org/html/rfc5280
+
+<!-- cargo-sync-readme end -->
 
 ## Changes
 
