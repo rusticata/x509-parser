@@ -8,6 +8,9 @@ use nom::{IResult,Err,ErrorKind};
 use time::{strptime,Tm};
 
 use der_parser::*;
+use der_parser::ber::{BerObjectContent, BerTag};
+use der_parser::der::*;
+use der_parser::error::{BerError, BER_TAG_ERROR};
 use x509::*;
 use x509_extensions::*;
 use error::X509Error;
@@ -84,11 +87,11 @@ fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name> {
 fn parse_version(i:&[u8]) -> IResult<&[u8],u32> {
     map_res!(
         i,
-        apply!(parse_der_explicit, 0, parse_der_integer),
+        apply!(parse_der_explicit, BerTag(0), parse_der_integer),
         |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_u32(),
-                _                 => Err(DerError::DerTypeError)
+                _                 => Err(BerError::BerTypeError)
             }
         }
     )
@@ -100,7 +103,7 @@ fn parse_choice_of_time(i:&[u8]) -> IResult<&[u8],DerObject> {
 }
 
 fn der_to_utctime(obj:DerObject) -> Result<Tm,X509Error> {
-    if let DerObjectContent::UTCTime(s) = obj.content {
+    if let BerObjectContent::UTCTime(s) = obj.content {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
         match strptime(xs,"%y%m%d%H%M%S%Z") {
             Ok(mut tm) => {
@@ -113,7 +116,7 @@ fn der_to_utctime(obj:DerObject) -> Result<Tm,X509Error> {
                 Err(X509Error::InvalidDate)
             },
         }
-    } else if let DerObjectContent::GeneralizedTime(s) = obj.content {
+    } else if let BerObjectContent::GeneralizedTime(s) = obj.content {
         let xs = str::from_utf8(s)
             .or(Err(X509Error::InvalidDate))?;
         match strptime(xs,"%Y%m%d%H%M%S%Z") {
@@ -148,8 +151,8 @@ pub fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPu
         alg: parse_algorithm_identifier >>
         spk: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
             match x.content {
-                DerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
-                _ => Err(DerError::DerTypeError),
+                BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+                _ => Err(BerError::BerTypeError),
             }
         }) >>
         // spk: map_res!(parse_der_bitstring, |x:DerObject<'a>| x.content.as_bitstring()) >>
@@ -163,18 +166,18 @@ pub fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPu
 }
 
 #[inline]
-fn der_read_bitstring_content(i:&[u8], _tag:u8, len: usize) -> IResult<&[u8],DerObjectContent,u32> {
-    der_read_element_content_as(i, DerTag::BitString as u8, len)
+fn der_read_bitstring_content(i:&[u8], _tag:BerTag, len: usize) -> IResult<&[u8],BerObjectContent,u32> {
+    der_read_element_content_as(i, DerTag::BitString, len, false, 0)
 }
 
-fn bitstring_to_unique_id<'a>(x: DerObject<'a>) -> Result<Option<UniqueIdentifier<'a>>,DerError> {
+fn bitstring_to_unique_id<'a>(x: DerObject<'a>) -> Result<Option<UniqueIdentifier<'a>>,BerError> {
     let (_,y) = x.as_context_specific()?;
     match y {
         None => Ok(None),
         Some(x) => {
             match x.content {
-                DerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
-                _                                 => Err(DerError::DerTypeError)
+                BerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
+                _                                 => Err(BerError::BerTypeError)
             }
         }
     }
@@ -183,7 +186,7 @@ fn bitstring_to_unique_id<'a>(x: DerObject<'a>) -> Result<Option<UniqueIdentifie
 fn parse_issuer_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
     map_res!(
         i,
-        apply!(parse_der_implicit, 1, der_read_bitstring_content),
+        apply!(parse_der_implicit, BerTag(1), der_read_bitstring_content),
         bitstring_to_unique_id
     )
 }
@@ -191,7 +194,7 @@ fn parse_issuer_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
 fn parse_subject_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
     map_res!(
         i,
-        apply!(parse_der_implicit, 2, der_read_bitstring_content),
+        apply!(parse_der_implicit, BerTag(2), der_read_bitstring_content),
         bitstring_to_unique_id
     )
 }
@@ -239,8 +242,8 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
 
     match der_read_element_header(i) {
         Ok((rem,hdr)) => {
-            if hdr.tag != 3 {
-                return Err(Err::Error(error_position!(i, ErrorKind::Custom(DER_TAG_ERROR))));
+            if hdr.tag != BerTag(3) {
+                return Err(Err::Error(error_position!(i, ErrorKind::Custom(BER_TAG_ERROR))));
             }
             parse_extension_sequence(rem)
         }
@@ -307,8 +310,8 @@ pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
         alg: parse_algorithm_identifier >>
         sig: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
             match x.content {
-                DerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
-                _ => Err(DerError::DerTypeError),
+                BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+                _ => Err(BerError::BerTypeError),
             }
         }) >>
         (

@@ -8,7 +8,8 @@ use std::fmt;
 use num_bigint::BigUint;
 use time::Tm;
 
-use der_parser::{DerObject,BitStringObject};
+use der_parser::ber::BitStringObject;
+use der_parser::der::DerObject;
 use der_parser::oid::Oid;
 use objects::{oid2nid,nid2sn};
 use error::X509Error;
@@ -183,7 +184,7 @@ pub struct X509Certificate<'a> {
 #[cfg(test)]
 mod tests {
     use x509::*;
-    use der_parser::*;
+    use der_parser::ber::BerObjectContent;
     use der_parser::oid::Oid;
 
 #[test]
@@ -193,29 +194,29 @@ fn test_x509_name() {
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 6]), // countryName
-                    attr_value: DerObject::from_obj(DerObjectContent::PrintableString(b"FR")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"FR")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 8]), // stateOrProvinceName
-                    attr_value: DerObject::from_obj(DerObjectContent::PrintableString(b"Some-State")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Some-State")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 10]), // organizationName
-                    attr_value: DerObject::from_obj(DerObjectContent::PrintableString(b"Internet Widgits Pty Ltd")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Internet Widgits Pty Ltd")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 3]), // CN
-                    attr_value: DerObject::from_obj(DerObjectContent::PrintableString(b"Test1")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Test1")),
                 },
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 3]), // CN
-                    attr_value: DerObject::from_obj(DerObjectContent::PrintableString(b"Test2")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Test2")),
                 }
             ]},
         ]

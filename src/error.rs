@@ -1,6 +1,6 @@
 //! X.509 errors
 
-use der_parser::DerError;
+use der_parser::error::BerError;
 
 /// An error that can occur while converting an OID to a Nid.
 #[derive(Debug,PartialEq)]
@@ -22,11 +22,11 @@ pub enum X509Error {
     /// Top-level certificate structure is invalid
     InvalidCertificate,
 
-    Der(DerError),
+    Der(BerError),
 }
 
-impl From<DerError> for X509Error {
-    fn from(e: DerError) -> X509Error { X509Error::Der(e) }
+impl From<BerError> for X509Error {
+    fn from(e: BerError) -> X509Error { X509Error::Der(e) }
 }
 
 

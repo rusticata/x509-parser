@@ -27,7 +27,7 @@ nom = {version = "4.2", features=["verbose-errors"] }
 rusticata-macros = "1.0"
 num-bigint = "0.2"
 time = "0.1"
-der-parser = {version = "1.1", features=["bigint"] }
+der-parser = {version = "2.0.0", features=["bigint"] }
 
 [badges]
 travis-ci = { repository = "rusticata/x509-parser" }
