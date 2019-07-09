@@ -46,6 +46,10 @@ match res {
 
 ## Changes
 
+### 0.5.0
+
+- Update to der-parser 2.0
+
 ### 0.4.3
 
 - Make `parse_subject_public_key_info` public
