@@ -128,6 +128,21 @@ impl Validity {
     }
 }
 
+#[test]
+fn check_validity_expiration() {
+    let mut v = Validity {
+        not_before: time::now(),
+        not_after: time::now(),
+    };
+    assert_eq!(v.time_to_expiration(), None);
+    v.not_after = v.not_after + time::Duration::minutes(1);
+    assert!(v.time_to_expiration().is_some());
+    assert!(v.time_to_expiration().unwrap() <= std::time::Duration::from_secs(60));
+    // The following assumes this timing won't take 10 seconds... I
+    // think that is safe.
+    assert!(v.time_to_expiration().unwrap() > std::time::Duration::from_secs(50));
+}
+
 #[derive(Debug, PartialEq)]
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
