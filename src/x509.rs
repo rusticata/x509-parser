@@ -118,10 +118,12 @@ impl Validity {
             // Not yet valid...
             return None;
         }
-        if now >= na {
-            // Has already expired.
+        if now.sec >= na.sec {
+            // Has already expired (or within a second, so who cares?).
             return None;
         }
+        // Note that the duration below is guaranteed to be positive,
+        // since we just checked that now.sec >= na.sec.
         Some(std::time::Duration::from_secs((na.sec - now.sec) as u64))
     }
 }
