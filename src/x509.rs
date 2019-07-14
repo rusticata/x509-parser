@@ -104,6 +104,28 @@ pub struct Validity {
     pub not_after:  Tm,
 }
 
+impl Validity {
+    /// The time left before the certificate expires.
+    ///
+    /// If the certificate is not currently valid, then `None` is
+    /// returned.  Otherwise, the `Duration` until the certificate
+    /// expires is returned.
+    pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
+        let now = time::now().to_timespec();
+        let nb = self.not_before.to_timespec();
+        let na = self.not_after.to_timespec();
+        if now < nb {
+            // Not yet valid...
+            return None;
+        }
+        if now >= na {
+            // Has already expired.
+            return None;
+        }
+        Some(std::time::Duration::from_secs((na.sec - now.sec) as u64))
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
