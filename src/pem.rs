@@ -29,6 +29,8 @@
 //! ```
 
 use crate::error::PEMError;
+use crate::x509::X509Certificate;
+use crate::x509_parser::parse_x509_der;
 use base64;
 use nom::{Err, ErrorKind, IResult};
 use std::io::{BufRead, Cursor};
@@ -88,5 +90,11 @@ impl Pem {
             contents,
         };
         Ok((pem, r.position() as usize))
+    }
+
+    /// Decode the PEM contents into a X.509 object
+    pub fn parse_x509<'pem>(&'pem self) -> Result<X509Certificate<'pem>, Err<&[u8]>> {
+        parse_x509_der(&self.contents)
+            .map(|(_,x509)| x509)
     }
 }
