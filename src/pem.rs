@@ -2,7 +2,30 @@
 //!
 //! # Examples
 //!
-//! Parsing a certificate in PEM format:
+//! To parse a certificate in PEM format, first create the `Pem` object, then decode
+//! contents:
+//!
+//! ```rust,no_run
+//! # extern crate nom;
+//! # #[macro_use] extern crate x509_parser;
+//! use std::io::Cursor;
+//! use x509_parser::pem::{pem_to_der, Pem};
+//! use x509_parser::parse_x509_der;
+//!
+//! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
+//!
+//! # fn main() {
+//! let res = pem_to_der(IGCA_PEM);
+//! let reader = Cursor::new(IGCA_PEM);
+//! let (pem,bytes_read) = Pem::read(reader).expect("Reading PEM failed");
+//! let x509 = pem.parse_x509().expect("X.509: decoding DER failed");
+//! assert_eq!(x509.tbs_certificate.version, 2);
+//! # }
+//! ```
+//!
+//! This is the most direct method to parse PEM data.
+//!
+//! Another method to parse the certificate is to use `pem_to_der`:
 //!
 //! ```rust,no_run
 //! # extern crate nom;
@@ -27,6 +50,10 @@
 //! }
 //! # }
 //! ```
+//!
+//! Note that all methods require to store the `Pem` object in a variable, mainly because decoding
+//! the PEM object requires allocation of buffers, and that the lifetime of X.509 certificates will
+//! be bound to these buffers.
 
 use crate::error::PEMError;
 use crate::x509::X509Certificate;
