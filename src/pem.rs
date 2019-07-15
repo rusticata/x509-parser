@@ -28,15 +28,16 @@
 //! # }
 //! ```
 
-use std::str;
+use crate::error::PEMError;
 use base64;
-use nom::IResult;
+use nom::{Err, ErrorKind, IResult};
+use std::io::{BufRead, Cursor};
 
 /// Representation of PEM data
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Pem {
     /// The PEM label
-    pub label:    String,
+    pub label: String,
     /// The PEM decoded data
     pub contents: Vec<u8>,
 }
@@ -44,37 +45,48 @@ pub struct Pem {
 /// Read a PEM-encoded structure, and decode the base64 data
 ///
 /// Allocates a new buffer for the decoded data.
-pub fn pem_to_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],Pem> {
-    do_parse!(
-        i,
-           tag_s!("-----BEGIN ") >>
-        l: map_res!(
-                take_until!("-"),
-                |x:&'a[u8]| str::from_utf8(x)
-           ) >>
-           tag_s!("-----") >>
-        r: map_res!(
-               take_until!("-----END"),
-               |lines:&[u8]| {
-                   let v = lines.split(|&x| x==0xa).fold(
-                       Vec::new(),
-                       |mut acc,line| {
-                           if !line.is_empty() { acc.extend_from_slice(line); }
-                           acc
-                       }
-                   );
-                   base64::decode(&v)
-               }
-           ) >>
-           tag_s!("-----END ") >>
-           take_until!("-") >>
-           tag_s!("-----") >>
-           opt!(tag!(b"\n")) >>
-        (
-            Pem{
-                label:    l.to_string(),
-                contents: r
+pub fn pem_to_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
+    let reader = Cursor::new(i);
+    let res = Pem::read(reader);
+    match res {
+        Ok((pem, bytes_read)) => Ok((&i[bytes_read..], pem)),
+        Err(e) => Err(Err::Error(error_position!(i, ErrorKind::Custom(e)))),
+    }
+}
+
+impl Pem {
+    /// Read a PEM-encoded structure, and decode the base64 data
+    ///
+    /// Returns the certificate (encoded in DER) and the number of bytes read.
+    /// Allocates a new buffer for the decoded data.
+    pub fn read<T>(mut r: Cursor<T>) -> Result<(Pem, usize), PEMError>
+    where
+        Cursor<T>: BufRead,
+    {
+        let mut first_line = String::new();
+        r.read_line(&mut first_line)?;
+        let mut iter = first_line.split_whitespace();
+        if iter.next() != Some("-----BEGIN") {
+            return Err(PEMError::MissingHeader);
+        }
+        let label = iter.next().ok_or(PEMError::InvalidHeader)?;
+        let label = label.split('-').next().ok_or(PEMError::InvalidHeader)?;
+        let mut s = String::new();
+        loop {
+            let mut l = String::new();
+            r.read_line(&mut l)?;
+            if l.starts_with("-----END ") {
+                // finished reading
+                break;
             }
-        )
-    )
+            s.push_str(l.trim_end());
+        }
+
+        let contents = base64::decode(&s).or(Err(PEMError::Base64DecodeError))?;
+        let pem = Pem {
+            label: label.to_string(),
+            contents,
+        };
+        Ok((pem, r.position() as usize))
+    }
 }
