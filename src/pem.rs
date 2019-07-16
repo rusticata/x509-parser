@@ -60,7 +60,7 @@ use crate::x509::X509Certificate;
 use crate::x509_parser::parse_x509_der;
 use base64;
 use nom::{Err, ErrorKind, IResult};
-use std::io::{BufRead, Cursor};
+use std::io::{BufRead, Cursor, Seek};
 
 /// Representation of PEM data
 #[derive(PartialEq, Debug)]
@@ -88,9 +88,7 @@ impl Pem {
     ///
     /// Returns the certificate (encoded in DER) and the number of bytes read.
     /// Allocates a new buffer for the decoded data.
-    pub fn read<T>(mut r: Cursor<T>) -> Result<(Pem, usize), PEMError>
-    where
-        T: AsRef<[u8]>,
+    pub fn read(mut r: impl BufRead + Seek) -> Result<(Pem, usize), PEMError>
     {
         let mut first_line = String::new();
         r.read_line(&mut first_line)?;
@@ -116,7 +114,7 @@ impl Pem {
             label: label.to_string(),
             contents,
         };
-        Ok((pem, r.position() as usize))
+        Ok((pem, r.seek(std::io::SeekFrom::Current(0))? as usize))
     }
 
     /// Decode the PEM contents into a X.509 object
