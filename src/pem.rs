@@ -90,7 +90,7 @@ impl Pem {
     /// Allocates a new buffer for the decoded data.
     pub fn read<T>(mut r: Cursor<T>) -> Result<(Pem, usize), PEMError>
     where
-        Cursor<T>: BufRead,
+        T: AsRef<[u8]>,
     {
         let mut first_line = String::new();
         r.read_line(&mut first_line)?;
