@@ -46,6 +46,12 @@ match res {
 
 ## Changes
 
+### 0.5.1
+
+- Add `time_to_expiration` to `Validity` object
+- Add method to read a `Pem` object from `BufRead + Seek`
+- Add method to `Pem` to decode and extract certificate
+
 ### 0.5.0
 
 - Update to der-parser 2.0
