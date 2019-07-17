@@ -91,7 +91,7 @@ impl Pem {
     ///
     /// # Examples
     /// ```
-    /// let file = std::fs::File::open("tests/certificate.pem").unwrap();
+    /// let file = std::fs::File::open("assets/certificate.pem").unwrap();
     /// let subject = x509_parser::pem::Pem::read(std::io::BufReader::new(file))
     ///      .unwrap().0
     ///     .parse_x509().unwrap()
@@ -137,7 +137,7 @@ impl Pem {
 
 #[test]
 fn read_pem_from_file() {
-    let file = std::io::BufReader::new(std::fs::File::open("tests/certificate.pem").unwrap());
+    let file = std::io::BufReader::new(std::fs::File::open("assets/certificate.pem").unwrap());
     let subject = Pem::read(file).unwrap().0
         .parse_x509().unwrap().tbs_certificate.subject.to_string();
     assert_eq!(subject, "CN=lists.for-our.info");

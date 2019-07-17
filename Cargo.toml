@@ -18,7 +18,8 @@ include = [
   "Cargo.toml",
   "src/*.rs",
   "tests/*.rs",
-  "assets/*.der"
+  "assets/*.der",
+  "assets/*.pem"
 ]
 
 [dependencies]
