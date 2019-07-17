@@ -88,6 +88,17 @@ impl Pem {
     ///
     /// Returns the certificate (encoded in DER) and the number of bytes read.
     /// Allocates a new buffer for the decoded data.
+    ///
+    /// # Examples
+    /// ```
+    /// let file = std::fs::File::open("tests/certificate.pem").unwrap();
+    /// let subject = x509_parser::pem::Pem::read(std::io::BufReader::new(file))
+    ///      .unwrap().0
+    ///     .parse_x509().unwrap()
+    ///     .tbs_certificate.subject.to_string();
+    /// assert_eq!(subject, "CN=lists.for-our.info");
+    /// ```
+
     pub fn read(mut r: impl BufRead + Seek) -> Result<(Pem, usize), PEMError>
     {
         let mut first_line = String::new();
