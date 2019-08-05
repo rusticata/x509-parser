@@ -55,11 +55,11 @@
 //! the PEM object requires allocation of buffers, and that the lifetime of X.509 certificates will
 //! be bound to these buffers.
 
-use crate::error::PEMError;
+use crate::error::{PEMError, X509Error};
 use crate::x509::X509Certificate;
 use crate::x509_parser::parse_x509_der;
 use base64;
-use nom::{Err, ErrorKind, IResult};
+use nom::{Err, IResult};
 use std::io::{BufRead, Cursor, Seek};
 
 /// Representation of PEM data
@@ -79,7 +79,7 @@ pub fn pem_to_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
     let res = Pem::read(reader);
     match res {
         Ok((pem, bytes_read)) => Ok((&i[bytes_read..], pem)),
-        Err(e) => Err(Err::Error(error_position!(i, ErrorKind::Custom(e)))),
+        Err(e) => Err(Err::Error(e)),
     }
 }
 
@@ -129,7 +129,7 @@ impl Pem {
     }
 
     /// Decode the PEM contents into a X.509 object
-    pub fn parse_x509<'pem>(&'pem self) -> Result<X509Certificate<'pem>, Err<&[u8]>> {
+    pub fn parse_x509<'pem>(&'pem self) -> Result<X509Certificate<'pem>, ::nom::Err<X509Error>> {
         parse_x509_der(&self.contents)
             .map(|(_,x509)| x509)
     }

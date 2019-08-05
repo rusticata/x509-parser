@@ -1,6 +1,6 @@
 [package]
 name = "x509-parser"
-version = "0.5.1"
+version = "0.6.0"
 description = "Parser for the X.509 v3 format (RFC 5280 certificates)"
 license = "MIT/Apache-2.0"
 keywords = ["X509","Certificate","parser","nom"]
@@ -24,11 +24,11 @@ include = [
 
 [dependencies]
 base64 = "0.10"
-nom = {version = "4.2", features=["verbose-errors"] }
-rusticata-macros = "1.0"
+nom = "5.0"
+rusticata-macros = "2.0.2"
 num-bigint = "0.2"
 time = "0.1"
-der-parser = {version = "2.0.0", features=["bigint"] }
+der-parser = {version = "3.0.0", features=["bigint"] }
 
 [badges]
 travis-ci = { repository = "rusticata/x509-parser" }

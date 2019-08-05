@@ -46,6 +46,11 @@ match res {
 
 ## Changes
 
+### 0.6.0
+
+- Update to der-parser 3.0 and nom 5
+- Breaks API, cleaner error types
+
 ### 0.5.1
 
 - Add `time_to_expiration` to `Validity` object

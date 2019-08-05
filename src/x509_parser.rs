@@ -4,13 +4,14 @@
 //!
 
 use std::str;
-use nom::{IResult,Err,ErrorKind};
+use nom::{IResult,Err};
 use time::{strptime,Tm};
 
 use der_parser::*;
 use der_parser::ber::{BerObjectContent, BerTag};
 use der_parser::der::*;
-use der_parser::error::{BerError, BER_TAG_ERROR};
+use der_parser::error::BerError;
+use rusticata_macros::{flat_take, upgrade_error};
 use x509::*;
 use x509_extensions::*;
 use error::X509Error;
@@ -26,7 +27,7 @@ use error::X509Error;
 ///
 /// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
 /// unsigned integer, and parsing will fail if value if larger.
-pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints> {
+pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -42,21 +43,21 @@ pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints> {
 }
 
 #[inline]
-fn der_read_opt_integer(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
+fn der_read_opt_integer(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
     parse_der_optional!(i, parse_der_integer)
 }
 
 #[inline]
-fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject> {
-    alt_complete!(i,
-                  parse_der_utf8string |
-                  parse_der_printablestring |
-                  parse_der_ia5string |
-                  parse_der_t61string |
-                  parse_der_bmpstring)
+fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
+    alt!(i,
+         complete!(parse_der_utf8string) |
+         complete!(parse_der_printablestring) |
+         complete!(parse_der_ia5string) |
+         complete!(parse_der_t61string) |
+         complete!(parse_der_bmpstring))
 }
 
-fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],AttributeTypeAndValue> {
+fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],AttributeTypeAndValue,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -66,7 +67,7 @@ fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],AttributeTypeAndValue> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_rdn(i:&[u8]) -> IResult<&[u8],RelativeDistinguishedName> {
+fn parse_rdn(i:&[u8]) -> IResult<&[u8],RelativeDistinguishedName,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Set,
@@ -75,7 +76,7 @@ fn parse_rdn(i:&[u8]) -> IResult<&[u8],RelativeDistinguishedName> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name> {
+fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -84,10 +85,10 @@ fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_version(i:&[u8]) -> IResult<&[u8],u32> {
+fn parse_version(i:&[u8]) -> IResult<&[u8],u32,BerError> {
     map_res!(
         i,
-        apply!(parse_der_explicit, BerTag(0), parse_der_integer),
+        call!(parse_der_explicit, BerTag(0), parse_der_integer),
         |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_u32(),
@@ -98,8 +99,8 @@ fn parse_version(i:&[u8]) -> IResult<&[u8],u32> {
 }
 
 #[inline]
-fn parse_choice_of_time(i:&[u8]) -> IResult<&[u8],DerObject> {
-    alt_complete!(i, parse_der_utctime | parse_der_generalizedtime)
+fn parse_choice_of_time(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
+    alt!(i, complete!(parse_der_utctime) | complete!(parse_der_generalizedtime))
 }
 
 fn der_to_utctime(obj:DerObject) -> Result<Tm,X509Error> {
@@ -125,7 +126,7 @@ fn der_to_utctime(obj:DerObject) -> Result<Tm,X509Error> {
     }
 }
 
-fn parse_validity(i:&[u8]) -> IResult<&[u8],Validity> {
+fn parse_validity(i:&[u8]) -> IResult<&[u8],Validity,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -138,7 +139,7 @@ fn parse_validity(i:&[u8]) -> IResult<&[u8],Validity> {
 }
 
 /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
-pub fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPublicKeyInfo<'a>> {
+pub fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPublicKeyInfo<'a>,BerError> {
     parse_der_struct!(
         i,
         alg: parse_algorithm_identifier >>
@@ -159,7 +160,7 @@ pub fn parse_subject_public_key_info<'a>(i:&'a[u8]) -> IResult<&'a[u8],SubjectPu
 }
 
 #[inline]
-fn der_read_bitstring_content(i:&[u8], _tag:BerTag, len: usize) -> IResult<&[u8],BerObjectContent,u32> {
+fn der_read_bitstring_content(i:&[u8], _tag:BerTag, len: usize) -> IResult<&[u8],BerObjectContent,BerError> {
     der_read_element_content_as(i, DerTag::BitString, len, false, 0)
 }
 
@@ -176,28 +177,28 @@ fn bitstring_to_unique_id<'a>(x: DerObject<'a>) -> Result<Option<UniqueIdentifie
     }
 }
 
-fn parse_issuer_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
+fn parse_issuer_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>,BerError> {
     map_res!(
         i,
-        apply!(parse_der_implicit, BerTag(1), der_read_bitstring_content),
+        call!(parse_der_implicit, BerTag(1), der_read_bitstring_content),
         bitstring_to_unique_id
     )
 }
 
-fn parse_subject_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>> {
+fn parse_subject_unique_id(i:&[u8]) -> IResult<&[u8],Option<UniqueIdentifier>,BerError> {
     map_res!(
         i,
-        apply!(parse_der_implicit, BerTag(2), der_read_bitstring_content),
+        call!(parse_der_implicit, BerTag(2), der_read_bitstring_content),
         bitstring_to_unique_id
     )
 }
 
 #[inline]
-fn der_read_opt_bool(i:&[u8]) -> IResult<&[u8],DerObject,u32> {
+fn der_read_opt_bool(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
     parse_der_optional!(i, parse_der_bool)
 }
 
-fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>> {
+fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>,BerError> {
     parse_der_struct!(
         i,
         oid:      map_res!(parse_der_oid,|x:DerObject| x.as_oid_val()) >>
@@ -219,7 +220,7 @@ fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>> {
 }
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
-fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
+fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -228,7 +229,7 @@ fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
+fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
     if i.len() == 0 {
         return Ok((&[], Vec::new()));
     }
@@ -236,7 +237,7 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
     match der_read_element_header(i) {
         Ok((rem,hdr)) => {
             if hdr.tag != BerTag(3) {
-                return Err(Err::Error(error_position!(i, ErrorKind::Custom(BER_TAG_ERROR))));
+                return Err(Err::Error(BerError::InvalidTag));
             }
             parse_extension_sequence(rem)
         }
@@ -246,7 +247,7 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>> {
 }
 
 
-fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
+fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -277,7 +278,7 @@ fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier> {
+fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
     parse_der_struct!(
         i,
         oid:    map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
@@ -295,7 +296,8 @@ fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier> {
 /// Parse a DER-encoded X.509 Certificate
 ///
 /// Note that only parsing is done, not validation.
-pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
+pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>,X509Error> {
+    upgrade_error!(
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -315,10 +317,11 @@ pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
             }
         )
     ).map(|(rem,x)| (rem,x.1))
+    )
 }
 
 #[deprecated(since="0.4.0", note="please use `parse_x509_der` instead")]
-pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>> {
+pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>,X509Error> {
     parse_x509_der(i)
 }
 
