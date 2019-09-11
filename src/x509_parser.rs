@@ -247,22 +247,23 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
 }
 
 
-fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate,BerError> {
-    parse_der_struct!(
+fn parse_tbs_certificate(i: &[u8]) -> IResult<&[u8], TbsCertificate, BerError> {
+    use nom::Offset;
+    let (rem, tbs) = map!(
         i,
-        TAG DerTag::Sequence,
-        version:     parse_version >>
-        serial:      map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
-        signature:   parse_algorithm_identifier >>
-        issuer:      parse_name >>
-        validity:    parse_validity >>
-        subject:     parse_name >>
-        subject_pki: parse_subject_public_key_info >>
-        issuer_uid:  parse_issuer_unique_id >>
-        subject_uid: parse_subject_unique_id >>
-        extensions:  parse_extensions >>
-        (
-            TbsCertificate{
+        parse_der_struct!(
+            TAG DerTag::Sequence,
+            version:     parse_version >>
+            serial:      map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
+            signature:   parse_algorithm_identifier >>
+            issuer:      parse_name >>
+            validity:    parse_validity >>
+            subject:     parse_name >>
+            subject_pki: parse_subject_public_key_info >>
+            issuer_uid:  parse_issuer_unique_id >>
+            subject_uid: parse_subject_unique_id >>
+            extensions:  parse_extensions >>
+            (TbsCertificate {
                 version,
                 serial,
                 signature,
@@ -272,10 +273,13 @@ fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate,BerError> {
                 subject_pki,
                 issuer_uid,
                 subject_uid,
-                extensions
-            }
-        )
-    ).map(|(rem,x)| (rem,x.1))
+                extensions,
+                raw: &[],
+            })
+        ),
+        |x| x.1
+    )?;
+    Ok((rem, TbsCertificate { raw: &i[..i.offset(rem)], ..tbs }))
 }
 
 fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {

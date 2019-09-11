@@ -23,6 +23,8 @@ fn test_x509_parser() {
             let tbs_cert = cert.tbs_certificate;
             assert_eq!(tbs_cert.version, 2);
             //
+            assert_eq!(tbs_cert.bytes(), &IGCA_DER[4..754]);
+            //
             let expected_subject = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.subject), expected_subject);
             //
