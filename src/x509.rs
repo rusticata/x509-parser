@@ -96,6 +96,15 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
     pub extensions: Vec<X509Extension<'a>>,
+    pub(crate) raw: &'a [u8],
+}
+
+impl<'a> TbsCertificate<'a> {
+    /// Return the ASN.1 DER encoding of the tbsCertificate.
+    /// This data is used for the signature.
+    pub fn bytes(&self) -> &[u8] {
+        &self.raw
+    } 
 }
 
 #[derive(Debug, PartialEq)]
