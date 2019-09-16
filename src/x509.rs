@@ -18,6 +18,7 @@ use der_parser::{
 use crate::objects::{oid2nid,nid2sn};
 use crate::error::X509Error;
 use crate::x509_extensions;
+use crate::x509_parser::parse_ext_basicconstraints;
 
 
 #[derive(Debug, PartialEq)]
@@ -181,6 +182,15 @@ impl<'a> TbsCertificate<'a> {
         self.extensions.get(&oid!(2.5.29.19)).map(|ext| {
             match ext.extension_type().unwrap() {
                 crate::x509_extensions::ExtensionType::BasicConstraints(ref bc) => (ext.critical, bc),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn certificate_policies(&self) -> Option<(bool, &x509_extensions::CertificatePolicies)> {
+        self.extensions.get(&oid!(2.5.29.32)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::CertificatePolicies(ref cp) => (ext.critical, cp),
                 _ => unreachable!(),
             }
         })
