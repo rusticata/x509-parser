@@ -5,11 +5,11 @@
 //!
 //! Note: the objects registry is implemented as a static array with linear search. This is not the
 //! most efficient method, but makes maintainance easier.
+use std::borrow::Cow;
 
-// use std::convert::From;
-use der_parser::oid::Oid;
+use der_parser::{oid, oid::Oid};
 
-use error::NidError;
+use crate::error::NidError;
 
 /// ASN.1 node internal identifier
 ///
@@ -90,65 +90,37 @@ pub enum Nid{
     AuthorityKeyIdentifier,
 }
 
-// impl From<u32> for Nid {
-//     fn from(u: u32) -> Nid { Nid(u) }
-// }
+const OBJ_ALGO : &[u8]    = &oid!(raw 1.3.14.3.2);
+const OBJ_RSADSI : &[u8]  = &oid!(raw 1.2.840.113549);
+const OBJ_X500 : &[u8]    = &oid!(raw 2.5);
+const OBJ_X509 : &[u8]    = &oid!(raw 2.5.4);
+const OBJ_CN : &[u8]      = &oid!(raw 2.5.4.3);
+const OBJ_C : &[u8]       = &oid!(raw 2.5.4.6);
+const OBJ_L : &[u8]       = &oid!(raw 2.5.4.7);
+const OBJ_ST : &[u8]      = &oid!(raw 2.5.4.8);
+const OBJ_O : &[u8]       = &oid!(raw 2.5.4.10);
+const OBJ_OU : &[u8]      = &oid!(raw 2.5.4.11);
 
-// helper macros to be able to use the node OID of the parent, and only append the child values
-macro_rules! rsadsi {
-    ( )                =>    { &[ 1, 2, 840, 113549 ] };
-    ( $( $x:expr ),* ) =>    { &[ 1, 2, 840, 113549, $( $x ),* ] }
-}
-macro_rules! pkcs1 {
-    ( )                =>    { rsadsi!( 1, 1 ) };
-    ( $( $x:expr ),* ) =>    { rsadsi!( 1, 1, $( $x ),* ) }
-}
-macro_rules! pkcs9 {
-    ( )                =>    { rsadsi!( 1, 9 ) };
-    ( $( $x:expr ),* ) =>    { rsadsi!( 1, 9, $( $x ),* ) }
-}
-macro_rules! algo {
-    ( $( $x:expr ),* ) =>    { &[ 1, 3, 14, 3, 2, $( $x ),* ] }
-}
-macro_rules! x509 {
-    ( $( $x:expr ),* ) =>    { &[ 2, 5, 4, $( $x ),* ] }
-}
-macro_rules! idce {
-    ( $( $x:expr ),* ) =>    { &[ 2, 5, 29, $( $x ),* ] }
-}
-
-const OBJ_ALGO : &[u64]    = algo!();
-const OBJ_RSADSI : &[u64]  = rsadsi!();
-const OBJ_X500 : &[u64]    = &[2, 5];
-const OBJ_X509 : &[u64]    = x509!();
-const OBJ_CN : &[u64]      = x509!(3);
-const OBJ_C : &[u64]       = x509!(6);
-const OBJ_L : &[u64]       = x509!(7);
-const OBJ_ST : &[u64]      = x509!(8);
-const OBJ_O : &[u64]       = x509!(10);
-const OBJ_OU : &[u64]      = x509!(11);
-
-const OBJ_PKCS9 : &[u64]   = pkcs9!();
-const OBJ_EMAIL : &[u64]   = pkcs9!(1);
+const OBJ_PKCS9 : &[u8]   = &oid!(raw 1.2.840.113549.1.9);
+const OBJ_EMAIL : &[u8]   = &oid!(raw 1.2.840.113549.1.9.1);
 
 // XXX ...
 
-const OBJ_RSAENCRYPTION : &[u64] = pkcs1!(1);
-const OBJ_RSASHA1 : &[u64] = pkcs1!(5);
+const OBJ_RSAENCRYPTION : &[u8] = &oid!(raw 1.2.840.113549.1.1.1);
+const OBJ_RSASHA1 : &[u8]       = &oid!(raw 1.2.840.113549.1.1.5);
 
 // other constants
 
-// const OBJ_IDCE : &[u64]    = idce!();
-const OBJ_SKI : &[u64]     = idce!(14);
-const OBJ_KU : &[u64]      = idce!(15);
-const OBJ_PKUP : &[u64]    = idce!(16);
-const OBJ_SAN : &[u64]     = idce!(17);
+const OBJ_SKI : &[u8]     = &oid!(raw 2.5.29.14);
+const OBJ_KU : &[u8]      = &oid!(raw 2.5.29.15);
+const OBJ_PKUP : &[u8]    = &oid!(raw 2.5.29.16);
+const OBJ_SAN : &[u8]     = &oid!(raw 2.5.29.17);
 
-const OBJ_BC : &[u64]      = idce!(19);
+const OBJ_BC : &[u8]      = &oid!(raw 2.5.29.19);
 
-const OBJ_CPOL : &[u64]    = idce!(32);
+const OBJ_CPOL : &[u8]    = &oid!(raw 2.5.29.32);
 
-const OBJ_AKI : &[u64]     = idce!(35);
+const OBJ_AKI : &[u8]     = &oid!(raw 2.5.29.35);
 
 
 
@@ -156,7 +128,7 @@ struct OidEntry {
     sn: &'static str,
     ln: &'static str,
     nid: Nid,
-    oid: &'static [u64],
+    oid: &'static [u8],
 }
 
 const OID_REGISTRY : &[OidEntry] = &[
@@ -215,7 +187,7 @@ pub fn nid2obj(nid: &Nid) -> Result<Oid,NidError> {
     OID_REGISTRY
         .iter()
         .find(|ref o| o.nid == *nid)
-        .map(|ref o| Oid::from(o.oid))
+        .map(|ref o| Oid::new(Cow::Borrowed(o.oid)))
         .ok_or(NidError)
     // XXX pattern matching would be faster, but harder to maintain
     // match nid {
@@ -239,7 +211,7 @@ pub fn oid2nid(obj: &Oid) -> Result<Nid,NidError> {
     // Err(NidError)
     OID_REGISTRY
         .iter()
-        .find(|ref o| obj.iter().eq(o.oid.iter()))
+        .find(|ref o| obj == &Oid::new(Cow::Borrowed(o.oid)))
         .map(|ref o| o.nid)
         .ok_or(NidError)
 }
@@ -249,7 +221,7 @@ pub fn oid2sn(obj: &Oid) -> Result<&'static str,NidError> {
     // XXX pattern matching would be faster, but harder to maintain
     OID_REGISTRY
         .iter()
-        .find(|ref o| obj.iter().eq(o.oid.iter()))
+        .find(|ref o| obj == &Oid::new(Cow::Borrowed(o.oid)))
         .map(|ref o| o.sn)
         .ok_or(NidError)
 }
@@ -260,22 +232,22 @@ pub fn sn2oid(sn: &str) -> Result<Oid, NidError> {
     OID_REGISTRY
         .iter()
         .find(|ref o| o.sn == sn)
-        .map(|ref o| Oid::from(o.oid))
+        .map(|ref o| Oid::new(Cow::Borrowed(o.oid)))
         .ok_or(NidError)
 }
 
 
 #[cfg(test)]
 mod tests {
-    use objects::*;
     use der_parser::oid::Oid;
+    use crate::objects::*;
 
 #[test]
 fn test_obj2nid() {
-    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]);
+    let oid = oid!(1.2.840.113549.1.1.5);
     assert_eq!(oid2nid(&oid), Ok(Nid::RsaSha1));
 
-    let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]);
+    let invalid_oid = oid!(5.4.3.2.1);
     assert_eq!(oid2nid(&invalid_oid), Err(NidError));
 }
 
@@ -287,7 +259,7 @@ fn test_nid2sn() {
 
 #[test]
 fn test_sn2oid() {
-    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]);
+    let oid = oid!(1.2.840.113549.1.1.5);
     assert_eq!(sn2oid("RSA-SHA1"), Ok(oid));
     assert_eq!(sn2oid("invalid sn"), Err(NidError));
 }

@@ -4,17 +4,22 @@
 //!
 
 use std::str;
-use nom::{IResult,Err};
+use nom::{map_opt, many1, named, IResult, Err};
 use time::{strptime,Tm};
 
 use der_parser::*;
 use der_parser::ber::{BerObjectContent, BerTag};
 use der_parser::der::*;
 use der_parser::error::BerError;
+use der_parser::oid;
 use rusticata_macros::{flat_take, upgrade_error};
-use x509::*;
-use x509_extensions::*;
-use error::X509Error;
+use crate::x509::*;
+use crate::x509_extensions::*;
+use crate::error::X509Error;
+
+fn clone_oid<'a>(x: DerObject<'a>) -> Result<oid::Oid<'a>, BerError> {
+    x.as_oid().map(|o| o.clone())
+}
 
 /// Parse a "Basic Constraints" extension
 ///
@@ -61,7 +66,7 @@ fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],AttributeTypeAndValue,Ber
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        oid: map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
+        oid: map_res!(parse_der_oid, clone_oid) >>
         val: parse_directory_string >>
         ( AttributeTypeAndValue{ attr_type:oid, attr_value:val } )
     ).map(|(rem,x)| (rem,x.1))
@@ -201,7 +206,7 @@ fn der_read_opt_bool(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
 fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>,BerError> {
     parse_der_struct!(
         i,
-        oid:      map_res!(parse_der_oid,|x:DerObject| x.as_oid_val()) >>
+        oid:      map_res!(parse_der_oid,clone_oid) >>
         critical: map_res!(der_read_opt_bool, |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_bool(),
@@ -285,7 +290,7 @@ fn parse_tbs_certificate(i: &[u8]) -> IResult<&[u8], TbsCertificate, BerError> {
 fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
     parse_der_struct!(
         i,
-        oid:    map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
+        oid:    map_res!(parse_der_oid, clone_oid) >>
         params: parse_der_optional!(parse_der) >>
         (
             AlgorithmIdentifier{

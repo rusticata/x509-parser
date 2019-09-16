@@ -41,25 +41,14 @@
         unstable_features,
         unused_import_braces, unused_qualifications)]
 
-#[macro_use]
-extern crate nom;
-
-extern crate rusticata_macros;
-
-extern crate der_parser;
-
-extern crate base64;
-extern crate num_bigint;
-extern crate time;
-
 pub use x509::*;
 pub mod x509;
 
 pub mod error;
 pub mod objects;
 mod x509_parser;
-pub use x509_parser::*;
+pub use crate::x509_parser::*;
 mod x509_extensions;
-pub use x509_extensions::*;
+pub use crate::x509_extensions::*;
 
 pub mod pem;

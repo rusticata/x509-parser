@@ -8,24 +8,27 @@ use std::fmt;
 use num_bigint::BigUint;
 use time::Tm;
 
-use der_parser::ber::BitStringObject;
-use der_parser::der::DerObject;
-use der_parser::oid::Oid;
-use objects::{oid2nid,nid2sn};
-use error::X509Error;
-use x509_parser::parse_ext_basicconstraints;
+use der_parser::{
+    ber::BitStringObject,
+    der::DerObject,
+    oid,
+    oid::Oid,
+};
+use crate::objects::{oid2nid,nid2sn};
+use crate::error::X509Error;
+use crate::x509_parser::parse_ext_basicconstraints;
 
 
 #[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
-    pub oid:  Oid,
+    pub oid:  Oid<'a>,
     pub critical: bool,
     pub value: &'a[u8],
 }
 
 #[derive(Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
-    pub attr_type: Oid,
+    pub attr_type: Oid<'a>,
     pub attr_value: DerObject<'a>, // XXX DirectoryString ?
 }
 
@@ -42,7 +45,7 @@ pub struct SubjectPublicKeyInfo<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct AlgorithmIdentifier<'a> {
-    pub algorithm:  Oid,
+    pub algorithm:  Oid<'a>,
     pub parameters: DerObject<'a>,
 }
 
@@ -158,7 +161,7 @@ impl<'a> TbsCertificate<'a> {
     pub fn is_ca(&self) -> bool {
         // filter on ext: OId(basicConstraints)
         self.extensions.iter().find(|ext| {
-            ext.oid == Oid::from(&[2, 5, 29, 19])
+            ext.oid == oid!(2.5.29.19)
         }).and_then(|ext| {
             // parse DER sequence
             if let Ok((_,bc)) = parse_ext_basicconstraints(ext.value) {
@@ -229,7 +232,7 @@ pub struct X509Certificate<'a> {
 
 #[cfg(test)]
 mod tests {
-    use x509::*;
+    use crate::x509::*;
     use der_parser::ber::BerObjectContent;
     use der_parser::oid::Oid;
 
@@ -239,29 +242,29 @@ fn test_x509_name() {
         rdn_seq: vec![
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 6]), // countryName
+                    attr_type:  oid!(2.5.4.6), // countryName
                     attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"FR")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 8]), // stateOrProvinceName
+                    attr_type:  oid!(2.5.4.8), // stateOrProvinceName
                     attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Some-State")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 10]), // organizationName
+                    attr_type:  oid!(2.5.4.10), // organizationName
                     attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Internet Widgits Pty Ltd")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 3]), // CN
+                    attr_type:  oid!(2.5.4.3), // CN
                     attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Test1")),
                 },
                 AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 3]), // CN
+                    attr_type:  oid!(2.5.4.3), // CN
                     attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Test2")),
                 }
             ]},
