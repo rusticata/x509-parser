@@ -212,7 +212,8 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String,X5
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitStringObject<'a>
+    pub signature_value: BitStringObject<'a>,
+    pub tbs_bytes: &'a [u8],
 }
 
 

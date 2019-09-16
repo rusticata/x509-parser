@@ -247,7 +247,8 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
 }
 
 
-fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate,BerError> {
+fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],(TbsCertificate,&[u8]),BerError> {
+    const BER_HEADER_SIZE: usize = 4;
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -275,7 +276,7 @@ fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate,BerError> {
                 extensions
             }
         )
-    ).map(|(rem,x)| (rem,x.1))
+    ).map(|(rem,x)| (rem,(x.1,&i[BER_HEADER_SIZE..(BER_HEADER_SIZE + x.0.len as usize)])))
 }
 
 fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
@@ -301,7 +302,7 @@ pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>,X509
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        tbs: parse_tbs_certificate >>
+        tbs_and_bytes: parse_tbs_certificate >>
         alg: parse_algorithm_identifier >>
         sig: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
             match x.content {
@@ -311,9 +312,10 @@ pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>,X509
         }) >>
         (
             X509Certificate{
-                tbs_certificate: tbs,
+                tbs_certificate: tbs_and_bytes.0,
                 signature_algorithm: alg,
-                signature_value: sig
+                signature_value: sig,
+                tbs_bytes: tbs_and_bytes.1,
             }
         )
     ).map(|(rem,x)| (rem,x.1))
