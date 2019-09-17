@@ -4,12 +4,14 @@ extern crate x509_parser;
 extern crate rusticata_macros;
 
 use der_parser::oid::Oid;
-use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension};
+use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension,parse_crl_der};
 use x509_parser::objects::{nid2obj, Nid};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
 static V1: &'static [u8] = include_bytes!("../assets/v1.der");
+static CRL_DER: &'static [u8] = include_bytes!("../assets/example.crl");
+static EMPTY_CRL_DER: &'static [u8] = include_bytes!("../assets/empty.crl");
 
 #[test]
 fn test_x509_parser() {
@@ -116,4 +118,99 @@ fn test_version_v1() {
     assert_eq!(tbs_cert.version, 1);
     assert_eq!(format!("{}", tbs_cert.subject), "CN=marquee");
     assert_eq!(format!("{}", tbs_cert.issuer), "CN=marquee");
+}
+
+#[test]
+fn test_crl_parse() {
+    match parse_crl_der(CRL_DER) {
+        Ok((e, cert)) => {
+            assert!(e.is_empty());
+
+            let tbs_cert_list = cert.tbs_cert_list;
+            assert_eq!(tbs_cert_list.version, Some(1));
+
+            let sig = &tbs_cert_list.signature;
+            assert_eq!(sig.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]));
+
+            let expected_issuer = "O=Sample Signer Organization, OU=Sample Signer Unit, CN=Sample Signer Cert";
+            assert_eq!(format!("{}", tbs_cert_list.issuer), expected_issuer);
+
+            let sig_alg = &cert.signature_algorithm;
+            assert_eq!(sig_alg.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]));
+
+            let this_update = tbs_cert_list.this_update;
+            let next_update = tbs_cert_list.next_update.unwrap();
+            assert_eq!(this_update.tm_year, 113);
+            assert_eq!(this_update.tm_mon, 1);
+            assert_eq!(this_update.tm_mday, 18);
+            assert_eq!(next_update.tm_year, 113);
+            assert_eq!(next_update.tm_mon, 1);
+            assert_eq!(next_update.tm_mday, 18);
+
+            let revoked_certs = tbs_cert_list.revoked_certificates;
+            assert_eq!(revoked_certs[0], x509_parser::RevokedCertificate {
+                user_certificate: 1341767u32.into(),
+                revocation_date: time::Tm {
+                    tm_sec: 12, tm_min: 22, tm_hour: 10, tm_mon: 1, tm_mday: 18, tm_year: 113,
+                    tm_wday: 0, tm_yday: 0, tm_isdst: 0, tm_utcoff: 0, tm_nsec: 0,
+                },
+                extensions: vec![
+                    X509Extension {
+                        oid: Oid::from(&[2, 5, 29, 21]),
+                        critical: false,
+                        value: &[10, 1, 3]
+                    },
+                    X509Extension {
+                        oid: Oid::from(&[2, 5, 29, 24]),
+                        critical: false,
+                        value: &[24, 15, 50, 48, 49, 51, 48, 50,
+                                49, 56, 49, 48, 50, 50, 48, 48, 90]
+                    }
+                ]
+            });
+
+            assert_eq!(revoked_certs.len(), 5);
+            assert_eq!(revoked_certs[4].user_certificate, 1341771u32.into());
+
+            let expected_extensions = vec![
+                X509Extension {
+                    oid: Oid::from(&[2, 5, 29, 35]),
+                    critical: false,
+                    value: &[48, 22, 128, 20, 190, 18, 1, 204, 170, 234, 17, 128, 218,
+                             46, 173, 178, 234, 199, 181, 251, 159, 249, 173, 52]
+                },
+                X509Extension {
+                    oid: Oid::from(&[2, 5, 29, 20]),
+                    critical: false,
+                    value: &[2, 1, 3] },
+            ];
+
+            assert!(tbs_cert_list.extensions.iter().eq(expected_extensions.iter()));
+        },
+        err => panic!("x509 parsing failed: {:?}", err),
+    }
+}
+
+#[test]
+fn test_crl_parse_empty() {
+    match parse_crl_der(EMPTY_CRL_DER) {
+        Ok((e, cert)) => {
+            assert!(e.is_empty());
+            assert!(cert.tbs_cert_list.revoked_certificates.is_empty());
+
+            let expected_extensions = vec![
+                X509Extension {
+                    oid: Oid::from(&[2, 5, 29, 20]),
+                    critical: false,
+                    value: &[2, 1, 2] },
+                X509Extension {
+                    oid: Oid::from(&[2, 5, 29, 35]),
+                    critical: false,
+                    value: &[48, 22, 128, 20, 34, 101, 12, 214, 90, 157, 52, 137,
+                             243, 131, 180, 149, 82, 191, 80, 27, 57, 39, 6, 172] },
+            ];
+            assert!(cert.tbs_cert_list.extensions.iter().eq(expected_extensions.iter()));
+        },
+        err => panic!("x509 parsing failed: {:?}", err),
+    }
 }

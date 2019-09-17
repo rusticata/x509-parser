@@ -283,7 +283,67 @@ fn parse_tbs_certificate(i:&[u8]) -> BerResult<TbsCertificate> {
     })
 }
 
-fn parse_algorithm_identifier(i:&[u8]) -> BerResult<AlgorithmIdentifier> {
+fn parse_tbs_cert_list(i:&[u8]) -> IResult<&[u8],TbsCertList,BerError> {
+    parse_der_struct!(
+        i,
+        TAG DerTag::Sequence,
+        version:              opt!(map_res!(parse_der_integer, |x:DerObject| x.as_u32())) >>
+        signature:            parse_algorithm_identifier >>
+        issuer:               parse_name >>
+        this_update:          map_res!(parse_choice_of_time, der_to_utctime) >>
+        next_update:          opt!(map_res!(parse_choice_of_time, der_to_utctime)) >>
+        revoked_certificates: opt!(parse_revoked_certificates) >>
+        extensions:           opt!(parse_crl_extensions) >>
+        (
+            TbsCertList{
+                version,
+                signature,
+                issuer,
+                this_update,
+                next_update,
+                revoked_certificates: revoked_certificates.unwrap_or_default(),
+                extensions: extensions.unwrap_or_default(),
+            }
+        )
+    ).map(|(rem,x)| (rem,x.1))
+}
+
+fn parse_revoked_certificates(i:&[u8]) -> IResult<&[u8],Vec<RevokedCertificate>,BerError> {
+    parse_der_struct!(
+        i,
+        TAG DerTag::Sequence,
+        v: many1!(complete!(parse_revoked_certificate)) >>
+        ( v )
+    ).map(|(rem,x)| (rem,x.1))
+}
+
+fn parse_revoked_certificate(i:&[u8]) -> IResult<&[u8],RevokedCertificate,BerError> {
+    parse_der_struct!(
+        i,
+        TAG DerTag::Sequence,
+        user_certificate: map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
+        revocation_date:  map_res!(parse_choice_of_time, der_to_utctime) >>
+        extensions:       parse_extension_sequence >>
+        (
+            RevokedCertificate{
+                user_certificate,
+                revocation_date,
+                extensions,
+            }
+        )
+    ).map(|(rem,x)| (rem,x.1))
+}
+
+fn parse_crl_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
+    parse_der_struct!(
+        i,
+        TAG BerTag(0x0),
+        extensions: parse_extension_sequence >>
+        ( extensions )
+    ).map(|(rem,x)| (rem,x.1))
+}
+
+fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
     parse_der_struct!(
         i,
         oid:    map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
@@ -317,6 +377,30 @@ pub fn parse_x509_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>,X509
         (
             X509Certificate{
                 tbs_certificate: tbs,
+                signature_algorithm: alg,
+                signature_value: sig
+            }
+        )
+    ).map(|(rem,x)| (rem,x.1))
+    )
+}
+
+pub fn parse_crl_der<'a>(i:&'a[u8]) -> IResult<&'a[u8],CertificateRevocationList<'a>,X509Error> {
+    upgrade_error!(
+    parse_der_struct!(
+        i,
+        TAG DerTag::Sequence,
+        tbs: parse_tbs_cert_list >>
+        alg: parse_algorithm_identifier >>
+        sig: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
+            match x.content {
+                BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+                _ => Err(BerError::BerTypeError),
+            }
+        }) >>
+        (
+            CertificateRevocationList{
+                tbs_cert_list: tbs,
                 signature_algorithm: alg,
                 signature_value: sig
             }
