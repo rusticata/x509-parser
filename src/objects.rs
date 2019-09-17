@@ -239,7 +239,7 @@ pub fn sn2oid(sn: &str) -> Result<Oid, NidError> {
 
 #[cfg(test)]
 mod tests {
-    use der_parser::oid::Oid;
+    use der_parser::oid;
     use crate::objects::*;
 
 #[test]

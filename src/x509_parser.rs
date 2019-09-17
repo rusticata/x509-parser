@@ -4,53 +4,18 @@
 //!
 
 use std::str;
-use nom::{map_opt, many1, named, IResult, Err};
+use std::collections::HashMap;
+use nom::{exact, map_opt, many1, IResult, Err};
 use time::{strptime,Tm};
 
 use der_parser::*;
 use der_parser::ber::{BerObjectContent, BerTag};
 use der_parser::der::*;
 use der_parser::error::BerError;
-use der_parser::oid;
+use der_parser::oid::Oid;
 use rusticata_macros::{flat_take, upgrade_error};
 use crate::x509::*;
-use crate::x509_extensions::*;
 use crate::error::X509Error;
-
-fn clone_oid<'a>(x: DerObject<'a>) -> Result<oid::Oid<'a>, BerError> {
-    x.as_oid().map(|o| o.clone())
-}
-
-/// Parse a "Basic Constraints" extension
-///
-/// <pre>
-///   id-ce-basicConsrtaints OBJECT IDENTIFIER ::=  { id-ce 19 }
-///   BasicConstraints ::= SEQUENCE {
-///        cA                      BOOLEAN DEFAULT FALSE,
-///        pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
-/// </pre>
-///
-/// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
-/// unsigned integer, and parsing will fail if value if larger.
-pub fn parse_ext_basicconstraints(i:&[u8]) -> IResult<&[u8],BasicConstraints,BerError> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        ca:                 map_res!(parse_der_bool, |x:DerObject| x.as_bool()) >>
-        path_len_contraint: map!(der_read_opt_integer, |x:DerObject| {
-            match x.as_context_specific() {
-                Ok((_,Some(obj))) => obj.as_u32().ok(),
-                _                 => None
-            }
-        }) >>
-        ( BasicConstraints{ ca, path_len_contraint } )
-    ).map(|(rem,x)| (rem,x.1))
-}
-
-#[inline]
-fn der_read_opt_integer(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
-    parse_der_optional!(i, parse_der_integer)
-}
 
 #[inline]
 fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
@@ -62,11 +27,11 @@ fn parse_directory_string(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
          complete!(parse_der_bmpstring))
 }
 
-fn parse_attr_type_and_value(i:&[u8]) -> IResult<&[u8],AttributeTypeAndValue,BerError> {
+fn parse_attr_type_and_value<'a>(i: &'a [u8]) -> IResult<&'a [u8], AttributeTypeAndValue<'a>, BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        oid: map_res!(parse_der_oid, clone_oid) >>
+        oid: map_res!(parse_der_oid, |x: DerObject<'a>| x.as_oid_val()) >>
         val: parse_directory_string >>
         ( AttributeTypeAndValue{ attr_type:oid, attr_value:val } )
     ).map(|(rem,x)| (rem,x.1))
@@ -81,7 +46,7 @@ fn parse_rdn(i:&[u8]) -> IResult<&[u8],RelativeDistinguishedName,BerError> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name,BerError> {
+pub(crate) fn parse_name(i:&[u8]) -> IResult<&[u8],X509Name,BerError> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -206,7 +171,7 @@ fn der_read_opt_bool(i:&[u8]) -> IResult<&[u8],DerObject,BerError> {
 fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>,BerError> {
     parse_der_struct!(
         i,
-        oid:      map_res!(parse_der_oid,clone_oid) >>
+        oid:      map_res!(parse_der_oid, |x: DerObject<'a>| x.as_oid_val()) >>
         critical: map_res!(der_read_opt_bool, |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_bool(),
@@ -214,13 +179,21 @@ fn parse_extension<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Extension<'a>,BerError>
             }
         }) >>
         value:    map_res!(parse_der_octetstring, |x:DerObject<'a>| x.as_slice()) >>
-        (
-            X509Extension{
+        ({
+            let extension_type = exact!(
+                    value,
+                    call!(crate::x509_extensions::parser::parse_extension_type, &oid)
+                ).map_err(|e| match e {
+                    nom::Err::Error(e) => nom::Err::Failure(e),
+                    _ => e,
+                })?.1;
+            X509Extension {
                 oid,
                 critical,
-                value
+                value,
+                extension_type,
             }
-        )
+        })
     ).map(|(rem,x)| (rem,x.1))
 }
 
@@ -234,9 +207,9 @@ fn parse_extension_sequence(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerErro
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
+fn parse_extensions(i:&[u8]) -> IResult<&[u8], HashMap<Oid, X509Extension>, BerError> {
     if i.len() == 0 {
-        return Ok((&[], Vec::new()));
+        return Ok((&[], HashMap::new()));
     }
 
     match der_read_element_header(i) {
@@ -244,7 +217,16 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
             if hdr.tag != BerTag(3) {
                 return Err(Err::Error(BerError::InvalidTag));
             }
-            parse_extension_sequence(rem)
+            let mut extensions = HashMap::new();
+            // The allocation of the Vec could be avoided with an iterator
+            let (_, list) = exact!(rem, parse_extension_sequence)?;
+            for ext in list.into_iter() {
+                if extensions.insert(ext.oid.clone(), ext).is_some() {
+                    // duplicate extensions are not allowed
+                    return Err(Err::Failure(BerError::InvalidTag));
+                }
+            }
+            Ok((rem, extensions))
         }
         Err(e)        => Err(e)
     }
@@ -287,10 +269,10 @@ fn parse_tbs_certificate(i: &[u8]) -> IResult<&[u8], TbsCertificate, BerError> {
     Ok((rem, TbsCertificate { raw: &i[..i.offset(rem)], ..tbs }))
 }
 
-fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
+fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> IResult<&'a [u8], AlgorithmIdentifier<'a>, BerError> {
     parse_der_struct!(
         i,
-        oid:    map_res!(parse_der_oid, clone_oid) >>
+        oid:    map_res!(parse_der_oid, |x: DerObject<'a>| x.as_oid_val()) >>
         params: parse_der_optional!(parse_der) >>
         (
             AlgorithmIdentifier{

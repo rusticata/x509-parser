@@ -1,11 +1,9 @@
-extern crate nom;
-extern crate der_parser;
-extern crate x509_parser;
-extern crate rusticata_macros;
+use std::collections::HashMap;
 
-use der_parser::oid;
+use der_parser::{oid, oid::Oid};
 use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension};
 use x509_parser::objects::{nid2obj, Nid};
+use x509_parser::x509_extensions::{ExtensionType, BasicConstraints, KeyUsage, CertificatePolicies};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
@@ -46,31 +44,23 @@ fn test_x509_parser() {
             assert_eq!(not_after.tm_mon, 9);
             assert_eq!(not_after.tm_mday, 17);
             //
-            let expected_extensions = vec![
-                X509Extension {
-                    oid: oid!(2.5.29.19),
-                    critical: true,
-                    value: &[48, 3, 1, 1, 255] },
-                X509Extension {
-                    oid: oid!(2.5.29.15),
-                    critical: false,
-                    value: &[3, 2, 1, 70] },
-                X509Extension {
-                    oid: oid!(2.5.29.32),
-                    critical: false,
-                    value: &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1] },
-                X509Extension {
-                    oid: oid!(2.5.29.14),
-                    critical: false,
-                    value: &[4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54] },
-                X509Extension {
-                    oid: oid!(2.5.29.35),
-                    critical: false,
-                    value: &[48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54] },
+            let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())].into_iter().collect();
+            let expected_extensions_list = vec![
+                X509Extension::new(oid!(2.5.29.19), true, &[48, 3, 1, 1, 255],
+                    Some(ExtensionType::BasicConstraints(BasicConstraints { ca: true, path_len_constraint: None }))),
+                X509Extension::new(oid!(2.5.29.15), false, &[3, 2, 1, 70],
+                    Some(ExtensionType::KeyUsage(KeyUsage { flags: 98 }))),
+                X509Extension::new(oid!(2.5.29.32), false, &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
+                    Some(ExtensionType::CertificatePolicies(CertificatePolicies { policies }))),
+                X509Extension::new(oid!(2.5.29.14), false, &[4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], None),
+                X509Extension::new(oid!(2.5.29.35), false, &[48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], None),
             ];
-            assert_eq!(tbs_cert.extensions.iter().eq(expected_extensions.iter()), true);
+            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list.into_iter()
+                .map(|e| (e.oid.clone(), e))
+                .collect();
+            assert_eq!(tbs_cert.extensions(), &expected_extensions);
             //
-            assert_eq!(tbs_cert.is_ca(), true);
+            assert!(tbs_cert.is_ca());
         },
         _ => panic!("x509 parsing failed: {:?}", res),
     }
@@ -86,7 +76,7 @@ fn test_x509_parser_no_extensions() {
 
             let tbs_cert = cert.tbs_certificate;
             assert_eq!(tbs_cert.version, 2);
-            assert_eq!(tbs_cert.extensions.len(), 0);
+            assert_eq!(tbs_cert.extensions().len(), 0);
         }
         _ => panic!("x509 parsing failed: {:?}", res),
     }

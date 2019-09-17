@@ -46,9 +46,10 @@ pub mod x509;
 
 pub mod error;
 pub mod objects;
+pub mod x509_extensions;
+pub mod pem;
 mod x509_parser;
+
 pub use crate::x509_parser::*;
-mod x509_extensions;
 pub use crate::x509_extensions::*;
 
-pub mod pem;

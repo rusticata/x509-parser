@@ -4,6 +4,7 @@
 //!
 
 use std::fmt;
+use std::collections::HashMap;
 
 use num_bigint::BigUint;
 use time::Tm;
@@ -16,7 +17,7 @@ use der_parser::{
 };
 use crate::objects::{oid2nid,nid2sn};
 use crate::error::X509Error;
-use crate::x509_parser::parse_ext_basicconstraints;
+use crate::x509_extensions;
 
 
 #[derive(Debug, PartialEq)]
@@ -24,7 +25,21 @@ pub struct X509Extension<'a> {
     pub oid:  Oid<'a>,
     pub critical: bool,
     pub value: &'a[u8],
+    pub(crate) extension_type: Option<x509_extensions::ExtensionType<'a>>,
 }
+
+impl<'a> X509Extension<'a> {
+    pub fn new(oid: Oid<'a>, critical: bool, value: &'a [u8], extension_type: Option<x509_extensions::ExtensionType<'a>>) -> X509Extension<'a> {
+        X509Extension {
+            oid, critical, value, extension_type,
+        }
+    }
+
+    /// Return the extension type or `None` if the extension is not implemented.
+    pub fn extension_type(&self) -> Option<&x509_extensions::ExtensionType> {
+        self.extension_type.as_ref()
+    }
+} 
 
 #[derive(Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
@@ -98,7 +113,7 @@ pub struct TbsCertificate<'a> {
     pub subject_pki: SubjectPublicKeyInfo<'a>,
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
-    pub extensions: Vec<X509Extension<'a>>,
+    pub(crate) extensions: HashMap<Oid<'a>, X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
 }
 
@@ -151,25 +166,92 @@ fn check_validity_expiration() {
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
 impl<'a> TbsCertificate<'a> {
+    /// Get a reference to the map of extensions.
+    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+        &self.extensions
+    }
+
     /// Return the ASN.1 DER encoding of the tbsCertificate.
     /// This data is used for the signature.
     pub fn bytes(&self) -> &[u8] {
         &self.raw
     } 
 
+    pub fn basic_constraints(&self) -> Option<(bool, &x509_extensions::BasicConstraints)> {
+        self.extensions.get(&oid!(2.5.29.19)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::BasicConstraints(ref bc) => (ext.critical, bc),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn key_usage(&self) -> Option<(bool, &x509_extensions::KeyUsage)> {
+        self.extensions.get(&oid!(2.5.29.15)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::KeyUsage(ref ku) => (ext.critical, ku),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn extended_key_usage(&self) -> Option<(bool, &x509_extensions::ExtendedKeyUsage)> {
+        self.extensions.get(&oid!(2.5.29.37)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::ExtendedKeyUsage(ref eku) => (ext.critical, eku),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn policy_constraints(&self) -> Option<(bool, &x509_extensions::PolicyConstraints)> {
+        self.extensions.get(&oid!(2.5.29.36)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::PolicyConstraints(ref pc) => (ext.critical, pc),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn inhibit_anypolicy(&self) -> Option<(bool, &x509_extensions::InhibitAnyPolicy)> {
+        self.extensions.get(&oid!(2.5.29.54)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::InhibitAnyPolicy(ref iap) => (ext.critical, iap),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn policy_mappings(&self) -> Option<(bool, &x509_extensions::PolicyMappings)> {
+        self.extensions.get(&oid!(2.5.29.33)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::PolicyMappings(ref pm) => (ext.critical, pm),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn subject_alternative_name(&self) -> Option<(bool, &x509_extensions::SubjectAlternativeName)> {
+        self.extensions.get(&oid!(2.5.29.17)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::SubjectAlternativeName(ref san) => (ext.critical, san),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn name_constraints(&self) -> Option<(bool, &x509_extensions::NameConstraints)> {
+        self.extensions.get(&oid!(2.5.29.30)).map(|ext| {
+            match ext.extension_type().unwrap() {
+                crate::x509_extensions::ExtensionType::NameConstraints(ref nc) => (ext.critical, nc),
+                _ => unreachable!(),
+            }
+        })
+    }
+
     /// Returns true if certificate has `basicConstraints CA:true`
     pub fn is_ca(&self) -> bool {
-        // filter on ext: OId(basicConstraints)
-        self.extensions.iter().find(|ext| {
-            ext.oid == oid!(2.5.29.19)
-        }).and_then(|ext| {
-            // parse DER sequence
-            if let Ok((_,bc)) = parse_ext_basicconstraints(ext.value) {
-                Some(bc.ca)
-            } else {
-                None
-            }
-        }).unwrap_or(false)
+        self.basic_constraints().map(|(_, bc)| bc.ca).unwrap_or(false)
     }
 }
 
@@ -234,7 +316,7 @@ pub struct X509Certificate<'a> {
 mod tests {
     use crate::x509::*;
     use der_parser::ber::BerObjectContent;
-    use der_parser::oid::Oid;
+    use der_parser::oid;
 
 #[test]
 fn test_x509_name() {
