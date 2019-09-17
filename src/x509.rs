@@ -170,6 +170,47 @@ impl<'a> TbsCertificate<'a> {
     }
 }
 
+/// The sequence TBSCertList contains information about the certificates that have
+/// been revoked by the CA that issued the CRL.
+///
+/// RFC5280 definition:
+///
+/// <pre>
+/// TBSCertList  ::=  SEQUENCE  {
+///         version                 Version OPTIONAL,
+///                                      -- if present, MUST be v2
+///         signature               AlgorithmIdentifier,
+///         issuer                  Name,
+///         thisUpdate              Time,
+///         nextUpdate              Time OPTIONAL,
+///         revokedCertificates     SEQUENCE OF SEQUENCE  {
+///             userCertificate         CertificateSerialNumber,
+///             revocationDate          Time,
+///             crlEntryExtensions      Extensions OPTIONAL
+///                                      -- if present, version MUST be v2
+///                                   } OPTIONAL,
+///         crlExtensions           [0]  EXPLICIT Extensions OPTIONAL
+///                                      -- if present, version MUST be v2
+///                             }
+/// </pre>
+#[derive(Debug, PartialEq)]
+pub struct TbsCertList<'a> {
+    pub version: Option<u32>,
+    pub signature: AlgorithmIdentifier<'a>,
+    pub issuer: X509Name<'a>,
+    pub this_update: Tm,
+    pub next_update: Option<Tm>,
+    pub revoked_certificates: Vec<RevokedCertificate<'a>>,
+    pub extensions: Vec<X509Extension<'a>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RevokedCertificate<'a> {
+    pub user_certificate: BigUint,
+    pub revocation_date: Tm,
+    pub extensions: Vec<X509Extension<'a>>
+}
+
 
 /// Convert a DER representation of a X.509 name to a human-readble string
 ///
@@ -222,6 +263,15 @@ pub struct X509Certificate<'a> {
     pub signature_value: BitStringObject<'a>
 }
 
+/// An X.509 v2 Certificate Revocaton List (CRL).
+///
+/// X.509 v2 CRLs are defined in [RFC5280](https://tools.ietf.org/html/rfc5280).
+#[derive(Debug)]
+pub struct CertificateRevocationList<'a> {
+    pub tbs_cert_list: TbsCertList<'a>,
+    pub signature_algorithm: AlgorithmIdentifier<'a>,
+    pub signature_value: BitStringObject<'a>
+}
 
 
 
