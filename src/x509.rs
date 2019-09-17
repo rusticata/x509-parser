@@ -99,14 +99,6 @@ pub struct TbsCertificate<'a> {
     pub(crate) raw: &'a [u8],
 }
 
-impl<'a> TbsCertificate<'a> {
-    /// Return the ASN.1 DER encoding of the tbsCertificate.
-    /// This data is used for the signature.
-    pub fn bytes(&self) -> &[u8] {
-        &self.raw
-    } 
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Validity {
     pub not_before: Tm,
@@ -156,6 +148,12 @@ fn check_validity_expiration() {
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
 impl<'a> TbsCertificate<'a> {
+    /// Return the ASN.1 DER encoding of the tbsCertificate.
+    /// This data is used for the signature.
+    pub fn bytes(&self) -> &[u8] {
+        &self.raw
+    } 
+
     /// Returns true if certificate has `basicConstraints CA:true`
     pub fn is_ca(&self) -> bool {
         // filter on ext: OId(basicConstraints)

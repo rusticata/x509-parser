@@ -8,7 +8,6 @@ use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension};
 use x509_parser::objects::{nid2obj, Nid};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
-static IGCA_DER_TBS: &'static [u8] = include_bytes!("../assets/IGC_A_tbs");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
 
 #[test]
@@ -24,7 +23,7 @@ fn test_x509_parser() {
             let tbs_cert = cert.tbs_certificate;
             assert_eq!(tbs_cert.version, 2);
             //
-            assert_eq!(tbs_cert.bytes(), IGCA_DER_TBS);
+            assert_eq!(tbs_cert.bytes(), &IGCA_DER[4..754]);
             //
             let expected_subject = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.subject), expected_subject);

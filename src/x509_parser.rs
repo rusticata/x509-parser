@@ -19,7 +19,7 @@ use error::X509Error;
 /// Parse a "Basic Constraints" extension
 ///
 /// <pre>
-///   id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
+///   id-ce-basicConsrtaints OBJECT IDENTIFIER ::=  { id-ce 19 }
 ///   BasicConstraints ::= SEQUENCE {
 ///        cA                      BOOLEAN DEFAULT FALSE,
 ///        pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
@@ -248,62 +248,38 @@ fn parse_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
 
 
 fn parse_tbs_certificate(i: &[u8]) -> IResult<&[u8], TbsCertificate, BerError> {
-    use nom::{Offset, Slice, error::ParseError, combinator::map};
-    // A combinator which returns the consumed input and the result.
-    // It is similar to the recognize combinator from nom.
-    fn keep_input<'a, O, E:ParseError<&'a [u8]>, F>(parser:F) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], (&'a [u8], O), E>
-    where
-        F: Fn(&'a [u8]) -> IResult<&'a [u8], O, E>,
-    {
-        move |input: &[u8]| {
-            let i = input.clone();
-            match parser(i) {
-                Ok((i, ret)) => {
-                    let index = input.offset(&i);
-                    Ok((i, (input.slice(..index), ret)))
-                },
-                Err(e) => Err(e),
-            }
-        }
-    }
-    static DUMMY: &[u8] = &[];
-    named!(
-        tbs<&[u8], TbsCertificate, BerError>,
-        map!(
-            parse_der_struct!(
-                TAG DerTag::Sequence,
-                version:     parse_version >>
-                serial:      map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
-                signature:   parse_algorithm_identifier >>
-                issuer:      parse_name >>
-                validity:    parse_validity >>
-                subject:     parse_name >>
-                subject_pki: parse_subject_public_key_info >>
-                issuer_uid:  parse_issuer_unique_id >>
-                subject_uid: parse_subject_unique_id >>
-                extensions:  parse_extensions >>
-                (TbsCertificate {
-                    version,
-                    serial,
-                    signature,
-                    issuer,
-                    validity,
-                    subject,
-                    subject_pki,
-                    issuer_uid,
-                    subject_uid,
-                    extensions,
-                    raw: DUMMY
-                })
-            ),
-            |x| x.1
-        )
-    );
-    map(keep_input(tbs), |(raw, tbs)| {
-        TbsCertificate {
-            raw, ..tbs
-        }
-    })(i)
+    use nom::Offset;
+    let (rem, tbs) = map!(
+        i,
+        parse_der_struct!(
+            TAG DerTag::Sequence,
+            version:     parse_version >>
+            serial:      map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
+            signature:   parse_algorithm_identifier >>
+            issuer:      parse_name >>
+            validity:    parse_validity >>
+            subject:     parse_name >>
+            subject_pki: parse_subject_public_key_info >>
+            issuer_uid:  parse_issuer_unique_id >>
+            subject_uid: parse_subject_unique_id >>
+            extensions:  parse_extensions >>
+            (TbsCertificate {
+                version,
+                serial,
+                signature,
+                issuer,
+                validity,
+                subject,
+                subject_pki,
+                issuer_uid,
+                subject_uid,
+                extensions,
+                raw: &[],
+            })
+        ),
+        |x| x.1
+    )?;
+    Ok((rem, TbsCertificate { raw: &i[..i.offset(rem)], ..tbs }))
 }
 
 fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
