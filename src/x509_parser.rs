@@ -302,9 +302,13 @@ fn parse_tbs_cert_list(i:&[u8]) -> IResult<&[u8],TbsCertList,BerError> {
                 next_update,
                 revoked_certificates: revoked_certificates.unwrap_or_default(),
                 extensions: extensions.unwrap_or_default(),
+                raw: &[]
             }
         )
-    ).map(|(rem,x)| (rem,x.1))
+    ).map(|(rem, (_hdr, mut tbs))| {
+        tbs.raw = &i[..(i.len() - rem.len())];
+        (rem, tbs)
+    })
 }
 
 fn parse_revoked_certificates(i:&[u8]) -> IResult<&[u8],Vec<RevokedCertificate>,BerError> {

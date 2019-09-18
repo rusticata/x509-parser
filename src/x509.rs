@@ -202,6 +202,13 @@ pub struct TbsCertList<'a> {
     pub next_update: Option<Tm>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
     pub extensions: Vec<X509Extension<'a>>,
+    pub(crate) raw: &'a [u8],
+}
+
+impl<'a> AsRef<[u8]> for TbsCertList<'a> {
+    fn as_ref(&self) -> &[u8] {
+        &self.raw
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -270,7 +277,7 @@ pub struct X509Certificate<'a> {
 pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitStringObject<'a>
+    pub signature_value: BitStringObject<'a>,
 }
 
 
