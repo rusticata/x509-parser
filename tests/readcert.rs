@@ -147,7 +147,7 @@ fn test_crl_parse() {
             assert_eq!(next_update.tm_mon, 1);
             assert_eq!(next_update.tm_mday, 18);
 
-            let revoked_certs = tbs_cert_list.revoked_certificates;
+            let revoked_certs = &tbs_cert_list.revoked_certificates;
             assert_eq!(revoked_certs[0], x509_parser::RevokedCertificate {
                 user_certificate: 1341767u32.into(),
                 revocation_date: time::Tm {
@@ -186,6 +186,8 @@ fn test_crl_parse() {
             ];
 
             assert!(tbs_cert_list.extensions.iter().eq(expected_extensions.iter()));
+
+            assert_eq!(tbs_cert_list.as_ref(), &CRL_DER[4..(4 + 4 + 508)]);
         },
         err => panic!("x509 parsing failed: {:?}", err),
     }
@@ -210,6 +212,7 @@ fn test_crl_parse_empty() {
                              243, 131, 180, 149, 82, 191, 80, 27, 57, 39, 6, 172] },
             ];
             assert!(cert.tbs_cert_list.extensions.iter().eq(expected_extensions.iter()));
+            assert_eq!(cert.tbs_cert_list.as_ref(), &EMPTY_CRL_DER[4..(4 + 3 + 200)]);
         },
         err => panic!("x509 parsing failed: {:?}", err),
     }
