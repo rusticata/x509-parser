@@ -272,10 +272,14 @@ fn parse_tbs_certificate(i:&[u8]) -> IResult<&[u8],TbsCertificate,BerError> {
                 subject_pki,
                 issuer_uid,
                 subject_uid,
-                extensions
+                extensions,
+                raw: &[]
             }
         )
-    ).map(|(rem,x)| (rem,x.1))
+    ).map(|(rem, (_hdr, mut tbs))| {
+        tbs.raw = &i[..(i.len() - rem.len())];
+        (rem, tbs)
+    })
 }
 
 fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {

@@ -69,6 +69,8 @@ fn test_x509_parser() {
             assert_eq!(tbs_cert.extensions.iter().eq(expected_extensions.iter()), true);
             //
             assert_eq!(tbs_cert.is_ca(), true);
+            //
+            assert_eq!(tbs_cert.as_ref(), &IGCA_DER[4..(8 + 746)]);
         },
         _ => panic!("x509 parsing failed: {:?}", res),
     }

@@ -96,6 +96,13 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
     pub extensions: Vec<X509Extension<'a>>,
+    pub(crate) raw: &'a [u8]
+}
+
+impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
+    fn as_ref(&self) -> &[u8] {
+        &self.raw
+    }
 }
 
 #[derive(Debug, PartialEq)]
