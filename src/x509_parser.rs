@@ -291,8 +291,8 @@ fn parse_tbs_cert_list(i:&[u8]) -> IResult<&[u8],TbsCertList,BerError> {
         issuer:               parse_name >>
         this_update:          map_res!(parse_choice_of_time, der_to_utctime) >>
         next_update:          opt!(map_res!(parse_choice_of_time, der_to_utctime)) >>
-        revoked_certificates: opt!(parse_revoked_certificates) >>
-        extensions:           opt!(parse_crl_extensions) >>
+        revoked_certificates: opt!(complete!(parse_revoked_certificates)) >>
+        extensions:           opt!(complete!(parse_crl_extensions)) >>
         (
             TbsCertList{
                 version,
@@ -326,12 +326,12 @@ fn parse_revoked_certificate(i:&[u8]) -> IResult<&[u8],RevokedCertificate,BerErr
         TAG DerTag::Sequence,
         user_certificate: map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
         revocation_date:  map_res!(parse_choice_of_time, der_to_utctime) >>
-        extensions:       parse_extension_sequence >>
+        extensions:       opt!(complete!(parse_extension_sequence)) >>
         (
             RevokedCertificate{
                 user_certificate,
                 revocation_date,
-                extensions,
+                extensions: extensions.unwrap_or_default(),
             }
         )
     ).map(|(rem,x)| (rem,x.1))

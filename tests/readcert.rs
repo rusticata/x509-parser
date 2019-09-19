@@ -11,6 +11,7 @@ static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
 static CRL_DER: &'static [u8] = include_bytes!("../assets/example.crl");
 static EMPTY_CRL_DER: &'static [u8] = include_bytes!("../assets/empty.crl");
+static MINIMAL_CRL_DER: &'static [u8] = include_bytes!("../assets/minimal.crl");
 
 #[test]
 fn test_x509_parser() {
@@ -201,6 +202,29 @@ fn test_crl_parse_empty() {
             ];
             assert!(cert.tbs_cert_list.extensions.iter().eq(expected_extensions.iter()));
             assert_eq!(cert.tbs_cert_list.as_ref(), &EMPTY_CRL_DER[4..(4 + 3 + 200)]);
+        },
+        err => panic!("x509 parsing failed: {:?}", err),
+    }
+}
+
+#[test]
+fn test_crl_parse_minimal() {
+    match parse_crl_der(MINIMAL_CRL_DER) {
+        Ok((e, cert)) => {
+            assert!(e.is_empty());
+            let expected_revocations = &[
+                x509_parser::RevokedCertificate {
+                    user_certificate: 42u32.into(),
+                    revocation_date: time::Tm {
+                        tm_nsec: 0, tm_sec: 0, tm_min: 0, tm_hour: 0, tm_mon: 0, tm_year: 70,
+                        tm_wday: 0, tm_mday: 1, tm_yday: 0, tm_isdst: 0, tm_utcoff: 0,
+                    },
+                    extensions: vec![]
+                }
+            ];
+            assert_eq!(cert.tbs_cert_list.revoked_certificates, expected_revocations);
+            assert!(cert.tbs_cert_list.extensions.is_empty());
+            assert_eq!(cert.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
         },
         err => panic!("x509 parsing failed: {:?}", err),
     }
