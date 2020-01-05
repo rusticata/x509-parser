@@ -9,6 +9,7 @@ use x509_parser::objects::{nid2obj, Nid};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
+static V1: &'static [u8] = include_bytes!("../assets/v1.der");
 
 #[test]
 fn test_x509_parser() {
@@ -104,4 +105,15 @@ fn test_parse_subject_public_key_info() {
     let spk = res.subject_public_key;
     println!("spk.data.len {}", spk.data.len());
     assert_eq!(spk.data.len(), 270);
+}
+
+#[test]
+fn test_version_v1() {
+    let res = parse_x509_der(V1);
+    assert!(res.is_ok());
+    assert!(res.as_ref().unwrap().0.is_empty());
+    let tbs_cert = res.unwrap().1.tbs_certificate;
+    assert_eq!(tbs_cert.version, 1);
+    assert_eq!(format!("{}", tbs_cert.subject), "CN=marquee");
+    assert_eq!(format!("{}", tbs_cert.issuer), "CN=marquee");
 }

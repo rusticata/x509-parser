@@ -91,8 +91,9 @@ fn parse_version(i:&[u8]) -> BerResult<u32> {
         call!(parse_der_explicit, BerTag(0), parse_der_integer),
         |x:DerObject| {
             match x.as_context_specific() {
+                Ok((BerTag::EndOfContent, None)) => Ok(1),
                 Ok((_,Some(obj))) => obj.as_u32(),
-                _                 => Err(BerError::BerTypeError)
+                _                 => Err(BerError::BerTypeError),
             }
         }
     )
