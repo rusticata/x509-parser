@@ -28,10 +28,7 @@ nom = "5.0"
 rusticata-macros = "2.0.2"
 num-bigint = "0.2"
 time = "0.1"
-der-parser = {version = "3.0.1", features=["bigint"] }
+der-parser = {version = "3.0.3", features=["bigint"] }
 
 [badges]
 travis-ci = { repository = "rusticata/x509-parser" }
-
-[patch.crates-io]
-der-parser = { git = "https://github.com/rusticata/der-parser", features = ["bigint"] }
