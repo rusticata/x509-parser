@@ -54,6 +54,7 @@ match res {
 - Fix parsing default values for TbsCertificate version field (#24)
 - Use BerResult from der-parser for simpler function signatures
 - Expose tbsCertificate bytes
+- Upgrade dependencies (base64)
 
 ### 0.6.0
 
