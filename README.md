@@ -46,6 +46,11 @@ match res {
 
 ## Changes
 
+### 0.6.1
+
+- Add CRL parser
+- Expose CRL tbs bytes
+
 ### 0.6.0
 
 - Update to der-parser 3.0 and nom 5
