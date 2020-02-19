@@ -50,7 +50,10 @@ match res {
 
 - Add CRL parser
 - Expose CRL tbs bytes
-- PEM: ignore lines before BEGIN label
+- PEM: ignore lines before BEGIN label (#21)
+- Fix parsing default values for TbsCertificate version field (#24)
+- Use BerResult from der-parser for simpler function signatures
+- Expose tbsCertificate bytes
 
 ### 0.6.0
 
