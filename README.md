@@ -50,6 +50,7 @@ match res {
 
 - Add CRL parser
 - Expose CRL tbs bytes
+- PEM: ignore lines before BEGIN label
 
 ### 0.6.0
 

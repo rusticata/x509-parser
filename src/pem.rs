@@ -101,13 +101,18 @@ impl Pem {
 
     pub fn read(mut r: impl BufRead + Seek) -> Result<(Pem, usize), PEMError>
     {
-        let mut first_line = String::new();
-        r.read_line(&mut first_line)?;
-        let mut iter = first_line.split_whitespace();
-        if iter.next() != Some("-----BEGIN") {
-            return Err(PEMError::MissingHeader);
-        }
-        let label = iter.next().ok_or(PEMError::InvalidHeader)?;
+        let mut line = String::new();
+        let label = loop {
+            r.read_line(&mut line).or(Err(PEMError::MissingHeader))?;
+            println!("line: {}", line);
+            if !line.starts_with("-----BEGIN ") {
+                line.clear();
+                continue;
+            }
+            let iter = line.split_whitespace();
+            let label = iter.skip(1).next().ok_or(PEMError::InvalidHeader)?;
+            break label;
+        };
         let label = label.split('-').next().ok_or(PEMError::InvalidHeader)?;
         let mut s = String::new();
         loop {
