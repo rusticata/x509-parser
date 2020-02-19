@@ -297,29 +297,29 @@ fn test_x509_name() {
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 6]), // countryName
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"FR")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 8]), // stateOrProvinceName
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Some-State")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Some-State")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 10]), // organizationName
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Internet Widgits Pty Ltd")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Internet Widgits Pty Ltd")),
                 }
             ]},
             RelativeDistinguishedName{ set: vec![
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 3]), // CN
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Test1")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Test1")),
                 },
                 AttributeTypeAndValue{
                     attr_type:  Oid::from(&[2, 5, 4, 3]), // CN
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Test2")),
+                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString(b"Test2")),
                 }
             ]},
         ]
