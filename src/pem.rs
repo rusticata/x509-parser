@@ -104,7 +104,6 @@ impl Pem {
         let mut line = String::new();
         let label = loop {
             r.read_line(&mut line).or(Err(PEMError::MissingHeader))?;
-            println!("line: {}", line);
             if !line.starts_with("-----BEGIN ") {
                 line.clear();
                 continue;
