@@ -46,6 +46,10 @@ match res {
 
 ## Changes
 
+### 0.6.2
+
+- Remove debug code left in `Pem::read`
+
 ### 0.6.1
 
 - Add CRL parser
