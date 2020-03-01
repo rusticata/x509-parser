@@ -119,7 +119,10 @@ impl Pem {
         let mut s = String::new();
         loop {
             let mut l = String::new();
-            r.read_line(&mut l)?;
+            let num_bytes = r.read_line(&mut l)?;
+            if num_bytes == 0 {
+                return Err(PEMError::IncompletePEM);
+            }
             if l.starts_with("-----END ") {
                 // finished reading
                 break;

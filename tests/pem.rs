@@ -53,3 +53,12 @@ fn test_pem_not_pem() {
     let res = Pem::read(reader);
     assert!(res.is_err());
 }
+
+static NO_END: &'static [u8] = include_bytes!("../assets/no_end.pem");
+
+#[test]
+fn test_pem_no_end() {
+    let reader = Cursor::new(NO_END);
+    let res = Pem::read(reader);
+    assert!(res.is_err());
+}
