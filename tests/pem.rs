@@ -45,3 +45,11 @@ fn test_pem_read() {
     let x509 = pem.parse_x509().expect("X.509: decoding DER failed");
     assert_eq!(x509.tbs_certificate.version,2);
 }
+
+#[test]
+fn test_pem_not_pem() {
+    let bytes = vec![0x1, 0x2, 0x3, 0x4, 0x5];
+    let reader = Cursor::new(bytes);
+    let res = Pem::read(reader);
+    assert!(res.is_err());
+}
