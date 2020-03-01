@@ -46,6 +46,10 @@ match res {
 
 ## Changes
 
+### 0.6.4
+
+- Fix infinite loop when certificate has no END mark
+
 ### 0.6.3
 
 - Fix infinite loop when reading non-pem data (#28)
