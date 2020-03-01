@@ -46,6 +46,10 @@ match res {
 
 ## Changes
 
+### 0.6.3
+
+- Fix infinite loop when reading non-pem data (#28)
+
 ### 0.6.2
 
 - Remove debug code left in `Pem::read`
