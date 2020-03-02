@@ -16,8 +16,6 @@
 //! Parsing a certificate in DER format:
 //!
 //! ```rust,no_run
-//! # extern crate nom;
-//! # #[macro_use] extern crate x509_parser;
 //! use x509_parser::parse_x509_der;
 //!
 //! static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
@@ -42,25 +40,14 @@
         unused_import_braces, unused_qualifications)]
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate nom;
-
-extern crate rusticata_macros;
-
-extern crate der_parser;
-
-extern crate base64;
-extern crate num_bigint;
-extern crate time;
-
 pub use x509::*;
 pub mod x509;
 
 pub mod error;
 pub mod objects;
-mod x509_parser;
-pub use x509_parser::*;
-mod x509_extensions;
-pub use x509_extensions::*;
-
 pub mod pem;
+mod x509_extensions;
+mod x509_parser;
+pub use crate::x509_extensions::*;
+pub use crate::x509_parser::*;
+

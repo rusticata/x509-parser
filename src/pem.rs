@@ -6,8 +6,6 @@
 //! contents:
 //!
 //! ```rust,no_run
-//! # extern crate nom;
-//! # #[macro_use] extern crate x509_parser;
 //! use std::io::Cursor;
 //! use x509_parser::pem::{pem_to_der, Pem};
 //! use x509_parser::parse_x509_der;
@@ -28,8 +26,6 @@
 //! Another method to parse the certificate is to use `pem_to_der`:
 //!
 //! ```rust,no_run
-//! # extern crate nom;
-//! # #[macro_use] extern crate x509_parser;
 //! use x509_parser::pem::pem_to_der;
 //! use x509_parser::parse_x509_der;
 //!

@@ -46,6 +46,12 @@ match res {
 
 ## Changes
 
+### 0.7.0
+
+- Fix clippy warnings
+  - `nid2obj` argument is now passed by copy, not reference
+- Set edition to 2018
+
 ### 0.6.4
 
 - Fix infinite loop when certificate has no END mark

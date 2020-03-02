@@ -9,7 +9,7 @@
 // use std::convert::From;
 use der_parser::oid::Oid;
 
-use error::NidError;
+use crate::error::NidError;
 
 /// ASN.1 node internal identifier
 ///
@@ -267,7 +267,7 @@ pub fn sn2oid(sn: &str) -> Result<Oid, NidError> {
 
 #[cfg(test)]
 mod tests {
-    use objects::*;
+    use super::*;
     use der_parser::oid::Oid;
 
 #[test]

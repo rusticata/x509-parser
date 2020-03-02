@@ -11,9 +11,9 @@ use time::Tm;
 use der_parser::ber::BitStringObject;
 use der_parser::der::DerObject;
 use der_parser::oid::Oid;
-use objects::{oid2nid,nid2sn};
-use error::X509Error;
-use x509_parser::parse_ext_basicconstraints;
+use crate::objects::{oid2nid,nid2sn};
+use crate::error::X509Error;
+use crate::parse_ext_basicconstraints;
 
 
 #[derive(Debug, PartialEq)]
@@ -286,7 +286,7 @@ pub struct CertificateRevocationList<'a> {
 
 #[cfg(test)]
 mod tests {
-    use x509::*;
+    use super::*;
     use der_parser::ber::BerObjectContent;
     use der_parser::oid::Oid;
 

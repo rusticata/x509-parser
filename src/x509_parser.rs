@@ -4,7 +4,7 @@
 //!
 
 use std::str;
-use nom::{IResult,Err};
+use nom::{map_opt, many1, opt, IResult, Err};
 use time::{strptime,Tm};
 
 use der_parser::*;
@@ -12,9 +12,9 @@ use der_parser::ber::{BerObjectContent, BerTag};
 use der_parser::der::*;
 use der_parser::error::*;
 use rusticata_macros::{flat_take, upgrade_error};
-use x509::*;
-use x509_extensions::*;
-use error::X509Error;
+use crate::x509::*;
+use crate::x509_extensions::*;
+use crate::error::X509Error;
 
 /// Parse a "Basic Constraints" extension
 ///
