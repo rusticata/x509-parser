@@ -37,9 +37,10 @@
 //!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
 
-#![deny(/*missing_docs,*/unsafe_code,
+#![deny(/*missing_docs,*/
         unstable_features,
         unused_import_braces, unused_qualifications)]
+#![forbid(unsafe_code)]
 
 #[macro_use]
 extern crate nom;
