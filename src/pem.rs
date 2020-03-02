@@ -111,8 +111,8 @@ impl Pem {
                 line.clear();
                 continue;
             }
-            let iter = line.split_whitespace();
-            let label = iter.skip(1).next().ok_or(PEMError::InvalidHeader)?;
+            let mut iter = line.split_whitespace();
+            let label = iter.nth(1).ok_or(PEMError::InvalidHeader)?;
             break label;
         };
         let label = label.split('-').next().ok_or(PEMError::InvalidHeader)?;
@@ -139,7 +139,7 @@ impl Pem {
     }
 
     /// Decode the PEM contents into a X.509 object
-    pub fn parse_x509<'pem>(&'pem self) -> Result<X509Certificate<'pem>, ::nom::Err<X509Error>> {
+    pub fn parse_x509(&self) -> Result<X509Certificate, ::nom::Err<X509Error>> {
         parse_x509_der(&self.contents)
             .map(|(_,x509)| x509)
     }

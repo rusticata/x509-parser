@@ -165,7 +165,7 @@ fn der_read_bitstring_content(i:&[u8], _tag:BerTag, len: usize) -> BerResult<Ber
     der_read_element_content_as(i, DerTag::BitString, len, false, 0)
 }
 
-fn bitstring_to_unique_id<'a>(x: DerObject<'a>) -> Result<Option<UniqueIdentifier<'a>>,BerError> {
+fn bitstring_to_unique_id(x: DerObject) -> Result<Option<UniqueIdentifier>,BerError> {
     let (_,y) = x.as_context_specific()?;
     match y {
         None => Ok(None),
@@ -231,7 +231,7 @@ fn parse_extension_sequence(i:&[u8]) -> BerResult<Vec<X509Extension>> {
 }
 
 fn parse_extensions(i:&[u8]) -> BerResult<Vec<X509Extension>> {
-    if i.len() == 0 {
+    if i.is_empty() {
         return Ok((&[], Vec::new()));
     }
 

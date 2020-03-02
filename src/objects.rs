@@ -211,10 +211,10 @@ pub fn nid2ln(nid: Nid) -> Result<&'static str,NidError> {
 }
 
 
-pub fn nid2obj(nid: &Nid) -> Result<Oid,NidError> {
+pub fn nid2obj(nid: Nid) -> Result<Oid,NidError> {
     OID_REGISTRY
         .iter()
-        .find(|ref o| o.nid == *nid)
+        .find(|ref o| o.nid == nid)
         .map(|ref o| Oid::from(o.oid))
         .ok_or(NidError)
     // XXX pattern matching would be faster, but harder to maintain
