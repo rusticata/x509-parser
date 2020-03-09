@@ -46,6 +46,11 @@ match res {
 
 ## Changes
 
+### 0.6.5
+
+- Expose raw bytes of the certificate serial number
+- Change deny to forbid for unsafe_code
+
 ### 0.6.4
 
 - Fix infinite loop when certificate has no END mark
