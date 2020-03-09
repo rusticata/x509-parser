@@ -5,6 +5,7 @@
 
 use std::str;
 use nom::{map_opt, many1, opt, IResult, Err};
+use num_bigint::BigUint;
 use time::{strptime,Tm};
 
 use der_parser::*;
@@ -247,13 +248,19 @@ fn parse_extensions(i:&[u8]) -> BerResult<Vec<X509Extension>> {
     // parse_der_explicit(i, 3, parse_extension_sequence)
 }
 
+fn get_serial_info<'a>(o: DerObject<'a>) -> Option<(&'a [u8], BigUint)> {
+    let big = o.as_biguint()?;
+    let slice = o.as_slice().ok()?;
 
-fn parse_tbs_certificate(i:&[u8]) -> BerResult<TbsCertificate> {
+    Some((slice, big))
+}
+
+fn parse_tbs_certificate<'a>(i:&'a [u8]) -> BerResult<TbsCertificate<'a>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
         version:     parse_version >>
-        serial:      map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
+        serial:      map_opt!(parse_der_integer, get_serial_info) >>
         signature:   parse_algorithm_identifier >>
         issuer:      parse_name >>
         validity:    parse_validity >>
@@ -265,7 +272,7 @@ fn parse_tbs_certificate(i:&[u8]) -> BerResult<TbsCertificate> {
         (
             TbsCertificate{
                 version,
-                serial,
+                serial: serial.1,
                 signature,
                 issuer,
                 validity,
@@ -274,7 +281,8 @@ fn parse_tbs_certificate(i:&[u8]) -> BerResult<TbsCertificate> {
                 issuer_uid,
                 subject_uid,
                 extensions,
-                raw: &[]
+                raw: &[],
+                raw_serial: serial.0,
             }
         )
     ).map(|(rem, (_hdr, mut tbs))| {
