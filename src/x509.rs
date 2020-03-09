@@ -96,7 +96,8 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
     pub extensions: Vec<X509Extension<'a>>,
-    pub(crate) raw: &'a [u8]
+    pub(crate) raw: &'a [u8],
+    pub(crate) raw_serial: &'a [u8],
 }
 
 impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
@@ -167,6 +168,11 @@ impl<'a> TbsCertificate<'a> {
                 None
             }
         }).unwrap_or(false)
+    }
+
+    /// Get the raw bytes of the certificate serial number
+    pub fn raw_serial(&self) -> &[u8] {
+        self.raw_serial
     }
 }
 
