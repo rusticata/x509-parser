@@ -17,28 +17,21 @@ use der_parser::{
 };
 use crate::objects::{oid2nid,nid2sn};
 use crate::error::X509Error;
-use crate::x509_extensions;
-use crate::x509_parser::parse_ext_basicconstraints;
-
+use crate::x509_extensions::{self, ExtensionType};
 
 #[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
     pub oid:  Oid<'a>,
     pub critical: bool,
     pub value: &'a[u8],
-    pub(crate) extension_type: Option<x509_extensions::ExtensionType<'a>>,
+    pub extension_type: ExtensionType<'a>,
 }
 
 impl<'a> X509Extension<'a> {
-    pub fn new(oid: Oid<'a>, critical: bool, value: &'a [u8], extension_type: Option<x509_extensions::ExtensionType<'a>>) -> X509Extension<'a> {
+    pub fn new(oid: Oid<'a>, critical: bool, value: &'a [u8], extension_type: ExtensionType<'a>) -> X509Extension<'a> {
         X509Extension {
             oid, critical, value, extension_type,
         }
-    }
-
-    /// Return the extension type or `None` if the extension is not implemented.
-    pub fn extension_type(&self) -> Option<&x509_extensions::ExtensionType> {
-        self.extension_type.as_ref()
     }
 } 
 
@@ -180,8 +173,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn basic_constraints(&self) -> Option<(bool, &x509_extensions::BasicConstraints)> {
         self.extensions.get(&oid!(2.5.29.19)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::BasicConstraints(ref bc) => (ext.critical, bc),
+            match ext.extension_type {
+                ExtensionType::BasicConstraints(ref bc) => (ext.critical, bc),
                 _ => unreachable!(),
             }
         })
@@ -189,8 +182,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn certificate_policies(&self) -> Option<(bool, &x509_extensions::CertificatePolicies)> {
         self.extensions.get(&oid!(2.5.29.32)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::CertificatePolicies(ref cp) => (ext.critical, cp),
+            match ext.extension_type {
+                ExtensionType::CertificatePolicies(ref cp) => (ext.critical, cp),
                 _ => unreachable!(),
             }
         })
@@ -198,8 +191,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn key_usage(&self) -> Option<(bool, &x509_extensions::KeyUsage)> {
         self.extensions.get(&oid!(2.5.29.15)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::KeyUsage(ref ku) => (ext.critical, ku),
+            match ext.extension_type {
+                ExtensionType::KeyUsage(ref ku) => (ext.critical, ku),
                 _ => unreachable!(),
             }
         })
@@ -207,8 +200,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn extended_key_usage(&self) -> Option<(bool, &x509_extensions::ExtendedKeyUsage)> {
         self.extensions.get(&oid!(2.5.29.37)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::ExtendedKeyUsage(ref eku) => (ext.critical, eku),
+            match ext.extension_type {
+                ExtensionType::ExtendedKeyUsage(ref eku) => (ext.critical, eku),
                 _ => unreachable!(),
             }
         })
@@ -216,8 +209,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn policy_constraints(&self) -> Option<(bool, &x509_extensions::PolicyConstraints)> {
         self.extensions.get(&oid!(2.5.29.36)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::PolicyConstraints(ref pc) => (ext.critical, pc),
+            match ext.extension_type {
+                ExtensionType::PolicyConstraints(ref pc) => (ext.critical, pc),
                 _ => unreachable!(),
             }
         })
@@ -225,8 +218,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn inhibit_anypolicy(&self) -> Option<(bool, &x509_extensions::InhibitAnyPolicy)> {
         self.extensions.get(&oid!(2.5.29.54)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::InhibitAnyPolicy(ref iap) => (ext.critical, iap),
+            match ext.extension_type {
+                ExtensionType::InhibitAnyPolicy(ref iap) => (ext.critical, iap),
                 _ => unreachable!(),
             }
         })
@@ -234,8 +227,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn policy_mappings(&self) -> Option<(bool, &x509_extensions::PolicyMappings)> {
         self.extensions.get(&oid!(2.5.29.33)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::PolicyMappings(ref pm) => (ext.critical, pm),
+            match ext.extension_type {
+                ExtensionType::PolicyMappings(ref pm) => (ext.critical, pm),
                 _ => unreachable!(),
             }
         })
@@ -243,8 +236,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn subject_alternative_name(&self) -> Option<(bool, &x509_extensions::SubjectAlternativeName)> {
         self.extensions.get(&oid!(2.5.29.17)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::SubjectAlternativeName(ref san) => (ext.critical, san),
+            match ext.extension_type {
+                ExtensionType::SubjectAlternativeName(ref san) => (ext.critical, san),
                 _ => unreachable!(),
             }
         })
@@ -252,8 +245,8 @@ impl<'a> TbsCertificate<'a> {
 
     pub fn name_constraints(&self) -> Option<(bool, &x509_extensions::NameConstraints)> {
         self.extensions.get(&oid!(2.5.29.30)).map(|ext| {
-            match ext.extension_type().unwrap() {
-                crate::x509_extensions::ExtensionType::NameConstraints(ref nc) => (ext.critical, nc),
+            match ext.extension_type {
+                ExtensionType::NameConstraints(ref nc) => (ext.critical, nc),
                 _ => unreachable!(),
             }
         })

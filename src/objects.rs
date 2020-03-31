@@ -122,6 +122,17 @@ const OBJ_CPOL : &[u8]    = &oid!(raw 2.5.29.32);
 
 const OBJ_AKI : &[u8]     = &oid!(raw 2.5.29.35);
 
+// Extension constants
+
+pub const OID_EXT_KEYUSAGE: &[u8] = &oid!(raw 2.5.29.15);
+pub const OID_EXT_SUBJALTNAME: &[u8] = &oid!(raw 2.5.29.17);
+pub const OID_EXT_BASICCONSTRAINTS: &[u8] = &oid!(raw 2.5.29.19);
+pub const OID_EXT_NAMECONSTRAINTS: &[u8] = &oid!(raw 2.5.29.30);
+pub const OID_EXT_CERTIFICATEPOLICIES: &[u8] = &oid!(raw 2.5.29.32);
+pub const OID_EXT_POLICYMAPPINGS: &[u8] = &oid!(raw 2.5.29.33);
+pub const OID_EXT_POLICYCONSTRAINTS: &[u8] = &oid!(raw 2.5.29.36);
+pub const OID_EXT_EXTENDEDKEYUSAGE: &[u8] = &oid!(raw 2.5.29.37);
+pub const OID_EXT_INHIBITANYPLICY: &[u8] = &oid!(raw 2.5.29.54);
 
 
 struct OidEntry {

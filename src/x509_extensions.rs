@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use der_parser::oid::Oid;
 
+use crate::x509::X509Name;
+use crate::objects;
+
 #[derive(Debug, PartialEq)]
 pub enum ExtensionType<'a> {
     /// Section 4.2.1.3 of rfc 5280
@@ -22,6 +25,8 @@ pub enum ExtensionType<'a> {
     ExtendedKeyUsage(ExtendedKeyUsage<'a>),
     /// Section 4.2.1.14 of rfc 5280
     InhibitAnyPolicy(InhibitAnyPolicy),
+    /// Marker for an extension that is currently not supported by this crate
+    Unknown,
 }
 
 #[derive(Debug, PartialEq)]
@@ -108,7 +113,7 @@ pub enum GeneralName<'a> {
     // X400Address,
     /// RFC5280 defines several string types, we always try to parse as utf-8
     /// which is more or less a superset of the string types.
-    DirectoryName(crate::x509::X509Name<'a>),
+    DirectoryName(X509Name<'a>),
     // EDIPartyName { name_assigner: Option<&'a str>, party_name: &'a str },
     /// An uniform resource identifier. The format is not checked.
     URI(&'a str),
@@ -134,58 +139,31 @@ pub struct GeneralSubtree<'a> {
 
 pub(crate) mod parser {
     use nom::{alt, eof, exact, do_parse, opt, verify, call, take, many1, IResult, Err};
-    use der_parser::{*, oid::Oid};
-    use der_parser::ber::BerObject;
+    use der_parser::{*, ber::BerObject, oid::Oid};
+    
     use der_parser::der::*;
     use der_parser::error::BerError;
 
     use crate::x509_extensions::*;
 
-    pub(crate) fn parse_extension_type<'a>(mut i: &'a [u8], oid: &Oid) -> IResult<&'a [u8], Option<ExtensionType<'a>>, BerError> {
-        let ext = if oid.asn1() == oid!(raw 2.5.29.15) {
-            let (ret, ku) = parse_keyusage(i)?;
-            i = ret;
-            Some(ExtensionType::KeyUsage(ku))
-        } else if oid.asn1() == oid!(raw 2.5.29.17) {
-            let (ret, san) = parse_subjectalternativename(i)?;
-            i = ret;
-            Some(ExtensionType::SubjectAlternativeName(san))
-        } else if oid.asn1() == oid!(raw 2.5.29.19) {
-            let (ret, bc) = parse_basicconstraints(i)?;
-            i = ret;
-            Some(ExtensionType::BasicConstraints(bc))
-        } else if oid.asn1() == oid!(raw 2.5.29.30) {
-            let (ret, nm) = parse_nameconstraints(i)?;
-            i = ret;
-            Some(ExtensionType::NameConstraints(nm))
-        } else if oid.asn1() == oid!(raw 2.5.29.32) {
-            let (ret, cp) = parse_certificatepolicies(i)?;
-            i = ret;
-            Some(ExtensionType::CertificatePolicies(cp))
-        } else if oid.asn1() == oid!(raw 2.5.29.33) {
-            let (ret, pm) = parse_policymappings(i)?;
-            i = ret;
-            Some(ExtensionType::PolicyMappings(pm))
-        } else if oid.asn1() == oid!(raw 2.5.29.36) {
-            let (ret, pc) = parse_policyconstraints(i)?;
-            i = ret;
-            Some(ExtensionType::PolicyConstraints(pc))
-        } else if oid.asn1() == oid!(raw 2.5.29.37) {
-            let (ret, eku) = parse_extendedkeyusage(i)?;
-            i = ret;
-            Some(ExtensionType::ExtendedKeyUsage(eku))
-        } else if oid.asn1() == oid!(raw 2.5.29.54) {
-            let (ret, iap) = parse_inhibitanyplicy(i)?;
-            i = ret;
-            Some(ExtensionType::InhibitAnyPolicy(iap))
-        } else {
-            i = &[];
-            None
-        };
-        Ok((i, ext))
+    pub(crate) fn parse_extension_type<'a>(i: &'a [u8], oid: &Oid) -> IResult<&'a [u8], ExtensionType<'a>, BerError> {
+        match oid.bytes() {
+            objects::OID_EXT_KEYUSAGE => parse_keyusage(i),
+            objects::OID_EXT_SUBJALTNAME => parse_subjectalternativename(i),
+            objects::OID_EXT_BASICCONSTRAINTS => parse_basicconstraints(i),
+            objects::OID_EXT_NAMECONSTRAINTS => parse_nameconstraints(i),
+            objects::OID_EXT_CERTIFICATEPOLICIES => parse_certificatepolicies(i),
+            objects::OID_EXT_POLICYMAPPINGS => parse_policymappings(i),
+            objects::OID_EXT_POLICYCONSTRAINTS => parse_policyconstraints(i),
+            objects::OID_EXT_EXTENDEDKEYUSAGE => parse_extendedkeyusage(i),
+            objects::OID_EXT_INHIBITANYPLICY => parse_inhibitanyplicy(i),
+            _ => {
+                Ok((&[], ExtensionType::Unknown))
+            },
+        }
     }
 
-    fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], NameConstraints, BerError> {
+    fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtensionType, BerError> {
         fn parse_subtree<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralSubtree, BerError> {
             do_parse!(i,
                 _hdr: verify!(complete!(der_read_element_header), |hdr| hdr.tag == DerTag::Sequence) >>
@@ -202,7 +180,7 @@ pub(crate) mod parser {
                 map!(eof!(), |_| None)) >>
             ((a, b))
         )?;
-        Ok((ret, NameConstraints { permitted_subtrees, excluded_subtrees }))
+        Ok((ret, ExtensionType::NameConstraints(NameConstraints { permitted_subtrees, excluded_subtrees })))
     }
 
     fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
@@ -211,7 +189,7 @@ pub(crate) mod parser {
         if hdr.len as usize > rest.len() {
             return Err(nom::Err::Failure(BerError::ObjectTooShort));
         }
-        fn ia5str(i: &[u8], hdr: der_parser::ber::BerObjectHeader) -> Result<&str, Err<BerError>> {
+        fn ia5str<'a>(i: &'a [u8], hdr: der_parser::ber::BerObjectHeader) -> Result<&'a str, Err<BerError>> {
             der_read_element_content_as(
                     i, DerTag::Ia5String, hdr.len as usize,
                     hdr.is_constructed(), 0,
@@ -261,7 +239,7 @@ pub(crate) mod parser {
         Ok((&rest[(hdr.len as usize)..], name))
     }
 
-    fn parse_subjectalternativename<'a>(mut i: &'a [u8]) -> IResult<&'a [u8], SubjectAlternativeName, BerError> {
+    fn parse_subjectalternativename<'a>(mut i: &'a [u8]) -> IResult<&'a [u8], ExtensionType, BerError> {
         let (rest, _) = verify!(i, der_read_element_header, |hdr| hdr.tag == DerTag::Sequence)?;
         i = rest;
         let mut general_names = Vec::new();
@@ -270,10 +248,10 @@ pub(crate) mod parser {
             i = rest;
             general_names.push(general_name);
         }
-        Ok((i, SubjectAlternativeName { general_names }))
+        Ok((i, ExtensionType::SubjectAlternativeName(SubjectAlternativeName { general_names })))
     }
 
-    fn parse_policyconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], PolicyConstraints, BerError> {
+    fn parse_policyconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtensionType, BerError> {
         let (ret, (require_explicit_policy, inhibit_policy_mapping)) = do_parse!(i,
             verify!(der_read_element_header, |hdr| hdr.tag == DerTag::Sequence) >>
             a: opt!(complete!(map_res!(parse_der_tagged!(IMPLICIT 0, DerTag::Integer), |x: BerObject| x.as_u32()))) >>
@@ -282,10 +260,10 @@ pub(crate) mod parser {
                 map!(eof!(), |_| None)) >>
             ((a, b))
         )?;
-        Ok((ret, PolicyConstraints { require_explicit_policy, inhibit_policy_mapping }))
+        Ok((ret, ExtensionType::PolicyConstraints(PolicyConstraints { require_explicit_policy, inhibit_policy_mapping })))
     }
 
-    fn parse_policymappings<'a>(i: &'a [u8]) -> IResult<&'a [u8], PolicyMappings<'a>, BerError> {
+    fn parse_policymappings<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtensionType<'a>, BerError> {
         fn parse_oid_pair<'b>(i: &'b[u8]) -> IResult<&'b [u8], DerObject<'b>, BerError> {
             let (ret, pair) = parse_der_sequence_defined!(i, parse_der_oid >> parse_der_oid)?;
             Ok((ret, pair))
@@ -296,7 +274,7 @@ pub(crate) mod parser {
             let pair = pair.as_sequence().map_err(|e| nom::Err::Failure(e))?;
             let left = pair[0].as_oid_val().map_err(|e| nom::Err::Failure(e))?;
             let right = pair[1].as_oid_val().map_err(|e| nom::Err::Failure(e))?;
-            if left.asn1() == oid!(raw 2.5.29.32.0) || right.asn1() == oid!(raw 2.5.29.32.0) {
+            if left.bytes() == oid!(raw 2.5.29.32.0) || right.bytes() == oid!(raw 2.5.29.32.0) {
                 // mapping to or from anyPolicy is not allowed
                 return Err(Err::Failure(BerError::InvalidTag));
             }
@@ -304,15 +282,23 @@ pub(crate) mod parser {
                 .and_modify(|v| v.push(right.clone()))
                 .or_insert_with(|| vec![right.clone()]);
         }
-        Ok((ret, PolicyMappings { mappings }))
+        Ok((ret, ExtensionType::PolicyMappings(PolicyMappings { mappings })))
     }
 
-    fn parse_inhibitanyplicy<'a>(i: &'a [u8]) -> IResult<&'a [u8], InhibitAnyPolicy, BerError> {
+    fn parse_inhibitanyplicy<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtensionType, BerError> {
         let (ret, skip_certs) = map_res!(i, parse_der_integer, |x: BerObject| x.as_u32())?;
-        Ok((ret, InhibitAnyPolicy { skip_certs }))
+        Ok((ret, ExtensionType::InhibitAnyPolicy(InhibitAnyPolicy { skip_certs })))
     }
 
-    fn parse_extendedkeyusage<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtendedKeyUsage<'a>, BerError> {
+    const OID_EKU_ANY: &[u8] = &oid!(raw 2.5.29.37.0);
+    const OID_EKU_SERVER_AUTH: &[u8] = &oid!(raw 1.3.6.1.5.5.7.3.1);
+    const OID_EKU_CLIENT_AUTH: &[u8] = &oid!(raw 1.3.6.1.5.5.7.3.2);
+    const OID_EKU_CODE_SIGNING: &[u8] = &oid!(raw 1.3.6.1.5.5.7.3.3);
+    const OID_EKU_EMAIL_PROTECTION: &[u8] = &oid!(raw 1.3.6.1.5.5.7.3.4);
+    const OID_EKU_TIME_STAMPING: &[u8] = &oid!(raw 1.3.6.1.5.5.7.3.8);
+    const OID_EKU_OCSCP_SIGNING: &[u8] = &oid!(raw 1.3.6.1.5.5.7.3.9);
+
+    fn parse_extendedkeyusage<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtensionType<'a>, BerError> {
         let (ret, seq) = parse_der_sequence_of!(i, parse_der_oid)?;
         let mut seen = std::collections::HashSet::new();
         let mut eku = ExtendedKeyUsage {
@@ -330,38 +316,30 @@ pub(crate) mod parser {
             if !seen.insert(oid.clone()) {
                 continue;
             }
-            let asn1 = oid.asn1();
-            if asn1 == oid!(raw 2.5.29.37.0) {
-                eku.any = true;
-            } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.1) {
-                eku.server_auth = true;
-            } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.2) {
-                eku.client_auth = true;
-            } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.3) {
-                eku.code_signing = true;
-            } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.4) {
-                eku.email_protection = true;
-            } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.8) {
-                eku.time_stamping = true;
-            } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.9) {
-                eku.ocscp_signing = true;
-            } else {
-                eku.other.push(oid);
-            }
+            match oid.bytes() {
+                OID_EKU_ANY => eku.any = true,
+                OID_EKU_SERVER_AUTH => eku.server_auth = true,
+                OID_EKU_CLIENT_AUTH => eku.client_auth = true,
+                OID_EKU_CODE_SIGNING => eku.code_signing = true,
+                OID_EKU_EMAIL_PROTECTION => eku.email_protection = true,
+                OID_EKU_TIME_STAMPING => eku.time_stamping = true,
+                OID_EKU_OCSCP_SIGNING => eku.ocscp_signing = true,
+                _ => eku.other.push(oid),
+            };
         }
-        Ok((ret, eku))
+        Ok((ret, ExtensionType::ExtendedKeyUsage(eku)))
     }
 
-    fn parse_keyusage<'a>(i: &'a [u8]) -> IResult<&'a [u8], KeyUsage, BerError> {
+    fn parse_keyusage<'a>(i: &'a [u8]) -> IResult<&'a [u8], ExtensionType, BerError> {
         let (rest, flags) = map_res!(i, parse_der_bitstring, |x:DerObject<'a>| -> Result<u16, BerError> {
             let bitstring = x.content.as_bitstring().map_err(|_| BerError::BerTypeError)?;
             let flags = bitstring.data.into_iter().rev().fold(0, |acc, x| acc << 8 | ((*x).reverse_bits() as u16));
             Ok(flags)
         })?;
-        Ok((rest, KeyUsage { flags }))
+        Ok((rest, ExtensionType::KeyUsage(KeyUsage { flags })))
     }
 
-    fn parse_certificatepolicies(i: &[u8]) -> IResult<&[u8], CertificatePolicies, BerError> {
+    fn parse_certificatepolicies(i: &[u8]) -> IResult<&[u8], ExtensionType, BerError> {
         fn parse_policy<'a>(i: &'a [u8]) -> IResult<&'a [u8], (Oid<'a>, &'a [u8]), BerError> {
             let (ret, content) = do_parse!(
                 i,
@@ -392,7 +370,7 @@ pub(crate) mod parser {
                 return Err(Err::Failure(BerError::InvalidTag));
             }
         }
-        Ok((ret, CertificatePolicies { policies }))
+        Ok((ret, ExtensionType::CertificatePolicies(CertificatePolicies { policies })))
     }
 
     /// Parse a "Basic Constraints" extension
@@ -406,7 +384,7 @@ pub(crate) mod parser {
     ///
     /// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
     /// unsigned integer, and parsing will fail if value if larger.
-    fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], BasicConstraints, BerError> {
+    fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], ExtensionType, BerError> {
         parse_der_struct!(
             i,
             TAG DerTag::Sequence,
@@ -414,7 +392,7 @@ pub(crate) mod parser {
             path_len_constraint: alt!(
                 complete!(opt!(map_res!(parse_der_integer, |x: DerObject| x.as_u32()))) |
                 map!(eof!(), |_| None)) >>
-            ( BasicConstraints{ ca, path_len_constraint } )
+            ( ExtensionType::BasicConstraints(BasicConstraints{ ca, path_len_constraint }) )
         ).map(|(rem,x)| (rem,x.1))
     }
 }

@@ -47,13 +47,13 @@ fn test_x509_parser() {
             let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())].into_iter().collect();
             let expected_extensions_list = vec![
                 X509Extension::new(oid!(2.5.29.19), true, &[48, 3, 1, 1, 255],
-                    Some(ExtensionType::BasicConstraints(BasicConstraints { ca: true, path_len_constraint: None }))),
+                    ExtensionType::BasicConstraints(BasicConstraints { ca: true, path_len_constraint: None })),
                 X509Extension::new(oid!(2.5.29.15), false, &[3, 2, 1, 70],
-                    Some(ExtensionType::KeyUsage(KeyUsage { flags: 98 }))),
+                    ExtensionType::KeyUsage(KeyUsage { flags: 98 })),
                 X509Extension::new(oid!(2.5.29.32), false, &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
-                    Some(ExtensionType::CertificatePolicies(CertificatePolicies { policies }))),
-                X509Extension::new(oid!(2.5.29.14), false, &[4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], None),
-                X509Extension::new(oid!(2.5.29.35), false, &[48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], None),
+                    ExtensionType::CertificatePolicies(CertificatePolicies { policies })),
+                X509Extension::new(oid!(2.5.29.14), false, &[4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], ExtensionType::Unknown),
+                X509Extension::new(oid!(2.5.29.35), false, &[48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], ExtensionType::Unknown),
             ];
             let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list.into_iter()
                 .map(|e| (e.oid.clone(), e))
