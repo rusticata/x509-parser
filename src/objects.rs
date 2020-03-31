@@ -213,10 +213,10 @@ pub fn nid2ln(nid: Nid) -> Result<&'static str,NidError> {
 }
 
 
-pub fn nid2obj(nid: &Nid) -> Result<&Oid,NidError> {
+pub fn nid2obj(nid: Nid) -> Result<&'static Oid<'static>,NidError> {
     OID_REGISTRY
         .iter()
-        .find(|(_, o)| o.nid == *nid)
+        .find(|(_, o)| o.nid == nid)
         .map(|(oid, _)| oid)
         .ok_or(NidError)
 }

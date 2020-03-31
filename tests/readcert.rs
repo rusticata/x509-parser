@@ -94,7 +94,7 @@ fn test_x509_parser_no_extensions() {
 #[test]
 fn test_parse_subject_public_key_info() {
     let res = parse_subject_public_key_info(&IGCA_DER[339..]).expect("Parse public key info").1;
-    let oid = nid2obj(&Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
+    let oid = nid2obj(Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
     assert_eq!(res.algorithm.algorithm, *oid);
     let (tag, p) = res.algorithm.parameters.as_context_specific().expect("algorithm parameters");
     assert_eq!(tag.0, 0);
