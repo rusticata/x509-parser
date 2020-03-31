@@ -223,44 +223,40 @@ pub struct RevokedCertificate<'a> {
     pub extensions: Vec<X509Extension<'a>>,
 }
 
-
 /// Convert a DER representation of a X.509 name to a human-readble string
 ///
 /// RDNs are separated with ","
 /// Multiple RDNs are separated with "+"
-fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String,X509Error> {
-    rdn_seq.iter().fold(
-        Ok(String::new()),
-        |acc, rdn| {
-            acc.and_then(|mut _vec| {
-                rdn.set.iter().fold(
-                    Ok(String::new()),
-                    |acc2, attr| {
-                        acc2.and_then(|mut _vec2| {
-                            match attr.attr_value.as_slice() {
-                                Ok(s) => {
-                                    // println!("object: *** {:?} {:?}", oid, str::from_utf8(s));
-                                    let sn_res = oid2nid(&attr.attr_type).and_then(nid2sn);
-                                    let sn_str = match sn_res {
-                                        Ok(s) => String::from(s),
-                                        _     => format!("{:?}",attr.attr_type),
-                                    };
-                                    let val_str = String::from_utf8_lossy(s);
-                                    let rdn = format!("{}={}", sn_str, val_str);
-                                    match _vec2.len() {
-                                        0 => Ok(rdn),
-                                        _ => Ok(_vec2 + " + " + &rdn),
-                                    }
-                                },
-                                _ => { Err(X509Error::InvalidX509Name) },
+fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X509Error> {
+    rdn_seq.iter().fold(Ok(String::new()), |acc, rdn| {
+        acc.and_then(|mut _vec| {
+            rdn.set
+                .iter()
+                .fold(Ok(String::new()), |acc2, attr| {
+                    acc2.and_then(|mut _vec2| {
+                        match attr.attr_value.as_slice() {
+                            Ok(s) => {
+                                // println!("object: *** {:?} {:?}", oid, str::from_utf8(s));
+                                let sn_res = oid2nid(&attr.attr_type).and_then(nid2sn);
+                                let sn_str = match sn_res {
+                                    Ok(s) => String::from(s),
+                                    _ => format!("{:?}", attr.attr_type),
+                                };
+                                let val_str = String::from_utf8_lossy(s);
+                                let rdn = format!("{}={}", sn_str, val_str);
+                                match _vec2.len() {
+                                    0 => Ok(rdn),
+                                    _ => Ok(_vec2 + " + " + &rdn),
+                                }
                             }
-                        })
-            }).and_then(|v| {
-                match _vec.len() {
+                            _ => Err(X509Error::InvalidX509Name),
+                        }
+                    })
+                })
+                .and_then(|v| match _vec.len() {
                     0 => Ok(v),
                     _ => Ok(_vec + ", " + &v),
-                }
-            })
+                })
         })
     })
 }
@@ -291,41 +287,53 @@ mod tests {
     use der_parser::ber::BerObjectContent;
     use der_parser::oid::Oid;
 
-#[test]
-fn test_x509_name() {
-    let name = X509Name{
-        rdn_seq: vec![
-            RelativeDistinguishedName{ set: vec![
-                AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 6]).unwrap(), // countryName
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
-                }
-            ]},
-            RelativeDistinguishedName{ set: vec![
-                AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 8]).unwrap(), // stateOrProvinceName
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Some-State")),
-                }
-            ]},
-            RelativeDistinguishedName{ set: vec![
-                AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 10]).unwrap(), // organizationName
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Internet Widgits Pty Ltd")),
-                }
-            ]},
-            RelativeDistinguishedName{ set: vec![
-                AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 3]).unwrap(), // CN
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Test1")),
+    #[test]
+    fn test_x509_name() {
+        let name = X509Name {
+            rdn_seq: vec![
+                RelativeDistinguishedName {
+                    set: vec![AttributeTypeAndValue {
+                        attr_type: Oid::from(&[2, 5, 4, 6]).unwrap(), // countryName
+                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
+                    }],
                 },
-                AttributeTypeAndValue{
-                    attr_type:  Oid::from(&[2, 5, 4, 3]).unwrap(), // CN
-                    attr_value: DerObject::from_obj(BerObjectContent::PrintableString("Test2")),
-                }
-            ]},
-        ]
-    };
-    assert_eq!(name.to_string(), "C=FR, ST=Some-State, O=Internet Widgits Pty Ltd, CN=Test1 + CN=Test2");
-}
-
+                RelativeDistinguishedName {
+                    set: vec![AttributeTypeAndValue {
+                        attr_type: Oid::from(&[2, 5, 4, 8]).unwrap(), // stateOrProvinceName
+                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
+                            "Some-State",
+                        )),
+                    }],
+                },
+                RelativeDistinguishedName {
+                    set: vec![AttributeTypeAndValue {
+                        attr_type: Oid::from(&[2, 5, 4, 10]).unwrap(), // organizationName
+                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
+                            "Internet Widgits Pty Ltd",
+                        )),
+                    }],
+                },
+                RelativeDistinguishedName {
+                    set: vec![
+                        AttributeTypeAndValue {
+                            attr_type: Oid::from(&[2, 5, 4, 3]).unwrap(), // CN
+                            attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
+                                "Test1",
+                            )),
+                        },
+                        AttributeTypeAndValue {
+                            attr_type: Oid::from(&[2, 5, 4, 3]).unwrap(), // CN
+                            attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
+                                "Test2",
+                            )),
+                        },
+                    ],
+                },
+            ],
+        };
+        assert_eq!(
+            name.to_string(),
+            "C=FR, ST=Some-State, O=Internet Widgits Pty Ltd, CN=Test1 + CN=Test2"
+        );
+    }
 }
