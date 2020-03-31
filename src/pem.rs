@@ -95,12 +95,12 @@ impl Pem {
     /// assert_eq!(subject, "CN=lists.for-our.info");
     /// ```
 
-    pub fn read(mut r: impl BufRead + Seek) -> Result<(Pem, usize), PEMError>
-    {
+    pub fn read(mut r: impl BufRead + Seek) -> Result<(Pem, usize), PEMError> {
         let mut line = String::new();
         let label = loop {
             let num_bytes = r.read_line(&mut line).or(Err(PEMError::MissingHeader))?;
-            if num_bytes == 0 { // EOF
+            if num_bytes == 0 {
+                // EOF
                 return Err(PEMError::MissingHeader);
             }
             if !line.starts_with("-----BEGIN ") {
@@ -136,15 +136,20 @@ impl Pem {
 
     /// Decode the PEM contents into a X.509 object
     pub fn parse_x509(&self) -> Result<X509Certificate, ::nom::Err<X509Error>> {
-        parse_x509_der(&self.contents)
-            .map(|(_,x509)| x509)
+        parse_x509_der(&self.contents).map(|(_, x509)| x509)
     }
 }
 
 #[test]
 fn read_pem_from_file() {
     let file = std::io::BufReader::new(std::fs::File::open("assets/certificate.pem").unwrap());
-    let subject = Pem::read(file).unwrap().0
-        .parse_x509().unwrap().tbs_certificate.subject.to_string();
+    let subject = Pem::read(file)
+        .unwrap()
+        .0
+        .parse_x509()
+        .unwrap()
+        .tbs_certificate
+        .subject
+        .to_string();
     assert_eq!(subject, "CN=lists.for-our.info");
 }

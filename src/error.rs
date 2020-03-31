@@ -5,7 +5,7 @@ use nom::error::{ErrorKind, ParseError};
 use std;
 
 /// An error that can occur while converting an OID to a Nid.
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct NidError;
 
 /// An error that can occur while parsing or validating a certificate.
@@ -29,11 +29,15 @@ pub enum X509Error {
 }
 
 impl From<BerError> for X509Error {
-    fn from(e: BerError) -> X509Error { X509Error::Der(e) }
+    fn from(e: BerError) -> X509Error {
+        X509Error::Der(e)
+    }
 }
 
 impl From<ErrorKind> for X509Error {
-    fn from(e: ErrorKind) -> X509Error { X509Error::NomError(e) }
+    fn from(e: ErrorKind) -> X509Error {
+        X509Error::NomError(e)
+    }
 }
 
 impl<I> ParseError<I> for X509Error {
@@ -57,5 +61,7 @@ pub enum PEMError {
 }
 
 impl From<std::io::Error> for PEMError {
-    fn from(e: std::io::Error) -> PEMError { PEMError::IOError(e) }
+    fn from(e: std::io::Error) -> PEMError {
+        PEMError::IOError(e)
+    }
 }

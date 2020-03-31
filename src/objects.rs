@@ -16,9 +16,9 @@ use std::collections::HashMap;
 ///
 /// This enumeration lists the node IDs used (and/or supported) in X.509 certificates.
 /// It is not guaranteed to be exhaustive.
-#[derive(Debug,PartialEq,Clone,Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(u8)]
-pub enum Nid{
+pub enum Nid {
     Undef,
     Algorithm,
     RsaDsi,
@@ -193,9 +193,8 @@ lazy_static! {
     };
 }
 
-
 /// Returns the short name corresponding to the Nid
-pub fn nid2sn(nid: Nid) -> Result<&'static str,NidError> {
+pub fn nid2sn(nid: Nid) -> Result<&'static str, NidError> {
     OID_REGISTRY
         .values()
         .find(|o| o.nid == nid)
@@ -204,7 +203,7 @@ pub fn nid2sn(nid: Nid) -> Result<&'static str,NidError> {
 }
 
 /// Returns the long name corresponding to the Nid
-pub fn nid2ln(nid: Nid) -> Result<&'static str,NidError> {
+pub fn nid2ln(nid: Nid) -> Result<&'static str, NidError> {
     OID_REGISTRY
         .values()
         .find(|o| o.nid == nid)
@@ -212,8 +211,7 @@ pub fn nid2ln(nid: Nid) -> Result<&'static str,NidError> {
         .ok_or(NidError)
 }
 
-
-pub fn nid2obj(nid: Nid) -> Result<&'static Oid<'static>,NidError> {
+pub fn nid2obj(nid: Nid) -> Result<&'static Oid<'static>, NidError> {
     OID_REGISTRY
         .iter()
         .find(|(_, o)| o.nid == nid)
@@ -221,19 +219,13 @@ pub fn nid2obj(nid: Nid) -> Result<&'static Oid<'static>,NidError> {
         .ok_or(NidError)
 }
 
-pub fn oid2nid(oid: &Oid) -> Result<Nid,NidError> {
-    OID_REGISTRY
-        .get(oid)
-        .map(|ref o| o.nid)
-        .ok_or(NidError)
+pub fn oid2nid(oid: &Oid) -> Result<Nid, NidError> {
+    OID_REGISTRY.get(oid).map(|ref o| o.nid).ok_or(NidError)
 }
 
 /// Returns the short name corresponding to the OID
-pub fn oid2sn(oid: &Oid) -> Result<&'static str,NidError> {
-    OID_REGISTRY
-        .get(oid)
-        .map(|ref o| o.sn)
-        .ok_or(NidError)
+pub fn oid2sn(oid: &Oid) -> Result<&'static str, NidError> {
+    OID_REGISTRY.get(oid).map(|ref o| o.sn).ok_or(NidError)
 }
 
 /// Given a short name, returns the matching OID
@@ -245,32 +237,30 @@ pub fn sn2oid(sn: &str) -> Result<&Oid, NidError> {
         .ok_or(NidError)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use der_parser::oid::Oid;
 
-#[test]
-fn test_obj2nid() {
-    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
-    assert_eq!(oid2nid(&oid), Ok(Nid::RsaSha1));
+    #[test]
+    fn test_obj2nid() {
+        let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
+        assert_eq!(oid2nid(&oid), Ok(Nid::RsaSha1));
 
-    let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]).unwrap();
-    assert_eq!(oid2nid(&invalid_oid), Err(NidError));
-}
+        let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]).unwrap();
+        assert_eq!(oid2nid(&invalid_oid), Err(NidError));
+    }
 
-#[test]
-fn test_nid2sn() {
-    assert_eq!(nid2sn(Nid::Undef), Ok("UNDEF"));
-    assert_eq!(nid2sn(Nid::RsaSha1), Ok("RSA-SHA1"));
-}
+    #[test]
+    fn test_nid2sn() {
+        assert_eq!(nid2sn(Nid::Undef), Ok("UNDEF"));
+        assert_eq!(nid2sn(Nid::RsaSha1), Ok("RSA-SHA1"));
+    }
 
-#[test]
-fn test_sn2oid() {
-    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
-    assert_eq!(sn2oid("RSA-SHA1"), Ok(&oid));
-    assert_eq!(sn2oid("invalid sn"), Err(NidError));
-}
-
+    #[test]
+    fn test_sn2oid() {
+        let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
+        assert_eq!(sn2oid("RSA-SHA1"), Ok(&oid));
+        assert_eq!(sn2oid("invalid sn"), Err(NidError));
+    }
 }

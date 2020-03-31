@@ -8,19 +8,18 @@ use std::fmt;
 use num_bigint::BigUint;
 use time::Tm;
 
+use crate::error::X509Error;
+use crate::objects::{nid2sn, oid2nid};
+use crate::parse_ext_basicconstraints;
 use der_parser::ber::BitStringObject;
 use der_parser::der::DerObject;
 use der_parser::oid::Oid;
-use crate::objects::{oid2nid,nid2sn};
-use crate::error::X509Error;
-use crate::parse_ext_basicconstraints;
-
 
 #[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
-    pub oid:  Oid<'a>,
+    pub oid: Oid<'a>,
     pub critical: bool,
-    pub value: &'a[u8],
+    pub value: &'a [u8],
 }
 
 #[derive(Debug, PartialEq)]
@@ -31,18 +30,18 @@ pub struct AttributeTypeAndValue<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct RelativeDistinguishedName<'a> {
-    pub set: Vec<AttributeTypeAndValue<'a>>
+    pub set: Vec<AttributeTypeAndValue<'a>>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct SubjectPublicKeyInfo<'a> {
-    pub algorithm:  AlgorithmIdentifier<'a>,
+    pub algorithm: AlgorithmIdentifier<'a>,
     pub subject_public_key: BitStringObject<'a>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct AlgorithmIdentifier<'a> {
-    pub algorithm:  Oid<'a>,
+    pub algorithm: Oid<'a>,
     pub parameters: DerObject<'a>,
 }
 
@@ -54,13 +53,11 @@ pub struct X509Name<'a> {
 impl<'a> fmt::Display for X509Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match x509name_to_string(&self.rdn_seq) {
-            Ok(o)  => write!(f, "{}", o),
+            Ok(o) => write!(f, "{}", o),
             Err(_) => write!(f, "<X509Error: Invalid X.509 name>"),
         }
     }
 }
-
-
 
 /// The sequence TBSCertificate contains information associated with the
 /// subject of the certificate and the CA that issued it.
@@ -109,7 +106,7 @@ impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
 #[derive(Debug, PartialEq)]
 pub struct Validity {
     pub not_before: Tm,
-    pub not_after:  Tm,
+    pub not_after: Tm,
 }
 
 impl Validity {
@@ -158,16 +155,18 @@ impl<'a> TbsCertificate<'a> {
     /// Returns true if certificate has `basicConstraints CA:true`
     pub fn is_ca(&self) -> bool {
         // filter on ext: OId(basicConstraints)
-        self.extensions.iter().find(|ext| {
-            ext.oid == Oid::from(&[2, 5, 29, 19]).unwrap()
-        }).and_then(|ext| {
-            // parse DER sequence
-            if let Ok((_,bc)) = parse_ext_basicconstraints(ext.value) {
-                Some(bc.ca)
-            } else {
-                None
-            }
-        }).unwrap_or(false)
+        self.extensions
+            .iter()
+            .find(|ext| ext.oid == Oid::from(&[2, 5, 29, 19]).unwrap())
+            .and_then(|ext| {
+                // parse DER sequence
+                if let Ok((_, bc)) = parse_ext_basicconstraints(ext.value) {
+                    Some(bc.ca)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(false)
     }
 
     /// Get the raw bytes of the certificate serial number
@@ -221,7 +220,7 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
 pub struct RevokedCertificate<'a> {
     pub user_certificate: BigUint,
     pub revocation_date: Tm,
-    pub extensions: Vec<X509Extension<'a>>
+    pub extensions: Vec<X509Extension<'a>>,
 }
 
 
@@ -273,7 +272,7 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String,X5
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitStringObject<'a>
+    pub signature_value: BitStringObject<'a>,
 }
 
 /// An X.509 v2 Certificate Revocaton List (CRL).
@@ -285,10 +284,6 @@ pub struct CertificateRevocationList<'a> {
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitStringObject<'a>,
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {
