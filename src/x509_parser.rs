@@ -248,7 +248,7 @@ fn parse_extensions(i:&[u8]) -> BerResult<Vec<X509Extension>> {
     // parse_der_explicit(i, 3, parse_extension_sequence)
 }
 
-fn get_serial_info<'a>(o: DerObject<'a>) -> Option<(&'a [u8], BigUint)> {
+fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
     let big = o.as_biguint()?;
     let slice = o.as_slice().ok()?;
 
