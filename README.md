@@ -46,6 +46,10 @@ match res {
 
 ## Changes
 
+### 0.8.0
+
+- Upgrade to `der-parser` 4.0
+
 ### 0.7.0
 
 - Fix clippy warnings

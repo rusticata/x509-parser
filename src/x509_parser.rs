@@ -58,11 +58,11 @@ fn parse_directory_string(i:&[u8]) -> DerResult {
          complete!(parse_der_bmpstring))
 }
 
-fn parse_attr_type_and_value(i:&[u8]) -> BerResult<AttributeTypeAndValue> {
+fn parse_attr_type_and_value<'a>(i:&'a [u8]) -> BerResult<AttributeTypeAndValue<'a>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        oid: map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
+        oid: map_res!(parse_der_oid, |x:DerObject<'a>| x.as_oid_val()) >>
         val: parse_directory_string >>
         ( AttributeTypeAndValue{ attr_type:oid, attr_value:val } )
     ).map(|(rem,x)| (rem,x.1))
@@ -203,7 +203,7 @@ fn der_read_opt_bool(i:&[u8]) -> DerResult {
 fn parse_extension<'a>(i:&'a[u8]) -> BerResult<X509Extension<'a>> {
     parse_der_struct!(
         i,
-        oid:      map_res!(parse_der_oid,|x:DerObject| x.as_oid_val()) >>
+        oid:      map_res!(parse_der_oid,|x:DerObject<'a>| x.as_oid_val()) >>
         critical: map_res!(der_read_opt_bool, |x:DerObject| {
             match x.as_context_specific() {
                 Ok((_,Some(obj))) => obj.as_bool(),
@@ -355,10 +355,10 @@ fn parse_crl_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
-fn parse_algorithm_identifier(i:&[u8]) -> IResult<&[u8],AlgorithmIdentifier,BerError> {
+fn parse_algorithm_identifier<'a>(i:&'a [u8]) -> BerResult<AlgorithmIdentifier> {
     parse_der_struct!(
         i,
-        oid:    map_res!(parse_der_oid, |x:DerObject| x.as_oid_val()) >>
+        oid:    map_res!(parse_der_oid, |x:DerObject<'a>| x.as_oid_val()) >>
         params: parse_der_optional!(parse_der) >>
         (
             AlgorithmIdentifier{

@@ -7,9 +7,10 @@
 //! most efficient method, but makes maintainance easier.
 
 // use std::convert::From;
-use der_parser::oid::Oid;
-
 use crate::error::NidError;
+use der_parser::oid::Oid;
+use lazy_static::lazy_static;
+use std::collections::HashMap;
 
 /// ASN.1 node internal identifier
 ///
@@ -133,7 +134,7 @@ const OBJ_EMAIL : &[u64]   = pkcs9!(1);
 
 // XXX ...
 
-const OBJ_RSAENCRYPTION : &[u64] = pkcs1!(1);
+const OBJ_RSAENC : &[u64] = pkcs1!(1);
 const OBJ_RSASHA1 : &[u64] = pkcs1!(5);
 
 // other constants
@@ -156,111 +157,91 @@ struct OidEntry {
     sn: &'static str,
     ln: &'static str,
     nid: Nid,
-    oid: &'static [u64],
 }
 
-const OID_REGISTRY : &[OidEntry] = &[
-    OidEntry{ sn:"UNDEF", ln:"undefined", nid:Nid::Undef, oid:&[0] },
-    OidEntry{ sn:"Algorithm", ln:"algorithm", nid:Nid::Algorithm, oid:OBJ_ALGO },
-    OidEntry{ sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi, oid:OBJ_RSADSI },
-    OidEntry{ sn:"X500", ln:"X500", nid:Nid::X500, oid:OBJ_X500 },
-    OidEntry{ sn:"X509", ln:"X509", nid:Nid::X509, oid:OBJ_X509 },
-    OidEntry{ sn:"CN", ln:"commonName", nid:Nid::CommonName, oid:OBJ_CN },
-    OidEntry{ sn:"C", ln:"countryName", nid:Nid::CountryName, oid:OBJ_C },
-    OidEntry{ sn:"L", ln:"localityName", nid:Nid::LocalityName, oid:OBJ_L },
-    OidEntry{ sn:"ST", ln:"stateOrProvinceName", nid:Nid::StateOrProvinceName, oid:OBJ_ST },
-    OidEntry{ sn:"O", ln:"organizationName", nid:Nid::OrganizationName, oid:OBJ_O },
-    OidEntry{ sn:"OU", ln:"organizationalUnitName", nid:Nid::OrganizationalUnitName, oid:OBJ_OU },
-
-    OidEntry{ sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9, oid:OBJ_PKCS9 },
-    OidEntry{ sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress, oid:OBJ_EMAIL },
-
-    OidEntry{ sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption, oid:OBJ_RSAENCRYPTION },
-    OidEntry{ sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1, oid:OBJ_RSASHA1 },
-
-    OidEntry{ sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier, oid:OBJ_SKI },
-    OidEntry{ sn:"keyUsage", ln:"X509v3 Key Usage", nid:Nid::KeyUsage, oid:OBJ_KU },
-    OidEntry{ sn:"privateKeyUsagePeriod", ln:"X509v3 Private Key Usage Period", nid:Nid::PrivateKeyUsagePeriod, oid:OBJ_PKUP },
-    OidEntry{ sn:"subjectAltName", ln:"X509v3 Subject Alternative Name", nid:Nid::SubjectAltName, oid:OBJ_SAN },
-
-    OidEntry{ sn:"basicConstraints", ln:"X509v3 Basic Constraints", nid:Nid::BasicConstraints, oid:OBJ_BC },
-
-    OidEntry{ sn:"certificatePolicies", ln:"X509v3 Certificate Policies", nid:Nid::CertificatePolicies, oid:OBJ_CPOL },
-    OidEntry{ sn:"authorityKeyIdentifier", ln:"X509v3 Authority Key Identifier", nid:Nid::AuthorityKeyIdentifier, oid:OBJ_AKI },
-];
+lazy_static! {
+    static ref OID_REGISTRY: HashMap<Oid<'static>, OidEntry> = {
+        let mut m = HashMap::new();
+        m.insert(Oid::from(&[0]).unwrap(), OidEntry{sn:"UNDEF", ln:"undefined", nid:Nid::Undef});
+        m.insert(Oid::from(OBJ_ALGO).unwrap(), OidEntry{sn:"Algorithm", ln:"algorithm", nid:Nid::Algorithm});
+        m.insert(Oid::from(OBJ_RSADSI).unwrap(), OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
+        m.insert(Oid::from(OBJ_X500).unwrap(), OidEntry{sn:"X500", ln:"X500", nid:Nid::X500});
+        m.insert(Oid::from(OBJ_X509).unwrap(), OidEntry{sn:"X509", ln:"X509", nid:Nid::X509});
+        m.insert(Oid::from(OBJ_CN).unwrap(), OidEntry{sn:"CN", ln:"commonName", nid:Nid::CommonName});
+        m.insert(Oid::from(OBJ_C).unwrap(), OidEntry{sn:"C", ln:"countryName", nid:Nid::CountryName});
+        m.insert(Oid::from(OBJ_L).unwrap(), OidEntry{sn:"L", ln:"localityName", nid:Nid::LocalityName});
+        m.insert(Oid::from(OBJ_ST).unwrap(), OidEntry{sn:"ST", ln:"stateOrProvinceName", nid:Nid::StateOrProvinceName});
+        m.insert(Oid::from(OBJ_O).unwrap(), OidEntry{sn:"O", ln:"organizationName", nid:Nid::OrganizationName});
+        m.insert(Oid::from(OBJ_OU).unwrap(), OidEntry{sn:"OU", ln:"organizationalUnitName", nid:Nid::OrganizationalUnitName});
+        //
+        m.insert(Oid::from(OBJ_PKCS9).unwrap(), OidEntry{sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9});
+        m.insert(Oid::from(OBJ_EMAIL).unwrap(), OidEntry{sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress});
+        //
+        m.insert(Oid::from(OBJ_RSAENC).unwrap(), OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
+        m.insert(Oid::from(OBJ_RSASHA1).unwrap(), OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
+        //
+        m.insert(Oid::from(OBJ_SKI).unwrap(), OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
+        m.insert(Oid::from(OBJ_KU).unwrap(), OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
+        m.insert(Oid::from(OBJ_PKUP).unwrap(), OidEntry{sn:"privateKeyUsagePeriod", ln:"X509v3 Private Key Usage Period", nid:Nid::PrivateKeyUsagePeriod});
+        m.insert(Oid::from(OBJ_SAN).unwrap(), OidEntry{sn:"subjectAltName", ln:"X509v3 Subject Alternative Name", nid:Nid::SubjectAltName});
+        //
+        m.insert(Oid::from(OBJ_BC).unwrap(), OidEntry{sn:"basicConstraints", ln:"X509v3 Basic Constraints", nid:Nid::BasicConstraints});
+        //
+        m.insert(Oid::from(OBJ_CPOL).unwrap(), OidEntry{sn:"certificatePolicies", ln:"X509v3 Certificate Policies", nid:Nid::CertificatePolicies});
+        m.insert(Oid::from(OBJ_AKI).unwrap(), OidEntry{sn:"authorityKeyIdentifier", ln:"X509v3 Authority Key Identifier", nid:Nid::AuthorityKeyIdentifier});
+        m
+    };
+}
 
 
 /// Returns the short name corresponding to the Nid
 pub fn nid2sn(nid: Nid) -> Result<&'static str,NidError> {
-    // XXX pattern matching would be faster, but harder to maintain
     OID_REGISTRY
-        .iter()
-        .find(|ref o| o.nid == nid)
-        .map(|ref o| o.sn)
+        .values()
+        .find(|o| o.nid == nid)
+        .map(|o| o.sn)
         .ok_or(NidError)
 }
 
 /// Returns the long name corresponding to the Nid
 pub fn nid2ln(nid: Nid) -> Result<&'static str,NidError> {
-    // XXX pattern matching would be faster, but harder to maintain
     OID_REGISTRY
-        .iter()
-        .find(|ref o| o.nid == nid)
-        .map(|ref o| o.ln)
+        .values()
+        .find(|o| o.nid == nid)
+        .map(|o| o.ln)
         .ok_or(NidError)
 }
 
 
-pub fn nid2obj(nid: Nid) -> Result<Oid,NidError> {
+pub fn nid2obj(nid: &Nid) -> Result<&Oid,NidError> {
     OID_REGISTRY
         .iter()
-        .find(|ref o| o.nid == nid)
-        .map(|ref o| Oid::from(o.oid))
+        .find(|(_, o)| o.nid == *nid)
+        .map(|(oid, _)| oid)
         .ok_or(NidError)
-    // XXX pattern matching would be faster, but harder to maintain
-    // match nid {
-    //     &Nid::RsaDsi => Ok(Oid::from(OBJ_RSADSI)),
-    //     &Nid::RsaSha1 => Ok(Oid::from(OBJ_RSASHA1)),
-    //     _ => Err(NidError),
-    // }
 }
 
-pub fn oid2nid(obj: &Oid) -> Result<Nid,NidError> {
-    // XXX could be faster by matching on known prefixes to filter subtree
-    // true if obj starts with OBJ_RSADSI
-    // let x = obj.iter().zip(OBJ_RSADSI).all(|(a,b)| a == b);
-
-    // true if obj and OBJ_RSADSI are entirely equal
-    // // or
-    // if obj.iter().eq(OBJ_RSADSI) { return Ok(Nid::RsaDsi); }
-
-    // if obj.iter().eq(OBJ_RSASHA1) { return Ok(Nid::RsaSha1); }
-
-    // Err(NidError)
+pub fn oid2nid(oid: &Oid) -> Result<Nid,NidError> {
     OID_REGISTRY
-        .iter()
-        .find(|ref o| obj.iter().eq(o.oid.iter()))
+        .get(oid)
         .map(|ref o| o.nid)
         .ok_or(NidError)
 }
 
 /// Returns the short name corresponding to the OID
-pub fn oid2sn(obj: &Oid) -> Result<&'static str,NidError> {
-    // XXX pattern matching would be faster, but harder to maintain
+pub fn oid2sn(oid: &Oid) -> Result<&'static str,NidError> {
     OID_REGISTRY
-        .iter()
-        .find(|ref o| obj.iter().eq(o.oid.iter()))
+        .get(oid)
         .map(|ref o| o.sn)
         .ok_or(NidError)
 }
 
 /// Given a short name, returns the matching OID
-pub fn sn2oid(sn: &str) -> Result<Oid, NidError> {
-    // XXX pattern matching would be faster, but harder to maintain
+pub fn sn2oid(sn: &str) -> Result<&Oid, NidError> {
     OID_REGISTRY
         .iter()
-        .find(|ref o| o.sn == sn)
-        .map(|ref o| Oid::from(o.oid))
+        .find(|(_, o)| *o.sn == *sn)
+        .map(|(oid, _)| oid)
         .ok_or(NidError)
 }
 
@@ -272,10 +253,10 @@ mod tests {
 
 #[test]
 fn test_obj2nid() {
-    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]);
+    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
     assert_eq!(oid2nid(&oid), Ok(Nid::RsaSha1));
 
-    let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]);
+    let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]).unwrap();
     assert_eq!(oid2nid(&invalid_oid), Err(NidError));
 }
 
@@ -287,8 +268,8 @@ fn test_nid2sn() {
 
 #[test]
 fn test_sn2oid() {
-    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]);
-    assert_eq!(sn2oid("RSA-SHA1"), Ok(oid));
+    let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
+    assert_eq!(sn2oid("RSA-SHA1"), Ok(&oid));
     assert_eq!(sn2oid("invalid sn"), Err(NidError));
 }
 

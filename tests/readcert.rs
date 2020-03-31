@@ -1,8 +1,3 @@
-extern crate nom;
-extern crate der_parser;
-extern crate x509_parser;
-extern crate rusticata_macros;
-
 use der_parser::oid::Oid;
 use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension,parse_crl_der};
 use x509_parser::objects::{nid2obj, Nid};
@@ -31,13 +26,13 @@ fn test_x509_parser() {
             assert_eq!(format!("{}", tbs_cert.subject), expected_subject);
             //
             let sig = &tbs_cert.signature;
-            assert_eq!(sig.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]));
+            assert_eq!(sig.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap());
             //
             let expected_issuer = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.issuer), expected_issuer);
             //
             let sig_alg = &cert.signature_algorithm;
-            assert_eq!(sig_alg.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]));
+            assert_eq!(sig_alg.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap());
             //
             let not_before = tbs_cert.validity.not_before;
             let not_after = tbs_cert.validity.not_after;
@@ -50,23 +45,23 @@ fn test_x509_parser() {
             //
             let expected_extensions = vec![
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 19]),
+                    oid: Oid::from(&[2, 5, 29, 19]).unwrap(),
                     critical: true,
                     value: &[48, 3, 1, 1, 255] },
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 15]),
+                    oid: Oid::from(&[2, 5, 29, 15]).unwrap(),
                     critical: false,
                     value: &[3, 2, 1, 70] },
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 32]),
+                    oid: Oid::from(&[2, 5, 29, 32]).unwrap(),
                     critical: false,
                     value: &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1] },
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 14]),
+                    oid: Oid::from(&[2, 5, 29, 14]).unwrap(),
                     critical: false,
                     value: &[4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54] },
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 35]),
+                    oid: Oid::from(&[2, 5, 29, 35]).unwrap(),
                     critical: false,
                     value: &[48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54] },
             ];
@@ -99,8 +94,8 @@ fn test_x509_parser_no_extensions() {
 #[test]
 fn test_parse_subject_public_key_info() {
     let res = parse_subject_public_key_info(&IGCA_DER[339..]).expect("Parse public key info").1;
-    let oid = nid2obj(Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
-    assert_eq!(res.algorithm.algorithm, oid);
+    let oid = nid2obj(&Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
+    assert_eq!(res.algorithm.algorithm, *oid);
     let (tag, p) = res.algorithm.parameters.as_context_specific().expect("algorithm parameters");
     assert_eq!(tag.0, 0);
     let params = p.expect("algorithm parameters");
@@ -131,13 +126,13 @@ fn test_crl_parse() {
             assert_eq!(tbs_cert_list.version, Some(1));
 
             let sig = &tbs_cert_list.signature;
-            assert_eq!(sig.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]));
+            assert_eq!(sig.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap());
 
             let expected_issuer = "O=Sample Signer Organization, OU=Sample Signer Unit, CN=Sample Signer Cert";
             assert_eq!(format!("{}", tbs_cert_list.issuer), expected_issuer);
 
             let sig_alg = &cert.signature_algorithm;
-            assert_eq!(sig_alg.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]));
+            assert_eq!(sig_alg.algorithm, Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap());
 
             let this_update = tbs_cert_list.this_update;
             let next_update = tbs_cert_list.next_update.unwrap();
@@ -157,12 +152,12 @@ fn test_crl_parse() {
                 },
                 extensions: vec![
                     X509Extension {
-                        oid: Oid::from(&[2, 5, 29, 21]),
+                        oid: Oid::from(&[2, 5, 29, 21]).unwrap(),
                         critical: false,
                         value: &[10, 1, 3]
                     },
                     X509Extension {
-                        oid: Oid::from(&[2, 5, 29, 24]),
+                        oid: Oid::from(&[2, 5, 29, 24]).unwrap(),
                         critical: false,
                         value: &[24, 15, 50, 48, 49, 51, 48, 50,
                                 49, 56, 49, 48, 50, 50, 48, 48, 90]
@@ -175,13 +170,13 @@ fn test_crl_parse() {
 
             let expected_extensions = vec![
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 35]),
+                    oid: Oid::from(&[2, 5, 29, 35]).unwrap(),
                     critical: false,
                     value: &[48, 22, 128, 20, 190, 18, 1, 204, 170, 234, 17, 128, 218,
                              46, 173, 178, 234, 199, 181, 251, 159, 249, 173, 52]
                 },
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 20]),
+                    oid: Oid::from(&[2, 5, 29, 20]).unwrap(),
                     critical: false,
                     value: &[2, 1, 3] },
             ];
@@ -203,11 +198,11 @@ fn test_crl_parse_empty() {
 
             let expected_extensions = vec![
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 20]),
+                    oid: Oid::from(&[2, 5, 29, 20]).unwrap(),
                     critical: false,
                     value: &[2, 1, 2] },
                 X509Extension {
-                    oid: Oid::from(&[2, 5, 29, 35]),
+                    oid: Oid::from(&[2, 5, 29, 35]).unwrap(),
                     critical: false,
                     value: &[48, 22, 128, 20, 34, 101, 12, 214, 90, 157, 52, 137,
                              243, 131, 180, 149, 82, 191, 80, 27, 57, 39, 6, 172] },
