@@ -355,6 +355,9 @@ fn parse_crl_extensions(i:&[u8]) -> IResult<&[u8],Vec<X509Extension>,BerError> {
     ).map(|(rem,x)| (rem,x.1))
 }
 
+// lifetime is *not* useless, it is required to tell the compiler the content of the temporary
+// DerObject has the same lifetime as the input
+#[allow(clippy::needless_lifetimes)]
 fn parse_algorithm_identifier<'a>(i:&'a [u8]) -> BerResult<AlgorithmIdentifier> {
     parse_der_struct!(
         i,
