@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use der_parser::{oid, oid::Oid};
-use x509_parser::{parse_subject_public_key_info,parse_x509_der,X509Extension};
 use x509_parser::objects::{nid2obj, Nid};
-use x509_parser::x509_extensions::{ExtensionType, BasicConstraints, KeyUsage, CertificatePolicies};
+use x509_parser::x509_extensions::{
+    BasicConstraints, CertificatePolicies, ExtensionType, KeyUsage,
+};
+use x509_parser::{parse_subject_public_key_info, parse_x509_der, X509Extension};
 
 static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
@@ -16,7 +18,7 @@ fn test_x509_parser() {
     // println!("res: {:?}", res);
     match res {
         Ok((e, cert)) => {
-            assert_eq!(e,empty);
+            assert_eq!(e, empty);
             //
             let tbs_cert = cert.tbs_certificate;
             assert_eq!(tbs_cert.version, 2);
@@ -44,24 +46,58 @@ fn test_x509_parser() {
             assert_eq!(not_after.tm_mon, 9);
             assert_eq!(not_after.tm_mday, 17);
             //
-            let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())].into_iter().collect();
+            let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())]
+                .into_iter()
+                .collect();
             let expected_extensions_list = vec![
-                X509Extension::new(oid!(2.5.29.19), true, &[48, 3, 1, 1, 255],
-                    ExtensionType::BasicConstraints(BasicConstraints { ca: true, path_len_constraint: None })),
-                X509Extension::new(oid!(2.5.29.15), false, &[3, 2, 1, 70],
-                    ExtensionType::KeyUsage(KeyUsage { flags: 98 })),
-                X509Extension::new(oid!(2.5.29.32), false, &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
-                    ExtensionType::CertificatePolicies(CertificatePolicies { policies })),
-                X509Extension::new(oid!(2.5.29.14), false, &[4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], ExtensionType::Unknown),
-                X509Extension::new(oid!(2.5.29.35), false, &[48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168, 48, 49, 54], ExtensionType::Unknown),
+                X509Extension::new(
+                    oid!(2.5.29.19),
+                    true,
+                    &[48, 3, 1, 1, 255],
+                    ExtensionType::BasicConstraints(BasicConstraints {
+                        ca: true,
+                        path_len_constraint: None,
+                    }),
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.15),
+                    false,
+                    &[3, 2, 1, 70],
+                    ExtensionType::KeyUsage(KeyUsage { flags: 98 }),
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.32),
+                    false,
+                    &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
+                    ExtensionType::CertificatePolicies(CertificatePolicies { policies }),
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.14),
+                    false,
+                    &[
+                        4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
+                        168, 48, 49, 54,
+                    ],
+                    ExtensionType::Unknown,
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.35),
+                    false,
+                    &[
+                        48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79,
+                        255, 142, 78, 168, 48, 49, 54,
+                    ],
+                    ExtensionType::Unknown,
+                ),
             ];
-            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list.into_iter()
+            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list
+                .into_iter()
                 .map(|e| (e.oid.clone(), e))
                 .collect();
             assert_eq!(tbs_cert.extensions(), &expected_extensions);
             //
             assert!(tbs_cert.is_ca());
-        },
+        }
         _ => panic!("x509 parsing failed: {:?}", res),
     }
 }
@@ -84,10 +120,16 @@ fn test_x509_parser_no_extensions() {
 
 #[test]
 fn test_parse_subject_public_key_info() {
-    let res = parse_subject_public_key_info(&IGCA_DER[339..]).expect("Parse public key info").1;
+    let res = parse_subject_public_key_info(&IGCA_DER[339..])
+        .expect("Parse public key info")
+        .1;
     let oid = nid2obj(&Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
     assert_eq!(res.algorithm.algorithm, oid);
-    let (tag, p) = res.algorithm.parameters.as_context_specific().expect("algorithm parameters");
+    let (tag, p) = res
+        .algorithm
+        .parameters
+        .as_context_specific()
+        .expect("algorithm parameters");
     assert_eq!(tag.0, 0);
     let params = p.expect("algorithm parameters");
     assert_eq!(params.tag.0, 5);
