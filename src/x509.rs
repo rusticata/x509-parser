@@ -182,6 +182,18 @@ impl<'a> TbsCertificate<'a> {
     pub fn raw_serial(&self) -> &[u8] {
         self.raw_serial
     }
+
+    /// Get a formatted string of the certificate serial number, separated by ':'
+    pub fn raw_serial_as_string(&self) -> String {
+        let mut s = self
+            .raw_serial
+            .iter()
+            .fold(String::with_capacity(3 * self.raw_serial.len()), |a, b| {
+                a + &format!("{:02x}:", b)
+            });
+        s.pop();
+        s
+    }
 }
 
 /// The sequence TBSCertList contains information about the certificates that have

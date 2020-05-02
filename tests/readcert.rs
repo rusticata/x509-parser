@@ -22,6 +22,9 @@ fn test_x509_parser() {
             let tbs_cert = cert.tbs_certificate;
             assert_eq!(tbs_cert.version, 2);
             //
+            let s = tbs_cert.raw_serial_as_string();
+            assert_eq!(&s, "39:11:45:10:94");
+            //
             let expected_subject = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.subject), expected_subject);
             //
