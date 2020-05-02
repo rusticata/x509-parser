@@ -1,5 +1,9 @@
 language: rust
 sudo: false
+env:
+  global:
+    - RUST_VERSION="stable"
+    - RUST_VERSION_MIN="1.37.0"
 matrix:
   include:
     - rust: stable
@@ -11,15 +15,29 @@ matrix:
        - NAME="stable,clippy"
        - FEATURES=''
        - CLIPPY=yes
+    - rust: stable
+      env:
+       - NAME="stable,fmt"
+       - FEATURES=''
+       - RUSTFMT=yes
+    - rust: stable
+      env:
+       - NAME="rust-${RUST_VERSION_MIN}"
+       - RUST_VERSION="${RUST_VERSION_MIN}"
+       - FEATURES=''
     - rust: nightly
       env:
        - NAME="nightly"
+       - RUST_VERSION="nightly"
        - FEATURES=''
 before_script:
+  - rustup default "${RUST_VERSION}"
   - rustc --version
   - ([ "$CLIPPY" != yes ] || rustup component add clippy)
+  - ([ "$RUSTFMT" != yes ] || rustup component add rustfmt)
 script:
-  - ([ "$CLIPPY" != yes ] || cargo clippy -- -D clippy::all)
+  - ([ "$CLIPPY" != yes ] || cargo clippy --features "$FEATURES" --all-targets -- -D clippy::all)
+  - ([ "$RUSTFMT" != yes ] || cargo fmt --all -- --check)
   - |
       cargo build --verbose --features "$FEATURES" &&
       cargo test --verbose --features "$FEATURES" &&
