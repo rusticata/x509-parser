@@ -16,6 +16,14 @@ use der_parser::der::DerObject;
 use der_parser::oid::Oid;
 
 #[derive(Debug, PartialEq)]
+pub enum X509Version {
+    V1,
+    V2,
+    V3,
+    Invalid(u32),
+}
+
+#[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
     pub oid: Oid<'a>,
     pub critical: bool,
@@ -83,6 +91,7 @@ impl<'a> fmt::Display for X509Name<'a> {
 /// </pre>
 #[derive(Debug, PartialEq)]
 pub struct TbsCertificate<'a> {
+    /// Raw encoding of the version: 0 for v1, 1 for v2, 2 for v3
     pub version: u32,
     pub serial: BigUint,
     pub signature: AlgorithmIdentifier<'a>,
@@ -269,6 +278,18 @@ pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitStringObject<'a>,
+}
+
+impl<'a> X509Certificate<'a> {
+    /// Get the version of the encoded certificate
+    pub fn version(&self) -> X509Version {
+        match self.tbs_certificate.version {
+            0 => X509Version::V1,
+            1 => X509Version::V2,
+            2 => X509Version::V3,
+            n => X509Version::Invalid(n),
+        }
+    }
 }
 
 /// An X.509 v2 Certificate Revocaton List (CRL).
