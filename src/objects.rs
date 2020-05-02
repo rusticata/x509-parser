@@ -118,40 +118,38 @@ macro_rules! idce {
     ( $( $x:expr ),* ) =>    { &[ 2, 5, 29, $( $x ),* ] }
 }
 
-const OBJ_ALGO : &[u64]    = algo!();
-const OBJ_RSADSI : &[u64]  = rsadsi!();
-const OBJ_X500 : &[u64]    = &[2, 5];
-const OBJ_X509 : &[u64]    = x509!();
-const OBJ_CN : &[u64]      = x509!(3);
-const OBJ_C : &[u64]       = x509!(6);
-const OBJ_L : &[u64]       = x509!(7);
-const OBJ_ST : &[u64]      = x509!(8);
-const OBJ_O : &[u64]       = x509!(10);
-const OBJ_OU : &[u64]      = x509!(11);
+const OBJ_ALGO: &[u64] = algo!();
+const OBJ_RSADSI: &[u64] = rsadsi!();
+const OBJ_X500: &[u64] = &[2, 5];
+const OBJ_X509: &[u64] = x509!();
+const OBJ_CN: &[u64] = x509!(3);
+const OBJ_C: &[u64] = x509!(6);
+const OBJ_L: &[u64] = x509!(7);
+const OBJ_ST: &[u64] = x509!(8);
+const OBJ_O: &[u64] = x509!(10);
+const OBJ_OU: &[u64] = x509!(11);
 
-const OBJ_PKCS9 : &[u64]   = pkcs9!();
-const OBJ_EMAIL : &[u64]   = pkcs9!(1);
+const OBJ_PKCS9: &[u64] = pkcs9!();
+const OBJ_EMAIL: &[u64] = pkcs9!(1);
 
 // XXX ...
 
-const OBJ_RSAENC : &[u64] = pkcs1!(1);
-const OBJ_RSASHA1 : &[u64] = pkcs1!(5);
+const OBJ_RSAENC: &[u64] = pkcs1!(1);
+const OBJ_RSASHA1: &[u64] = pkcs1!(5);
 
 // other constants
 
 // const OBJ_IDCE : &[u64]    = idce!();
-const OBJ_SKI : &[u64]     = idce!(14);
-const OBJ_KU : &[u64]      = idce!(15);
-const OBJ_PKUP : &[u64]    = idce!(16);
-const OBJ_SAN : &[u64]     = idce!(17);
+const OBJ_SKI: &[u64] = idce!(14);
+const OBJ_KU: &[u64] = idce!(15);
+const OBJ_PKUP: &[u64] = idce!(16);
+const OBJ_SAN: &[u64] = idce!(17);
 
-const OBJ_BC : &[u64]      = idce!(19);
+const OBJ_BC: &[u64] = idce!(19);
 
-const OBJ_CPOL : &[u64]    = idce!(32);
+const OBJ_CPOL: &[u64] = idce!(32);
 
-const OBJ_AKI : &[u64]     = idce!(35);
-
-
+const OBJ_AKI: &[u64] = idce!(35);
 
 struct OidEntry {
     sn: &'static str,
