@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_obj2nid() {
-        let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
+        let oid = Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap();
         assert_eq!(oid2nid(&oid), Ok(Nid::RsaSha1));
 
         let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]).unwrap();
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_sn2oid() {
-        let oid = Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap();
+        let oid = Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap();
         assert_eq!(sn2oid("RSA-SHA1"), Ok(&oid));
         assert_eq!(sn2oid("invalid sn"), Err(NidError));
     }

@@ -7,36 +7,20 @@ use std::io::Cursor;
 use x509_parser::parse_x509_der;
 use x509_parser::pem::{pem_to_der, Pem};
 
-static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
+static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 
 #[test]
 fn test_x509_parse_pem() {
-    let res = pem_to_der(IGCA_PEM);
-    match res {
-        Ok((rem, pem)) => {
-            // println!("{:?}", pem);
-            assert!(rem.is_empty());
-            assert_eq!(pem.label, String::from("CERTIFICATE"));
-            //
-            // now check that the content is indeed a certificate
-            let res = parse_x509_der(&pem.contents);
-            // println!("res: {:?}", res);
-            match res {
-                Ok((rem, crt)) => {
-                    assert!(rem.is_empty());
-                    assert_eq!(crt.tbs_certificate.version, 2);
-                }
-                _e => {
-                    eprintln!("{:?}", _e);
-                    assert!(false);
-                }
-            }
-        }
-        _e => {
-            eprintln!("{:?}", _e);
-            assert!(false);
-        }
-    }
+    let (rem, pem) = pem_to_der(IGCA_PEM).expect("PEM parsing failed");
+    // println!("{:?}", pem);
+    assert!(rem.is_empty());
+    assert_eq!(pem.label, String::from("CERTIFICATE"));
+    //
+    // now check that the content is indeed a certificate
+    let (rem, crt) = parse_x509_der(&pem.contents).expect("X.509 parsing failed");
+    // println!("res: {:?}", res);
+    assert!(rem.is_empty());
+    assert_eq!(crt.tbs_certificate.version, 2);
 }
 
 #[test]
@@ -60,7 +44,7 @@ fn test_pem_not_pem() {
     assert!(res.is_err());
 }
 
-static NO_END: &'static [u8] = include_bytes!("../assets/no_end.pem");
+static NO_END: &[u8] = include_bytes!("../assets/no_end.pem");
 
 #[test]
 fn test_pem_no_end() {

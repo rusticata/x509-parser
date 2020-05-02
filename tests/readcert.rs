@@ -2,12 +2,12 @@ use der_parser::oid::Oid;
 use x509_parser::objects::{nid2obj, Nid};
 use x509_parser::{parse_crl_der, parse_subject_public_key_info, parse_x509_der, X509Extension};
 
-static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
-static NO_EXTENSIONS_DER: &'static [u8] = include_bytes!("../assets/no_extensions.der");
-static V1: &'static [u8] = include_bytes!("../assets/v1.der");
-static CRL_DER: &'static [u8] = include_bytes!("../assets/example.crl");
-static EMPTY_CRL_DER: &'static [u8] = include_bytes!("../assets/empty.crl");
-static MINIMAL_CRL_DER: &'static [u8] = include_bytes!("../assets/minimal.crl");
+static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
+static NO_EXTENSIONS_DER: &[u8] = include_bytes!("../assets/no_extensions.der");
+static V1: &[u8] = include_bytes!("../assets/v1.der");
+static CRL_DER: &[u8] = include_bytes!("../assets/example.crl");
+static EMPTY_CRL_DER: &[u8] = include_bytes!("../assets/empty.crl");
+static MINIMAL_CRL_DER: &[u8] = include_bytes!("../assets/minimal.crl");
 
 #[test]
 fn test_x509_parser() {
@@ -31,7 +31,7 @@ fn test_x509_parser() {
             let sig = &tbs_cert.signature;
             assert_eq!(
                 sig.algorithm,
-                Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap()
+                Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap()
             );
             //
             let expected_issuer = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
@@ -40,7 +40,7 @@ fn test_x509_parser() {
             let sig_alg = &cert.signature_algorithm;
             assert_eq!(
                 sig_alg.algorithm,
-                Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap()
+                Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap()
             );
             //
             let not_before = tbs_cert.validity.not_before;
@@ -157,7 +157,7 @@ fn test_crl_parse() {
             let sig = &tbs_cert_list.signature;
             assert_eq!(
                 sig.algorithm,
-                Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap()
+                Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap()
             );
 
             let expected_issuer =
@@ -167,7 +167,7 @@ fn test_crl_parse() {
             let sig_alg = &cert.signature_algorithm;
             assert_eq!(
                 sig_alg.algorithm,
-                Oid::from(&[1, 2, 840, 113549, 1, 1, 5]).unwrap()
+                Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap()
             );
 
             let this_update = tbs_cert_list.this_update;
@@ -183,7 +183,7 @@ fn test_crl_parse() {
             assert_eq!(
                 revoked_certs[0],
                 x509_parser::RevokedCertificate {
-                    user_certificate: 1341767u32.into(),
+                    user_certificate: 1_341_767_u32.into(),
                     revocation_date: time::Tm {
                         tm_sec: 12,
                         tm_min: 22,
@@ -215,7 +215,7 @@ fn test_crl_parse() {
             );
 
             assert_eq!(revoked_certs.len(), 5);
-            assert_eq!(revoked_certs[4].user_certificate, 1341771u32.into());
+            assert_eq!(revoked_certs[4].user_certificate, 1_341_771_u32.into());
 
             let expected_extensions = vec![
                 X509Extension {
