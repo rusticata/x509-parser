@@ -2,7 +2,6 @@
 
 use der_parser::error::BerError;
 use nom::error::{ErrorKind, ParseError};
-use std;
 
 /// An error that can occur while converting an OID to a Nid.
 #[derive(Debug, PartialEq)]
