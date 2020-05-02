@@ -125,7 +125,7 @@ fn test_parse_subject_public_key_info() {
         .expect("algorithm parameters");
     assert_eq!(tag.0, 0);
     let params = p.expect("algorithm parameters");
-    assert_eq!(params.tag.0, 5);
+    assert_eq!(params.header.tag.0, 5);
     let spk = res.subject_public_key;
     println!("spk.data.len {}", spk.data.len());
     assert_eq!(spk.data.len(), 270);
