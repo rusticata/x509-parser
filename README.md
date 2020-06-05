@@ -49,11 +49,14 @@ match res {
 ### 0.8.0
 
 - Upgrade to `der-parser` 4.0
+- Fix clippy warnings
+  - `nid2obj` argument is now passed by copy, not reference
+- Add method to get a formatted string of the certificate serial number
+- Add method to get decoded version
 
 ### 0.7.0
 
-- Fix clippy warnings
-  - `nid2obj` argument is now passed by copy, not reference
+- Expose raw bytes of the certificate serial number
 - Set edition to 2018
 
 ### 0.6.4
