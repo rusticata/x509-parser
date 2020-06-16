@@ -46,7 +46,7 @@ pub struct KeyUsage {
 
 impl KeyUsage {
     pub fn digital_signature(&self) -> bool {
-        (self.flags >> 0) & 1 == 1
+        self.flags & 1 == 1
     }
     pub fn non_repudiation(&self) -> bool {
         (self.flags >> 1) & 1u16 == 1
@@ -265,13 +265,13 @@ pub(crate) mod parser {
             .1
             .as_slice()
             .and_then(|s| std::str::from_utf8(s).map_err(|_| BerError::BerValueError))
-            .map_err(|e| nom::Err::Failure(e))
+            .map_err(nom::Err::Failure)
         }
         let name = match hdr.tag.0 {
             0 => {
                 // otherName SEQUENCE { OID, [0] explicit any defined by oid }
                 let (any, oid) = parse_der_oid(rest)?;
-                let oid = oid.as_oid_val().map_err(|e| nom::Err::Failure(e))?;
+                let oid = oid.as_oid_val().map_err(nom::Err::Failure)?;
                 GeneralName::OtherName(oid, any)
             }
             1 => GeneralName::RFC822Name(ia5str(rest, hdr)?),
@@ -295,7 +295,7 @@ pub(crate) mod parser {
                 )?
                 .1
                 .as_slice()
-                .map_err(|e| nom::Err::Failure(e))?;
+                .map_err(nom::Err::Failure)?;
                 GeneralName::IPAddress(ip)
             }
             8 => {
@@ -308,7 +308,7 @@ pub(crate) mod parser {
                 )?
                 .1
                 .as_oid_val()
-                .map_err(|e| nom::Err::Failure(e))?;
+                .map_err(nom::Err::Failure)?;
                 GeneralName::RegisteredID(oid)
             }
             _ => return Err(Err::Failure(BerError::UnknownTag)),
@@ -363,14 +363,10 @@ pub(crate) mod parser {
         }
         let (ret, pairs) = parse_der_sequence_of!(i, parse_oid_pair)?;
         let mut mappings: HashMap<Oid, Vec<Oid>> = HashMap::new();
-        for pair in pairs
-            .as_sequence()
-            .map_err(|e| nom::Err::Failure(e))?
-            .into_iter()
-        {
-            let pair = pair.as_sequence().map_err(|e| nom::Err::Failure(e))?;
-            let left = pair[0].as_oid_val().map_err(|e| nom::Err::Failure(e))?;
-            let right = pair[1].as_oid_val().map_err(|e| nom::Err::Failure(e))?;
+        for pair in pairs.as_sequence().map_err(nom::Err::Failure)?.iter() {
+            let pair = pair.as_sequence().map_err(nom::Err::Failure)?;
+            let left = pair[0].as_oid_val().map_err(nom::Err::Failure)?;
+            let right = pair[1].as_oid_val().map_err(nom::Err::Failure)?;
             if left.bytes() == oid!(raw 2.5.29.32.0) || right.bytes() == oid!(raw 2.5.29.32.0) {
                 // mapping to or from anyPolicy is not allowed
                 return Err(Err::Failure(BerError::InvalidTag));
@@ -403,12 +399,8 @@ pub(crate) mod parser {
             ocscp_signing: false,
             other: Vec::new(),
         };
-        for oid in seq
-            .as_sequence()
-            .map_err(|e| nom::Err::Failure(e))?
-            .into_iter()
-        {
-            let oid = oid.as_oid_val().map_err(|e| nom::Err::Failure(e))?;
+        for oid in seq.as_sequence().map_err(nom::Err::Failure)?.iter() {
+            let oid = oid.as_oid_val().map_err(nom::Err::Failure)?;
             if !seen.insert(oid.clone()) {
                 continue;
             }
@@ -442,7 +434,7 @@ pub(crate) mod parser {
             .or(Err(Err::Error(BerError::BerTypeError)))?;
         let flags = bitstring
             .data
-            .into_iter()
+            .iter()
             .rev()
             .fold(0, |acc, x| acc << 8 | ((*x).reverse_bits() as u16));
         Ok((rest, KeyUsage { flags }))
