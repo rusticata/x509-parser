@@ -12,6 +12,10 @@
 A X.509 v3 ([RFC5280]) parser, implemented with the [nom](https://github.com/Geal/nom)
 parser combinator framework.
 
+It is written in pure Rust, fast, and makes extensive use of zero-copy. A lot of care is taken
+to ensure security and safety of this crate, including design (recursion limit, defensive
+programming), tests, and fuzzing. It also aims to be panic-free.
+
 The code is available on [Github](https://github.com/rusticata/x509-parser)
 and is part of the [Rusticata](https://github.com/rusticata) project.
 
