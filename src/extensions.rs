@@ -473,3 +473,136 @@ pub(crate) mod parser {
         Ok((ret, CertificatePolicies { policies }))
     }
 }
+
+#[test]
+fn test_keyusage_flags() {
+    let ku = KeyUsage { flags: 98 };
+    assert!(!ku.digital_signature());
+    assert!(ku.non_repudiation());
+    assert!(!ku.key_encipherment());
+    assert!(!ku.data_encipherment());
+    assert!(!ku.key_agreement());
+    assert!(ku.key_cert_sign());
+    assert!(ku.crl_sign());
+    assert!(!ku.encipher_only());
+    assert!(!ku.decipher_only());
+}
+
+#[test]
+fn test_extensions1() {
+    use der_parser::oid;
+    let crt = crate::parse_x509_der(include_bytes!("../assets/extension1.der"))
+        .unwrap()
+        .1;
+    let tbs = crt.tbs_certificate;
+    assert_eq!(
+        tbs.basic_constraints().unwrap().1,
+        &BasicConstraints {
+            ca: true,
+            path_len_constraint: Some(1)
+        }
+    );
+    {
+        let ku = tbs.key_usage().unwrap().1;
+        assert!(ku.digital_signature());
+        assert!(!ku.non_repudiation());
+        assert!(ku.key_encipherment());
+        assert!(ku.data_encipherment());
+        assert!(ku.key_agreement());
+        assert!(!ku.key_cert_sign());
+        assert!(!ku.crl_sign());
+        assert!(ku.encipher_only());
+        assert!(ku.decipher_only());
+    }
+    {
+        let eku = tbs.extended_key_usage().unwrap().1;
+        assert!(!eku.any);
+        assert!(eku.server_auth);
+        assert!(!eku.client_auth);
+        assert!(eku.code_signing);
+        assert!(!eku.email_protection);
+        assert!(eku.time_stamping);
+        assert!(!eku.ocscp_signing);
+        assert_eq!(eku.other, vec![oid!(1.2.3.4.0.42)]);
+    }
+    assert_eq!(
+        tbs.policy_constraints().unwrap().1,
+        &PolicyConstraints {
+            require_explicit_policy: None,
+            inhibit_policy_mapping: Some(10)
+        }
+    );
+    assert_eq!(
+        tbs.inhibit_anypolicy().unwrap().1,
+        &InhibitAnyPolicy { skip_certs: 2 }
+    );
+    {
+        let alt_names = &tbs.subject_alternative_name().unwrap().1.general_names;
+        assert_eq!(alt_names[0], GeneralName::RFC822Name("foo@example.com"));
+        assert_eq!(alt_names[1], GeneralName::URI("http://my.url.here/"));
+        assert_eq!(
+            alt_names[2],
+            GeneralName::IPAddress([192, 168, 7, 1].as_ref())
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                match alt_names[3] {
+                    GeneralName::DirectoryName(ref dn) => dn,
+                    _ => unreachable!(),
+                }
+            ),
+            "C=UK, O=My Organization, OU=My Unit, CN=My Name"
+        );
+        assert_eq!(alt_names[4], GeneralName::DNSName("localhost"));
+        assert_eq!(alt_names[5], GeneralName::RegisteredID(oid!(1.2.90.0)));
+        assert_eq!(
+            alt_names[6],
+            GeneralName::OtherName(oid!(1.2.3.4), b"\xA0\x17\x0C\x15some other identifier")
+        );
+    }
+
+    {
+        let name_constraints = &tbs.name_constraints().unwrap().1;
+        assert_eq!(name_constraints.permitted_subtrees, None);
+        assert_eq!(
+            name_constraints.excluded_subtrees,
+            Some(vec![
+                GeneralSubtree {
+                    base: GeneralName::IPAddress([192, 168, 0, 0, 255, 255, 0, 0].as_ref())
+                },
+                GeneralSubtree {
+                    base: GeneralName::RFC822Name("foo.com")
+                },
+            ])
+        );
+    }
+}
+
+#[test]
+fn test_extensions2() {
+    use der_parser::oid;
+    let crt = crate::parse_x509_der(include_bytes!("../assets/extension2.der"))
+        .unwrap()
+        .1;
+    let tbs = crt.tbs_certificate;
+    assert_eq!(
+        tbs.policy_constraints().unwrap().1,
+        &PolicyConstraints {
+            require_explicit_policy: Some(5000),
+            inhibit_policy_mapping: None
+        }
+    );
+    {
+        let pm = tbs.policy_mappings().unwrap().1;
+        let mut pm_ref = HashMap::new();
+        pm_ref.insert(oid!(2.34.23), vec![oid!(2.2)]);
+        pm_ref.insert(oid!(1.1), vec![oid!(0.0.4)]);
+        pm_ref.insert(oid!(2.2), vec![oid!(2.2.1), oid!(2.2.3)]);
+        assert_eq!(pm.mappings, pm_ref);
+    }
+}
+
+// Test cases for:
+// - parsing SubjectAlternativeName
+// - parsing NameConstraints
