@@ -197,6 +197,62 @@ impl<'a> TbsCertificate<'a> {
         }
     }
 
+    pub fn key_usage(&self) -> Option<(bool, &KeyUsage)> {
+        let ext = self.extensions.get(&OID_EXT_KU)?;
+        match ext.parsed_extension {
+            ParsedExtension::KeyUsage(ref ku) => Some((ext.critical, ku)),
+            _ => None,
+        }
+    }
+
+    pub fn extended_key_usage(&self) -> Option<(bool, &ExtendedKeyUsage)> {
+        let ext = self.extensions.get(&OID_EXT_EKU)?;
+        match ext.parsed_extension {
+            ParsedExtension::ExtendedKeyUsage(ref eku) => Some((ext.critical, eku)),
+            _ => None,
+        }
+    }
+
+    pub fn policy_constraints(&self) -> Option<(bool, &PolicyConstraints)> {
+        let ext = self.extensions.get(&OID_EXT_POLICYCONSTRAINTS)?;
+        match ext.parsed_extension {
+            ParsedExtension::PolicyConstraints(ref pc) => Some((ext.critical, pc)),
+            _ => None,
+        }
+    }
+
+    pub fn inhibit_anypolicy(&self) -> Option<(bool, &InhibitAnyPolicy)> {
+        let ext = self.extensions.get(&OID_EXT_INHIBITANYPOLICY)?;
+        match ext.parsed_extension {
+            ParsedExtension::InhibitAnyPolicy(ref iap) => Some((ext.critical, iap)),
+            _ => None,
+        }
+    }
+
+    pub fn policy_mappings(&self) -> Option<(bool, &PolicyMappings)> {
+        let ext = self.extensions.get(&OID_EXT_POLICYMAPPINGS)?;
+        match ext.parsed_extension {
+            ParsedExtension::PolicyMappings(ref pm) => Some((ext.critical, pm)),
+            _ => None,
+        }
+    }
+
+    pub fn subject_alternative_name(&self) -> Option<(bool, &SubjectAlternativeName)> {
+        let ext = self.extensions.get(&OID_EXT_SAN)?;
+        match ext.parsed_extension {
+            ParsedExtension::SubjectAlternativeName(ref san) => Some((ext.critical, san)),
+            _ => None,
+        }
+    }
+
+    pub fn name_constraints(&self) -> Option<(bool, &NameConstraints)> {
+        let ext = self.extensions.get(&OID_EXT_NAMECONSTRAINTS)?;
+        match ext.parsed_extension {
+            ParsedExtension::NameConstraints(ref nc) => Some((ext.critical, nc)),
+            _ => None,
+        }
+    }
+
     /// Returns true if certificate has `basicConstraints CA:true`
     pub fn is_ca(&self) -> bool {
         self.basic_constraints()
