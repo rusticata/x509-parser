@@ -13,7 +13,7 @@ use crate::objects::{nid2sn, oid2nid};
 use crate::parse_ext_basicconstraints;
 use der_parser::ber::BitStringObject;
 use der_parser::der::DerObject;
-use der_parser::oid::Oid;
+use der_parser::{oid, oid::Oid};
 
 #[derive(Debug, PartialEq)]
 pub enum X509Version {
@@ -166,7 +166,7 @@ impl<'a> TbsCertificate<'a> {
         // filter on ext: OId(basicConstraints)
         self.extensions
             .iter()
-            .find(|ext| ext.oid == Oid::from(&[2, 5, 29, 19]).unwrap())
+            .find(|ext| ext.oid == oid!(2.5.29.19))
             .and_then(|ext| {
                 // parse DER sequence
                 if let Ok((_, bc)) = parse_ext_basicconstraints(ext.value) {
@@ -318,7 +318,6 @@ pub struct CertificateRevocationList<'a> {
 mod tests {
     use super::*;
     use der_parser::ber::BerObjectContent;
-    use der_parser::oid::Oid;
 
     #[test]
     fn test_x509_name() {
@@ -326,13 +325,13 @@ mod tests {
             rdn_seq: vec![
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: Oid::from(&[2, 5, 4, 6]).unwrap(), // countryName
+                        attr_type: oid!(2.5.4.6), // countryName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: Oid::from(&[2, 5, 4, 8]).unwrap(), // stateOrProvinceName
+                        attr_type: oid!(2.5.4.8), // stateOrProvinceName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                             "Some-State",
                         )),
@@ -340,7 +339,7 @@ mod tests {
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: Oid::from(&[2, 5, 4, 10]).unwrap(), // organizationName
+                        attr_type: oid!(2.5.4.10), // organizationName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                             "Internet Widgits Pty Ltd",
                         )),
@@ -349,13 +348,13 @@ mod tests {
                 RelativeDistinguishedName {
                     set: vec![
                         AttributeTypeAndValue {
-                            attr_type: Oid::from(&[2, 5, 4, 3]).unwrap(), // CN
+                            attr_type: oid!(2.5.4.3), // CN
                             attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                                 "Test1",
                             )),
                         },
                         AttributeTypeAndValue {
-                            attr_type: Oid::from(&[2, 5, 4, 3]).unwrap(), // CN
+                            attr_type: oid!(2.5.4.3), // CN
                             attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                                 "Test2",
                             )),

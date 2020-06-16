@@ -6,9 +6,8 @@
 //! Note: the objects registry is implemented as a static array with linear search. This is not the
 //! most efficient method, but makes maintainance easier.
 
-// use std::convert::From;
 use crate::error::NidError;
-use der_parser::oid::Oid;
+use der_parser::{oid, oid::Oid};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
@@ -86,70 +85,14 @@ pub enum Nid {
     SubjectAltName,
 
     BasicConstraints,
-
+    NameConstraints,
     CertificatePolicies,
+    PolicyMappings,
     AuthorityKeyIdentifier,
+    PolicyConstraints,
+    ExtendedKeyUsage,
+    InhibitAnyPolicy,
 }
-
-// impl From<u32> for Nid {
-//     fn from(u: u32) -> Nid { Nid(u) }
-// }
-
-// helper macros to be able to use the node OID of the parent, and only append the child values
-macro_rules! rsadsi {
-    ( )                =>    { &[ 1, 2, 840, 113549 ] };
-    ( $( $x:expr ),* ) =>    { &[ 1, 2, 840, 113549, $( $x ),* ] }
-}
-macro_rules! pkcs1 {
-    ( )                =>    { rsadsi!( 1, 1 ) };
-    ( $( $x:expr ),* ) =>    { rsadsi!( 1, 1, $( $x ),* ) }
-}
-macro_rules! pkcs9 {
-    ( )                =>    { rsadsi!( 1, 9 ) };
-    ( $( $x:expr ),* ) =>    { rsadsi!( 1, 9, $( $x ),* ) }
-}
-macro_rules! algo {
-    ( $( $x:expr ),* ) =>    { &[ 1, 3, 14, 3, 2, $( $x ),* ] }
-}
-macro_rules! x509 {
-    ( $( $x:expr ),* ) =>    { &[ 2, 5, 4, $( $x ),* ] }
-}
-macro_rules! idce {
-    ( $( $x:expr ),* ) =>    { &[ 2, 5, 29, $( $x ),* ] }
-}
-
-const OBJ_ALGO: &[u64] = algo!();
-const OBJ_RSADSI: &[u64] = rsadsi!();
-const OBJ_X500: &[u64] = &[2, 5];
-const OBJ_X509: &[u64] = x509!();
-const OBJ_CN: &[u64] = x509!(3);
-const OBJ_C: &[u64] = x509!(6);
-const OBJ_L: &[u64] = x509!(7);
-const OBJ_ST: &[u64] = x509!(8);
-const OBJ_O: &[u64] = x509!(10);
-const OBJ_OU: &[u64] = x509!(11);
-
-const OBJ_PKCS9: &[u64] = pkcs9!();
-const OBJ_EMAIL: &[u64] = pkcs9!(1);
-
-// XXX ...
-
-const OBJ_RSAENC: &[u64] = pkcs1!(1);
-const OBJ_RSASHA1: &[u64] = pkcs1!(5);
-
-// other constants
-
-// const OBJ_IDCE : &[u64]    = idce!();
-const OBJ_SKI: &[u64] = idce!(14);
-const OBJ_KU: &[u64] = idce!(15);
-const OBJ_PKUP: &[u64] = idce!(16);
-const OBJ_SAN: &[u64] = idce!(17);
-
-const OBJ_BC: &[u64] = idce!(19);
-
-const OBJ_CPOL: &[u64] = idce!(32);
-
-const OBJ_AKI: &[u64] = idce!(35);
 
 struct OidEntry {
     sn: &'static str,
@@ -157,36 +100,84 @@ struct OidEntry {
     nid: Nid,
 }
 
+const OID_ALGO: Oid<'static> = oid!(1.3.14.3.2);
+const OID_RSADSI: Oid<'static> = oid!(1.2.840.113549);
+const OID_X500: Oid<'static> = oid!(2.5);
+const OID_X509: Oid<'static> = oid!(2.5.4);
+const OID_CN: Oid<'static> = oid!(2.5.4.3);
+const OID_C: Oid<'static> = oid!(2.5.4.6);
+const OID_L: Oid<'static> = oid!(2.5.4.7);
+const OID_ST: Oid<'static> = oid!(2.5.4.8);
+const OID_O: Oid<'static> = oid!(2.5.4.10);
+const OID_OU: Oid<'static> = oid!(2.5.4.11);
+
+const OID_PKCS9: Oid<'static> = oid!(1.2.840.113549.1.9);
+const OID_EMAIL: Oid<'static> = oid!(1.2.840.113549.1.9.1);
+
+// XXX ...
+
+const OID_RSAENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
+const OID_RSASHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
+
+// certificateExtension (2.5.29)
+
+const OID_EXT_SUBJECTKEYIDENTIFIER: Oid<'static> = oid!(2.5.29.14);
+const OID_EXT_SKI: Oid<'static> = OID_EXT_SUBJECTKEYIDENTIFIER;
+const OID_EXT_KEYUSAGE: Oid<'static> = oid!(2.5.29.15);
+const OID_EXT_KU: Oid<'static> = OID_EXT_KEYUSAGE;
+const OID_EXT_PRIVATEKEYUSAGEPERIOD: Oid<'static> = oid!(2.5.29.16);
+const OID_EXT_PKUP: Oid<'static> = OID_EXT_PRIVATEKEYUSAGEPERIOD;
+const OID_EXT_SUBJECTALTNAME: Oid<'static> = oid!(2.5.29.17);
+const OID_EXT_SAN: Oid<'static> = OID_EXT_SUBJECTALTNAME;
+const OID_EXT_BASICCONSTRAINTS: Oid<'static> = oid!(2.5.29.19);
+const OID_EXT_BC: Oid<'static> = OID_EXT_BASICCONSTRAINTS;
+const OID_EXT_NAMECONSTRAINTS: Oid<'static> = oid!(2.5.29.30);
+const OID_EXT_CERTIFICATEPOLICIES: Oid<'static> = oid!(2.5.29.32);
+const OID_EXT_CPOL: Oid<'static> = OID_EXT_CERTIFICATEPOLICIES;
+const OID_EXT_POLICYMAPPINGS: Oid<'static> = oid!(2.5.29.33);
+const OID_EXT_AUTHORITYKEYIDENTIFIER: Oid<'static> = oid!(2.5.29.35);
+const OID_EXT_AKI: Oid<'static> = OID_EXT_AUTHORITYKEYIDENTIFIER;
+const OID_EXT_POLICYCONSTRAINTS: Oid<'static> = oid!(2.5.29.36);
+const OID_EXT_EXTENDEDKEYUSAGE: Oid<'static> = oid!(2.5.29.37);
+const OID_EXT_EKU: Oid<'static> = OID_EXT_EXTENDEDKEYUSAGE;
+const OID_EXT_INHIBITANYPOLICY: Oid<'static> = oid!(2.5.29.54);
+
 lazy_static! {
     static ref OID_REGISTRY: HashMap<Oid<'static>, OidEntry> = {
         let mut m = HashMap::new();
-        m.insert(Oid::from(&[0]).unwrap(), OidEntry{sn:"UNDEF", ln:"undefined", nid:Nid::Undef});
-        m.insert(Oid::from(OBJ_ALGO).unwrap(), OidEntry{sn:"Algorithm", ln:"algorithm", nid:Nid::Algorithm});
-        m.insert(Oid::from(OBJ_RSADSI).unwrap(), OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
-        m.insert(Oid::from(OBJ_X500).unwrap(), OidEntry{sn:"X500", ln:"X500", nid:Nid::X500});
-        m.insert(Oid::from(OBJ_X509).unwrap(), OidEntry{sn:"X509", ln:"X509", nid:Nid::X509});
-        m.insert(Oid::from(OBJ_CN).unwrap(), OidEntry{sn:"CN", ln:"commonName", nid:Nid::CommonName});
-        m.insert(Oid::from(OBJ_C).unwrap(), OidEntry{sn:"C", ln:"countryName", nid:Nid::CountryName});
-        m.insert(Oid::from(OBJ_L).unwrap(), OidEntry{sn:"L", ln:"localityName", nid:Nid::LocalityName});
-        m.insert(Oid::from(OBJ_ST).unwrap(), OidEntry{sn:"ST", ln:"stateOrProvinceName", nid:Nid::StateOrProvinceName});
-        m.insert(Oid::from(OBJ_O).unwrap(), OidEntry{sn:"O", ln:"organizationName", nid:Nid::OrganizationName});
-        m.insert(Oid::from(OBJ_OU).unwrap(), OidEntry{sn:"OU", ln:"organizationalUnitName", nid:Nid::OrganizationalUnitName});
+        m.insert(oid!(0), OidEntry {sn: "UNDEF", ln: "undefined", nid: Nid::Undef});
+        m.insert(OID_ALGO, OidEntry {sn: "Algorithm", ln: "algorithm", nid: Nid::Algorithm});
+        m.insert(OID_RSADSI, OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
+        m.insert(OID_X500, OidEntry{sn:"X500", ln:"X500", nid:Nid::X500});
+        m.insert(OID_X509, OidEntry{sn:"X509", ln:"X509", nid:Nid::X509});
+        m.insert(OID_CN, OidEntry{sn:"CN", ln:"commonName", nid:Nid::CommonName});
+        m.insert(OID_C, OidEntry{sn:"C", ln:"countryName", nid:Nid::CountryName});
+        m.insert(OID_L, OidEntry{sn:"L", ln:"localityName", nid:Nid::LocalityName});
+        m.insert(OID_ST, OidEntry{sn:"ST", ln:"stateOrProvinceName", nid:Nid::StateOrProvinceName});
+        m.insert(OID_O, OidEntry{sn:"O", ln:"organizationName", nid:Nid::OrganizationName});
+        m.insert(OID_OU, OidEntry{sn:"OU", ln:"organizationalUnitName", nid:Nid::OrganizationalUnitName});
         //
-        m.insert(Oid::from(OBJ_PKCS9).unwrap(), OidEntry{sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9});
-        m.insert(Oid::from(OBJ_EMAIL).unwrap(), OidEntry{sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress});
+        m.insert(OID_PKCS9, OidEntry{sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9});
+        m.insert(OID_EMAIL, OidEntry{sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress});
         //
-        m.insert(Oid::from(OBJ_RSAENC).unwrap(), OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
-        m.insert(Oid::from(OBJ_RSASHA1).unwrap(), OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
+        m.insert(OID_RSAENCRYPTION, OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
+        m.insert(OID_RSASHA1, OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
         //
-        m.insert(Oid::from(OBJ_SKI).unwrap(), OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
-        m.insert(Oid::from(OBJ_KU).unwrap(), OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
-        m.insert(Oid::from(OBJ_PKUP).unwrap(), OidEntry{sn:"privateKeyUsagePeriod", ln:"X509v3 Private Key Usage Period", nid:Nid::PrivateKeyUsagePeriod});
-        m.insert(Oid::from(OBJ_SAN).unwrap(), OidEntry{sn:"subjectAltName", ln:"X509v3 Subject Alternative Name", nid:Nid::SubjectAltName});
+        // extensions
+        m.insert(OID_EXT_SKI, OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
+        m.insert(OID_EXT_KU, OidEntry{sn:"keyUsage", ln:"X509v3 Key Usage", nid:Nid::KeyUsage});
+        m.insert(OID_EXT_PKUP, OidEntry{sn:"privateKeyUsagePeriod", ln:"X509v3 Private Key Usage Period", nid:Nid::PrivateKeyUsagePeriod});
+        m.insert(OID_EXT_SAN, OidEntry{sn:"subjectAltName", ln:"X509v3 Subject Alternative Name", nid:Nid::SubjectAltName});
         //
-        m.insert(Oid::from(OBJ_BC).unwrap(), OidEntry{sn:"basicConstraints", ln:"X509v3 Basic Constraints", nid:Nid::BasicConstraints});
+        m.insert(OID_EXT_BC, OidEntry{sn:"basicConstraints", ln:"X509v3 Basic Constraints", nid:Nid::BasicConstraints});
+        m.insert(OID_EXT_NAMECONSTRAINTS, OidEntry{sn:"nameConstraints", ln:"X509v3 Name Constraints", nid:Nid::NameConstraints});
         //
-        m.insert(Oid::from(OBJ_CPOL).unwrap(), OidEntry{sn:"certificatePolicies", ln:"X509v3 Certificate Policies", nid:Nid::CertificatePolicies});
-        m.insert(Oid::from(OBJ_AKI).unwrap(), OidEntry{sn:"authorityKeyIdentifier", ln:"X509v3 Authority Key Identifier", nid:Nid::AuthorityKeyIdentifier});
+        m.insert(OID_EXT_CPOL, OidEntry{sn:"certificatePolicies", ln:"X509v3 Certificate Policies", nid:Nid::CertificatePolicies});
+        m.insert(OID_EXT_POLICYMAPPINGS, OidEntry{sn:"policyMappings", ln:"X509v3 Policy Mappings", nid:Nid::PolicyMappings});
+        m.insert(OID_EXT_AKI, OidEntry{sn:"authorityKeyIdentifier", ln:"X509v3 Authority Key Identifier", nid:Nid::AuthorityKeyIdentifier});
+        m.insert(OID_EXT_POLICYCONSTRAINTS, OidEntry{sn:"policyConstraints", ln:"X509v3 Policy Constraints", nid:Nid::PolicyConstraints});
+        m.insert(OID_EXT_EKU, OidEntry{sn:"extendedKeyUsage", ln:"X509v3 Extended Key Usage", nid:Nid::ExtendedKeyUsage});
+        m.insert(OID_EXT_INHIBITANYPOLICY, OidEntry{sn:"inhibitAnyPolicy", ln:"X509v3 Inhibit Any-Policy", nid:Nid::InhibitAnyPolicy});
         m
     };
 }
@@ -230,7 +221,7 @@ pub fn oid2sn(oid: &Oid) -> Result<&'static str, NidError> {
 pub fn sn2oid(sn: &str) -> Result<&Oid, NidError> {
     OID_REGISTRY
         .iter()
-        .find(|(_, o)| *o.sn == *sn)
+        .find(|(_, o)| o.sn == sn)
         .map(|(oid, _)| oid)
         .ok_or(NidError)
 }
@@ -238,14 +229,13 @@ pub fn sn2oid(sn: &str) -> Result<&Oid, NidError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use der_parser::oid::Oid;
 
     #[test]
     fn test_obj2nid() {
-        let oid = Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap();
+        let oid = oid!(1.2.840.113549.1.1.5);
         assert_eq!(oid2nid(&oid), Ok(Nid::RsaSha1));
 
-        let invalid_oid = Oid::from(&[5, 4, 3, 2, 1]).unwrap();
+        let invalid_oid = oid!(5.4.3.2.1);
         assert_eq!(oid2nid(&invalid_oid), Err(NidError));
     }
 
@@ -257,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_sn2oid() {
-        let oid = Oid::from(&[1, 2, 840, 113_549, 1, 1, 5]).unwrap();
+        let oid = oid!(1.2.840.113549.1.1.5);
         assert_eq!(sn2oid("RSA-SHA1"), Ok(&oid));
         assert_eq!(sn2oid("invalid sn"), Err(NidError));
     }
