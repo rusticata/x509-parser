@@ -1,5 +1,7 @@
-use der_parser::oid;
-use x509_parser::objects::{nid2obj, Nid, OID_RSASHA1};
+use der_parser::{oid, oid::Oid};
+use std::collections::HashMap;
+use x509_parser::extensions::*;
+use x509_parser::objects::*;
 use x509_parser::{parse_crl_der, parse_subject_public_key_info, parse_x509_der, X509Extension};
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
@@ -45,46 +47,57 @@ fn test_x509_parser() {
             assert_eq!(not_after.tm_year, 120);
             assert_eq!(not_after.tm_mon, 9);
             assert_eq!(not_after.tm_mday, 17);
-            //
-            let expected_extensions = vec![
-                X509Extension {
-                    oid: oid!(2.5.29.19),
-                    critical: true,
-                    value: &[48, 3, 1, 1, 255],
-                },
-                X509Extension {
-                    oid: oid!(2.5.29.15),
-                    critical: false,
-                    value: &[3, 2, 1, 70],
-                },
-                X509Extension {
-                    oid: oid!(2.5.29.32),
-                    critical: false,
-                    value: &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
-                },
-                X509Extension {
-                    oid: oid!(2.5.29.14),
-                    critical: false,
-                    value: &[
+            let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())]
+                .into_iter()
+                .collect();
+            let expected_extensions_list = vec![
+                X509Extension::new(
+                    oid!(2.5.29.19),
+                    true,
+                    &[48, 3, 1, 1, 255],
+                    ParsedExtension::BasicConstraints(BasicConstraints {
+                        ca: true,
+                        path_len_constraint: None,
+                    }),
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.15),
+                    false,
+                    &[3, 2, 1, 70],
+                    ParsedExtension::KeyUsage(KeyUsage { flags: 98 }),
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.32),
+                    false,
+                    &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
+                    ParsedExtension::CertificatePolicies(CertificatePolicies { policies }),
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.14),
+                    false,
+                    &[
                         4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
                         168, 48, 49, 54,
                     ],
-                },
-                X509Extension {
-                    oid: oid!(2.5.29.35),
-                    critical: false,
-                    value: &[
+                    ParsedExtension::UnsupportedExtension,
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.35),
+                    false,
+                    &[
                         48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79,
                         255, 142, 78, 168, 48, 49, 54,
                     ],
-                },
+                    ParsedExtension::UnsupportedExtension,
+                ),
             ];
-            assert_eq!(
-                tbs_cert.extensions.iter().eq(expected_extensions.iter()),
-                true
-            );
+            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list
+                .into_iter()
+                .map(|e| (e.oid.clone(), e))
+                .collect();
+            assert_eq!(tbs_cert.extensions(), &expected_extensions);
             //
-            assert_eq!(tbs_cert.is_ca(), true);
+            assert!(tbs_cert.is_ca());
             //
             assert_eq!(tbs_cert.as_ref(), &IGCA_DER[4..(8 + 746)]);
         }
@@ -93,7 +106,7 @@ fn test_x509_parser() {
 }
 
 #[test]
-fn test_x509_parser_no_extensions() {
+fn test_x509_no_extensions() {
     let empty = &b""[..];
     let res = parse_x509_der(NO_EXTENSIONS_DER);
     match res {
@@ -186,18 +199,18 @@ fn test_crl_parse() {
                         tm_nsec: 0,
                     },
                     extensions: vec![
-                        X509Extension {
-                            oid: oid!(2.5.29.21),
-                            critical: false,
-                            value: &[10, 1, 3]
-                        },
-                        X509Extension {
-                            oid: oid!(2.5.29.24),
-                            critical: false,
-                            value: &[
-                                24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90
-                            ]
-                        }
+                        X509Extension::new(
+                            oid!(2.5.29.21),
+                            false,
+                            &[10, 1, 3],
+                            ParsedExtension::UnsupportedExtension,
+                        ),
+                        X509Extension::new(
+                            oid!(2.5.29.24),
+                            false,
+                            &[24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90],
+                            ParsedExtension::UnsupportedExtension,
+                        )
                     ]
                 }
             );
@@ -206,19 +219,21 @@ fn test_crl_parse() {
             assert_eq!(revoked_certs[4].user_certificate, 1_341_771_u32.into());
 
             let expected_extensions = vec![
-                X509Extension {
-                    oid: oid!(2.5.29.35),
-                    critical: false,
-                    value: &[
+                X509Extension::new(
+                    oid!(2.5.29.35),
+                    false,
+                    &[
                         48, 22, 128, 20, 190, 18, 1, 204, 170, 234, 17, 128, 218, 46, 173, 178,
                         234, 199, 181, 251, 159, 249, 173, 52,
                     ],
-                },
-                X509Extension {
-                    oid: oid!(2.5.29.20),
-                    critical: false,
-                    value: &[2, 1, 3],
-                },
+                    ParsedExtension::UnsupportedExtension,
+                ),
+                X509Extension::new(
+                    oid!(2.5.29.20),
+                    false,
+                    &[2, 1, 3],
+                    ParsedExtension::UnsupportedExtension,
+                ),
             ];
 
             assert!(tbs_cert_list
@@ -240,19 +255,21 @@ fn test_crl_parse_empty() {
             assert!(cert.tbs_cert_list.revoked_certificates.is_empty());
 
             let expected_extensions = vec![
-                X509Extension {
-                    oid: oid!(2.5.29.20),
-                    critical: false,
-                    value: &[2, 1, 2],
-                },
-                X509Extension {
-                    oid: oid!(2.5.29.35),
-                    critical: false,
-                    value: &[
+                X509Extension::new(
+                    oid!(2.5.29.20),
+                    false,
+                    &[2, 1, 2],
+                    ParsedExtension::UnsupportedExtension,
+                ),
+                X509Extension::new(
+                    OID_EXT_AUTHORITYKEYIDENTIFIER,
+                    false,
+                    &[
                         48, 22, 128, 20, 34, 101, 12, 214, 90, 157, 52, 137, 243, 131, 180, 149,
                         82, 191, 80, 27, 57, 39, 6, 172,
                     ],
-                },
+                    ParsedExtension::UnsupportedExtension,
+                ),
             ];
             assert!(cert
                 .tbs_cert_list
