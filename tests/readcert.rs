@@ -1,5 +1,5 @@
 use der_parser::oid;
-use x509_parser::objects::{nid2obj, Nid};
+use x509_parser::objects::{nid2obj, Nid, OID_RSASHA1};
 use x509_parser::{parse_crl_der, parse_subject_public_key_info, parse_x509_der, X509Extension};
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
@@ -35,7 +35,7 @@ fn test_x509_parser() {
             assert_eq!(format!("{}", tbs_cert.issuer), expected_issuer);
             //
             let sig_alg = &cert.signature_algorithm;
-            assert_eq!(sig_alg.algorithm, oid!(1.2.840.113549.1.1.5));
+            assert_eq!(sig_alg.algorithm, OID_RSASHA1);
             //
             let not_before = tbs_cert.validity.not_before;
             let not_after = tbs_cert.validity.not_after;
@@ -149,14 +149,14 @@ fn test_crl_parse() {
             assert_eq!(tbs_cert_list.version, Some(1));
 
             let sig = &tbs_cert_list.signature;
-            assert_eq!(sig.algorithm, oid!(1.2.840.113549.1.1.5));
+            assert_eq!(sig.algorithm, OID_RSASHA1);
 
             let expected_issuer =
                 "O=Sample Signer Organization, OU=Sample Signer Unit, CN=Sample Signer Cert";
             assert_eq!(format!("{}", tbs_cert_list.issuer), expected_issuer);
 
             let sig_alg = &cert.signature_algorithm;
-            assert_eq!(sig_alg.algorithm, oid!(1.2.840.113549.1.1.5));
+            assert_eq!(sig_alg.algorithm, OID_RSASHA1);
 
             let this_update = tbs_cert_list.this_update;
             let next_update = tbs_cert_list.next_update.unwrap();
