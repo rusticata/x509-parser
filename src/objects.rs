@@ -100,47 +100,47 @@ struct OidEntry {
     nid: Nid,
 }
 
-const OID_ALGO: Oid<'static> = oid!(1.3.14.3.2);
-const OID_RSADSI: Oid<'static> = oid!(1.2.840.113549);
-const OID_X500: Oid<'static> = oid!(2.5);
-const OID_X509: Oid<'static> = oid!(2.5.4);
-const OID_CN: Oid<'static> = oid!(2.5.4.3);
-const OID_C: Oid<'static> = oid!(2.5.4.6);
-const OID_L: Oid<'static> = oid!(2.5.4.7);
-const OID_ST: Oid<'static> = oid!(2.5.4.8);
-const OID_O: Oid<'static> = oid!(2.5.4.10);
-const OID_OU: Oid<'static> = oid!(2.5.4.11);
+pub const OID_ALGO: Oid<'static> = oid!(1.3.14.3.2);
+pub const OID_RSADSI: Oid<'static> = oid!(1.2.840.113549);
+pub const OID_X500: Oid<'static> = oid!(2.5);
+pub const OID_X509: Oid<'static> = oid!(2.5.4);
+pub const OID_CN: Oid<'static> = oid!(2.5.4.3);
+pub const OID_C: Oid<'static> = oid!(2.5.4.6);
+pub const OID_L: Oid<'static> = oid!(2.5.4.7);
+pub const OID_ST: Oid<'static> = oid!(2.5.4.8);
+pub const OID_O: Oid<'static> = oid!(2.5.4.10);
+pub const OID_OU: Oid<'static> = oid!(2.5.4.11);
 
-const OID_PKCS9: Oid<'static> = oid!(1.2.840.113549.1.9);
-const OID_EMAIL: Oid<'static> = oid!(1.2.840.113549.1.9.1);
+pub const OID_PKCS9: Oid<'static> = oid!(1.2.840.113549.1.9);
+pub const OID_EMAIL: Oid<'static> = oid!(1.2.840.113549.1.9.1);
 
 // XXX ...
 
-const OID_RSAENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
-const OID_RSASHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
+pub const OID_RSAENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
+pub const OID_RSASHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
 
 // certificateExtension (2.5.29)
 
-const OID_EXT_SUBJECTKEYIDENTIFIER: Oid<'static> = oid!(2.5.29.14);
-const OID_EXT_SKI: Oid<'static> = OID_EXT_SUBJECTKEYIDENTIFIER;
-const OID_EXT_KEYUSAGE: Oid<'static> = oid!(2.5.29.15);
-const OID_EXT_KU: Oid<'static> = OID_EXT_KEYUSAGE;
-const OID_EXT_PRIVATEKEYUSAGEPERIOD: Oid<'static> = oid!(2.5.29.16);
-const OID_EXT_PKUP: Oid<'static> = OID_EXT_PRIVATEKEYUSAGEPERIOD;
-const OID_EXT_SUBJECTALTNAME: Oid<'static> = oid!(2.5.29.17);
-const OID_EXT_SAN: Oid<'static> = OID_EXT_SUBJECTALTNAME;
-const OID_EXT_BASICCONSTRAINTS: Oid<'static> = oid!(2.5.29.19);
-const OID_EXT_BC: Oid<'static> = OID_EXT_BASICCONSTRAINTS;
-const OID_EXT_NAMECONSTRAINTS: Oid<'static> = oid!(2.5.29.30);
-const OID_EXT_CERTIFICATEPOLICIES: Oid<'static> = oid!(2.5.29.32);
-const OID_EXT_CPOL: Oid<'static> = OID_EXT_CERTIFICATEPOLICIES;
-const OID_EXT_POLICYMAPPINGS: Oid<'static> = oid!(2.5.29.33);
-const OID_EXT_AUTHORITYKEYIDENTIFIER: Oid<'static> = oid!(2.5.29.35);
-const OID_EXT_AKI: Oid<'static> = OID_EXT_AUTHORITYKEYIDENTIFIER;
-const OID_EXT_POLICYCONSTRAINTS: Oid<'static> = oid!(2.5.29.36);
-const OID_EXT_EXTENDEDKEYUSAGE: Oid<'static> = oid!(2.5.29.37);
-const OID_EXT_EKU: Oid<'static> = OID_EXT_EXTENDEDKEYUSAGE;
-const OID_EXT_INHIBITANYPOLICY: Oid<'static> = oid!(2.5.29.54);
+pub const OID_EXT_SUBJECTKEYIDENTIFIER: Oid<'static> = oid!(2.5.29.14);
+pub const OID_EXT_SKI: Oid<'static> = OID_EXT_SUBJECTKEYIDENTIFIER;
+pub const OID_EXT_KEYUSAGE: Oid<'static> = oid!(2.5.29.15);
+pub const OID_EXT_KU: Oid<'static> = OID_EXT_KEYUSAGE;
+pub const OID_EXT_PRIVATEKEYUSAGEPERIOD: Oid<'static> = oid!(2.5.29.16);
+pub const OID_EXT_PKUP: Oid<'static> = OID_EXT_PRIVATEKEYUSAGEPERIOD;
+pub const OID_EXT_SUBJECTALTNAME: Oid<'static> = oid!(2.5.29.17);
+pub const OID_EXT_SAN: Oid<'static> = OID_EXT_SUBJECTALTNAME;
+pub const OID_EXT_BASICCONSTRAINTS: Oid<'static> = oid!(2.5.29.19);
+pub const OID_EXT_BC: Oid<'static> = OID_EXT_BASICCONSTRAINTS;
+pub const OID_EXT_NAMECONSTRAINTS: Oid<'static> = oid!(2.5.29.30);
+pub const OID_EXT_CERTIFICATEPOLICIES: Oid<'static> = oid!(2.5.29.32);
+pub const OID_EXT_CPOL: Oid<'static> = OID_EXT_CERTIFICATEPOLICIES;
+pub const OID_EXT_POLICYMAPPINGS: Oid<'static> = oid!(2.5.29.33);
+pub const OID_EXT_AUTHORITYKEYIDENTIFIER: Oid<'static> = oid!(2.5.29.35);
+pub const OID_EXT_AKI: Oid<'static> = OID_EXT_AUTHORITYKEYIDENTIFIER;
+pub const OID_EXT_POLICYCONSTRAINTS: Oid<'static> = oid!(2.5.29.36);
+pub const OID_EXT_EXTENDEDKEYUSAGE: Oid<'static> = oid!(2.5.29.37);
+pub const OID_EXT_EKU: Oid<'static> = OID_EXT_EXTENDEDKEYUSAGE;
+pub const OID_EXT_INHIBITANYPOLICY: Oid<'static> = oid!(2.5.29.54);
 
 lazy_static! {
     static ref OID_REGISTRY: HashMap<Oid<'static>, OidEntry> = {
@@ -250,5 +250,21 @@ mod tests {
         let oid = oid!(1.2.840.113549.1.1.5);
         assert_eq!(sn2oid("RSA-SHA1"), Ok(&oid));
         assert_eq!(sn2oid("invalid sn"), Err(NidError));
+    }
+
+    // This test is meant to check syntax of pattern matching with OID objects
+    #[test]
+    fn test_oid_match() {
+        let oid = oid!(1.2.840.113549.1.1.5);
+        if oid == OID_RSASHA1 {
+            // ok
+        }
+        // matching is not possible with Cow constants in pattern,
+        // see https://rust-lang.github.io/rfcs/1445-restrict-constants-in-patterns.html
+        //
+        // match oid {
+        //     OID_RSASHA1 => (),
+        //     _ => (),
+        // }
     }
 }
