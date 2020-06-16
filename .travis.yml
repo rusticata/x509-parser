@@ -35,6 +35,8 @@ before_script:
   - rustc --version
   - ([ "$CLIPPY" != yes ] || rustup component add clippy)
   - ([ "$RUSTFMT" != yes ] || rustup component add rustfmt)
+  - cargo update
+  - ([ "$RUST_VERSION" != "1.34.0" ] || cargo update -p lexical-core --precise 0.6.7)
 script:
   - ([ "$CLIPPY" != yes ] || cargo clippy --features "$FEATURES" --all-targets -- -D clippy::all)
   - ([ "$RUSTFMT" != yes ] || cargo fmt --all -- --check)
