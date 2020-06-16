@@ -44,6 +44,17 @@ match res {
 
 <!-- cargo-sync-readme end -->
 
+## Compatibility with older rust versions
+
+### 1.34
+
+There is a build error in `arrayvec` with rust 1.34: `error[E0658]: use of unstable library feature 'maybe_uninit'`
+
+To fix it, force the version of `lexical-core` down:
+```
+cargo update -p lexical-core --precise 0.6.7
+```
+
 ## Changes
 
 ### 0.8.0
