@@ -9,11 +9,12 @@ use num_bigint::BigUint;
 use time::Tm;
 
 use crate::error::X509Error;
-use crate::objects::{nid2sn, oid2nid};
-use crate::parse_ext_basicconstraints;
+use crate::extensions::*;
+use crate::objects::*;
 use der_parser::ber::BitStringObject;
 use der_parser::der::DerObject;
-use der_parser::{oid, oid::Oid};
+use der_parser::oid::Oid;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub enum X509Version {
@@ -28,6 +29,28 @@ pub struct X509Extension<'a> {
     pub oid: Oid<'a>,
     pub critical: bool,
     pub value: &'a [u8],
+    pub(crate) parsed_extension: ParsedExtension<'a>,
+}
+
+impl<'a> X509Extension<'a> {
+    pub fn new(
+        oid: Oid<'a>,
+        critical: bool,
+        value: &'a [u8],
+        parsed_extension: ParsedExtension<'a>,
+    ) -> X509Extension<'a> {
+        X509Extension {
+            oid,
+            critical,
+            value,
+            parsed_extension,
+        }
+    }
+
+    /// Return the extension type or `None` if the extension is not implemented.
+    pub fn parsed_extension(&self) -> &ParsedExtension {
+        &self.parsed_extension
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -101,7 +124,7 @@ pub struct TbsCertificate<'a> {
     pub subject_pki: SubjectPublicKeyInfo<'a>,
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
-    pub extensions: Vec<X509Extension<'a>>,
+    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
     pub(crate) raw_serial: &'a [u8],
 }
@@ -161,20 +184,23 @@ fn check_validity_expiration() {
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
 impl<'a> TbsCertificate<'a> {
+    /// Get a reference to the map of extensions.
+    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+        &self.extensions
+    }
+
+    pub fn basic_constraints(&self) -> Option<(bool, &BasicConstraints)> {
+        let ext = self.extensions.get(&OID_EXT_BC)?;
+        match ext.parsed_extension {
+            ParsedExtension::BasicConstraints(ref bc) => Some((ext.critical, bc)),
+            _ => None,
+        }
+    }
+
     /// Returns true if certificate has `basicConstraints CA:true`
     pub fn is_ca(&self) -> bool {
-        // filter on ext: OId(basicConstraints)
-        self.extensions
-            .iter()
-            .find(|ext| ext.oid == oid!(2.5.29.19))
-            .and_then(|ext| {
-                // parse DER sequence
-                if let Ok((_, bc)) = parse_ext_basicconstraints(ext.value) {
-                    Some(bc.ca)
-                } else {
-                    None
-                }
-            })
+        self.basic_constraints()
+            .map(|(_, bc)| bc.ca)
             .unwrap_or(false)
     }
 
@@ -318,6 +344,7 @@ pub struct CertificateRevocationList<'a> {
 mod tests {
     use super::*;
     use der_parser::ber::BerObjectContent;
+    use der_parser::oid;
 
     #[test]
     fn test_x509_name() {

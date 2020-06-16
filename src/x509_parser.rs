@@ -5,49 +5,18 @@
 
 use crate::error::X509Error;
 use crate::x509::*;
-use crate::x509_extensions::*;
-use nom::{many1, map_opt, opt, Err, IResult};
+use nom::{exact, many1, map_opt, opt, Err, IResult};
 use num_bigint::BigUint;
+use std::collections::HashMap;
 use std::str;
 use time::{strptime, Tm};
 
 use der_parser::ber::{BerObjectContent, BerTag};
 use der_parser::der::*;
 use der_parser::error::*;
+use der_parser::oid::Oid;
 use der_parser::*;
 use rusticata_macros::{flat_take, upgrade_error};
-
-/// Parse a "Basic Constraints" extension
-///
-/// <pre>
-///   id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
-///   BasicConstraints ::= SEQUENCE {
-///        cA                      BOOLEAN DEFAULT FALSE,
-///        pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
-/// </pre>
-///
-/// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
-/// unsigned integer, and parsing will fail if value if larger.
-pub fn parse_ext_basicconstraints(i: &[u8]) -> BerResult<BasicConstraints> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        ca:                 map_res!(parse_der_bool, |x:DerObject| x.as_bool()) >>
-        path_len_contraint: map!(der_read_opt_integer, |x:DerObject| {
-            match x.as_context_specific() {
-                Ok((_,Some(obj))) => obj.as_u32().ok(),
-                _                 => None
-            }
-        }) >>
-        ( BasicConstraints{ ca, path_len_contraint } )
-    )
-    .map(|(rem, x)| (rem, x.1))
-}
-
-#[inline]
-fn der_read_opt_integer(i: &[u8]) -> DerResult {
-    parse_der_optional!(i, parse_der_integer)
-}
 
 #[inline]
 fn parse_directory_string(i: &[u8]) -> DerResult {
@@ -82,7 +51,7 @@ fn parse_rdn(i: &[u8]) -> BerResult<RelativeDistinguishedName> {
     .map(|(rem, x)| (rem, x.1))
 }
 
-fn parse_name(i: &[u8]) -> BerResult<X509Name> {
+pub(crate) fn parse_name(i: &[u8]) -> BerResult<X509Name> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -221,10 +190,12 @@ fn parse_extension<'a>(i: &'a [u8]) -> BerResult<X509Extension<'a>> {
                 }
             })
             >> value: map_res!(parse_der_octetstring, |x: DerObject<'a>| x.as_slice())
+            >> parsed_extension: call!(crate::extensions::parser::parse_extension, value, &oid)
             >> (X509Extension {
                 oid,
                 critical,
-                value
+                value,
+                parsed_extension,
             })
     )
     .map(|(rem, x)| (rem, x.1))
@@ -235,15 +206,15 @@ fn parse_extension_sequence(i: &[u8]) -> BerResult<Vec<X509Extension>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        v: many1!(complete!(parse_extension)) >>
+        v: many0!(complete!(parse_extension)) >>
         ( v )
     )
     .map(|(rem, x)| (rem, x.1))
 }
 
-fn parse_extensions(i: &[u8]) -> BerResult<Vec<X509Extension>> {
+fn parse_extensions(i: &[u8]) -> BerResult<HashMap<Oid, X509Extension>> {
     if i.is_empty() {
-        return Ok((&[], Vec::new()));
+        return Ok((&[], HashMap::new()));
     }
 
     match der_read_element_header(i) {
@@ -251,11 +222,19 @@ fn parse_extensions(i: &[u8]) -> BerResult<Vec<X509Extension>> {
             if hdr.tag != BerTag(3) {
                 return Err(Err::Error(BerError::InvalidTag));
             }
-            parse_extension_sequence(rem)
+            let mut extensions = HashMap::new();
+            // The allocation of the Vec could be avoided with an iterator
+            let (_, list) = exact!(rem, parse_extension_sequence)?;
+            for ext in list.into_iter() {
+                if extensions.insert(ext.oid.clone(), ext).is_some() {
+                    // duplicate extensions are not allowed
+                    return Err(Err::Failure(BerError::InvalidTag));
+                }
+            }
+            Ok((rem, extensions))
         }
         Err(e) => Err(e),
     }
-    // parse_der_explicit(i, 3, parse_extension_sequence)
 }
 
 fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
