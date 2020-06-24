@@ -366,7 +366,37 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
 
 /// An X.509 v3 Certificate.
 ///
-/// X.509 v3 certificates are defined in [RFC5280](https://tools.ietf.org/html/rfc5280).
+/// X.509 v3 certificates are defined in [RFC5280](https://tools.ietf.org/html/rfc5280), section
+/// 4.1. This object uses the same structure for content, so for ex the subject can be accessed
+/// using the path `x509.tbs_certificate.subject`.
+///
+/// A `X509Certificate` is a zero-copy view over a buffer, so the lifetime is the same as the
+/// buffer containing the binary representation.
+///
+/// ```rust
+/// # use x509_parser::parse_x509_der;
+/// # use x509_parser::x509::X509Certificate;
+/// #
+/// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+/// #
+/// fn display_x509_info(x509: &X509Certificate) {
+///      let subject = &x509.tbs_certificate.subject;
+///      let issuer = &x509.tbs_certificate.issuer;
+///      println!("X.509 Subject: {}", subject);
+///      println!("X.509 Issuer: {}", issuer);
+///      println!("X.509 serial: {}", x509.tbs_certificate.raw_serial_as_string());
+/// }
+/// #
+/// # fn main() {
+/// # let res = parse_x509_der(DER);
+/// # match res {
+/// #     Ok((_rem, x509)) => {
+/// #         display_x509_info(&x509);
+/// #     },
+/// #     _ => panic!("x509 parsing failed: {:?}", res),
+/// # }
+/// # }
+/// ```
 #[derive(Debug, PartialEq)]
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,

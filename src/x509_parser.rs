@@ -365,10 +365,33 @@ fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> BerResult<AlgorithmIdentifier>
     .map(|(rem, x)| (rem, x.1))
 }
 
-// XXX validate X509 structure
-/// Parse a DER-encoded X.509 Certificate
+/// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
+/// object.
+///
+/// The returned object uses zero-copy, and so has the same lifetime as the input.
 ///
 /// Note that only parsing is done, not validation.
+///
+/// For example, to parse a certificate and print the subject and issuer:
+///
+/// ```rust
+/// # use x509_parser::parse_x509_der;
+/// #
+/// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+/// #
+/// # fn main() {
+/// let res = parse_x509_der(DER);
+/// match res {
+///     Ok((_rem, x509)) => {
+///         let subject = &x509.tbs_certificate.subject;
+///         let issuer = &x509.tbs_certificate.issuer;
+///         println!("X.509 Subject: {}", subject);
+///         println!("X.509 Issuer: {}", issuer);
+///     },
+///     _ => panic!("x509 parsing failed: {:?}", res),
+/// }
+/// # }
+/// ```
 pub fn parse_x509_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
     upgrade_error!(parse_der_struct!(
         i,

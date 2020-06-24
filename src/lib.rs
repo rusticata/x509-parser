@@ -32,7 +32,7 @@
 //!
 //! Parsing a certificate in DER format:
 //!
-//! ```rust,no_run
+//! ```rust
 //! use x509_parser::parse_x509_der;
 //!
 //! static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
