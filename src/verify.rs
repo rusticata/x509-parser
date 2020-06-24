@@ -15,7 +15,10 @@ mod x509_verify {
         ///
         /// For a leaf certificate, this is the public key of the certificate that signed it.
         /// It is usually an intermediate authority.
-        pub fn verify(&self, public_key: Option<&SubjectPublicKeyInfo>) -> Result<(), X509Error> {
+        pub fn verify_signature(
+            &self,
+            public_key: Option<&SubjectPublicKeyInfo>,
+        ) -> Result<(), X509Error> {
             let spki = public_key.unwrap_or(&self.tbs_certificate.subject_pki);
             let signature_alg = &self.signature_algorithm.algorithm;
             // identify verification algorithm

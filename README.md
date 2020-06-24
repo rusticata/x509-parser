@@ -52,6 +52,10 @@ match res {
 
 See also `examples/print-cert.rs`.
 
+# Features
+
+- The `verify` feature adds support for (cryptographic) signature verification, based on ring.
+
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 
 <!-- cargo-sync-readme end -->
