@@ -50,6 +50,8 @@ match res {
 }
 ```
 
+See also `examples/print-cert.rs`.
+
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 
 <!-- cargo-sync-readme end -->
@@ -74,9 +76,11 @@ cargo update -p lexical-core --precise 0.6.7
   - `nid2obj` argument is now passed by copy, not reference
 - Add method to get a formatted string of the certificate serial number
 - Add method to get decoded version
+- Add convenience methods to access the most common fields (subject, issuer, etc.)
 - Make OID objects public
 - Implement parsing for some extensions
   - Support for extensions is not complete, support for more types will be added later
+- Add example to decode and print certificates
 
 Thanks: @jannschu
 

@@ -20,7 +20,8 @@ include = [
   "src/*.rs",
   "tests/*.rs",
   "assets/*.der",
-  "assets/*.pem"
+  "assets/*.pem",
+  "examples/*.rs"
 ]
 
 [dependencies]

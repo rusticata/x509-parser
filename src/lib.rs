@@ -50,6 +50,8 @@
 //! # }
 //! ```
 //!
+//! See also `examples/print-cert.rs`.
+//!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
 
 #![deny(/*missing_docs,*/

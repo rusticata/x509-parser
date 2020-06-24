@@ -370,6 +370,9 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
 /// 4.1. This object uses the same structure for content, so for ex the subject can be accessed
 /// using the path `x509.tbs_certificate.subject`.
 ///
+/// `X509Certificate` also contains convenience methods to access the most common fields (subject,
+/// issuer, etc.).
+///
 /// A `X509Certificate` is a zero-copy view over a buffer, so the lifetime is the same as the
 /// buffer containing the binary representation.
 ///
@@ -413,6 +416,30 @@ impl<'a> X509Certificate<'a> {
             2 => X509Version::V3,
             n => X509Version::Invalid(n),
         }
+    }
+
+    /// Get the certificate subject.
+    #[inline]
+    pub fn subject(&self) -> &X509Name {
+        &self.tbs_certificate.subject
+    }
+
+    /// Get the certificate issuer.
+    #[inline]
+    pub fn issuer(&self) -> &X509Name {
+        &self.tbs_certificate.issuer
+    }
+
+    /// Get the certificate validity.
+    #[inline]
+    pub fn validity(&self) -> &Validity {
+        &self.tbs_certificate.validity
+    }
+
+    /// Get the certificate extensions.
+    #[inline]
+    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+        self.tbs_certificate.extensions()
     }
 }
 
