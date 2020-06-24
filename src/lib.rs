@@ -1,3 +1,11 @@
+//! [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE-MIT)
+//! [![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE-APACHE)
+//! [![docs.rs](https://docs.rs/x509-parser/badge.svg)](https://docs.rs/x509-parser)
+//! [![crates.io](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
+//! [![Download numbers](https://img.shields.io/crates/d/x509-parser.svg)](https://crates.io/crates/x509-parser)
+//! [![Travis CI](https://travis-ci.org/rusticata/x509-parser.svg?branch=master)](https://travis-ci.org/rusticata/x509-parser)
+//! [![AppVeyor CI](https://ci.appveyor.com/api/projects/status/github/rusticata/x509-parser?svg=true)](https://ci.appveyor.com/project/chifflier/x509-parser)
+//!
 //! # X.509 Parser
 //!
 //! A X.509 v3 ([RFC5280]) parser, implemented with the [nom](https://github.com/Geal/nom)
@@ -10,10 +18,15 @@
 //! The code is available on [Github](https://github.com/rusticata/x509-parser)
 //! and is part of the [Rusticata](https://github.com/rusticata) project.
 //!
-//! The main parsing method is [`parse_x509_der`](fn.parse_x509_der.html), which takes a DER-encoded
-//! certificate as input, and builds a [`X509Certificate`](x509/struct.X509Certificate.html) object.
+//! The main parsing method is
+//! [`parse_x509_der`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_der.html),
+//! which takes a DER-encoded
+//! certificate as input, and builds a
+//! [`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html)
+//! object.
 //!
-//! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
+//! For PEM-encoded certificates, use the
+//! [`pem`](https:///docs.rs/x509-parser/latest/x509_parser/pem/index.html) module.
 //!
 //! # Examples
 //!
