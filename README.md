@@ -68,6 +68,11 @@ cargo update -p lexical-core --precise 0.6.7
   - `nid2obj` argument is now passed by copy, not reference
 - Add method to get a formatted string of the certificate serial number
 - Add method to get decoded version
+- Make OID objects public
+- Implement parsing for some extensions
+  - Support for extensions is not complete, support for more types will be added later
+
+Thanks: @jannschu
 
 ### 0.7.0
 
