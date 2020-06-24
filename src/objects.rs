@@ -78,6 +78,7 @@ pub enum Nid {
     ExtendedCertificateAttributes,
 
     RsaSha1,
+    RsaSha256,
 
     SubjectKeyIdentifier,
     KeyUsage,
@@ -118,6 +119,7 @@ pub const OID_EMAIL: Oid<'static> = oid!(1.2.840.113549.1.9.1);
 
 pub const OID_RSAENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
 pub const OID_RSASHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
+pub const OID_RSASHA256: Oid<'static> = oid!(1.2.840.113549.1.1.11);
 
 // certificateExtension (2.5.29)
 
@@ -162,6 +164,7 @@ lazy_static! {
         //
         m.insert(OID_RSAENCRYPTION, OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
         m.insert(OID_RSASHA1, OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
+        m.insert(OID_RSASHA256, OidEntry{sn:"RSA-SHA256", ln:"sha256WithRSAEncryption", nid:Nid::RsaSha256});
         //
         // extensions
         m.insert(OID_EXT_SKI, OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});

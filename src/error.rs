@@ -23,6 +23,9 @@ pub enum X509Error {
     /// Top-level certificate structure is invalid
     InvalidCertificate,
 
+    SignatureVerificationError,
+    SignatureUnsupportedAlgorithm,
+
     Der(BerError),
     NomError(ErrorKind),
 }
