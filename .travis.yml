@@ -25,6 +25,10 @@ matrix:
        - NAME="rust-${RUST_VERSION_MIN}"
        - RUST_VERSION="${RUST_VERSION_MIN}"
        - FEATURES=''
+    - rust: stable
+      env:
+       - NAME="stable,verify"
+       - FEATURES='verify'
     - rust: nightly
       env:
        - NAME="nightly"
