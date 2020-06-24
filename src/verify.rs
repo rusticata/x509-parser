@@ -18,13 +18,22 @@ mod x509_verify {
             let spki = public_key.unwrap_or(&self.tbs_certificate.subject_pki);
             let signature_alg = &self.signature_algorithm.algorithm;
             // identify verification algorithm
-            let verification_alg = if *signature_alg == OID_RSASHA1 {
-                &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
-            } else if *signature_alg == OID_RSASHA256 {
-                &signature::RSA_PKCS1_2048_8192_SHA256
-            } else {
-                return Err(X509Error::SignatureUnsupportedAlgorithm);
-            };
+            let verification_alg: &dyn signature::VerificationAlgorithm =
+                if *signature_alg == OID_RSASHA1 {
+                    &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
+                } else if *signature_alg == OID_RSASHA256 {
+                    &signature::RSA_PKCS1_2048_8192_SHA256
+                } else if *signature_alg == OID_RSASHA384 {
+                    &signature::RSA_PKCS1_2048_8192_SHA384
+                } else if *signature_alg == OID_RSASHA512 {
+                    &signature::RSA_PKCS1_2048_8192_SHA512
+                } else if *signature_alg == OID_ECDSA_SHA256 {
+                    &signature::ECDSA_P256_SHA256_ASN1
+                } else if *signature_alg == OID_ECDSA_SHA384 {
+                    &signature::ECDSA_P384_SHA384_ASN1
+                } else {
+                    return Err(X509Error::SignatureUnsupportedAlgorithm);
+                };
             // get public key
             let key =
                 signature::UnparsedPublicKey::new(verification_alg, spki.subject_public_key.data);

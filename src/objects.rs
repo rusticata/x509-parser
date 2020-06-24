@@ -77,8 +77,15 @@ pub enum Nid {
     UnstructuredAddress,
     ExtendedCertificateAttributes,
 
+    EcdsaSha1,
+    EcdsaSha256,
+    EcdsaSha384,
+    EcdsaSha512,
+
     RsaSha1,
     RsaSha256,
+    RsaSha384,
+    RsaSha512,
 
     SubjectKeyIdentifier,
     KeyUsage,
@@ -102,7 +109,6 @@ struct OidEntry {
 }
 
 pub const OID_ALGO: Oid<'static> = oid!(1.3.14.3.2);
-pub const OID_RSADSI: Oid<'static> = oid!(1.2.840.113549);
 pub const OID_X500: Oid<'static> = oid!(2.5);
 pub const OID_X509: Oid<'static> = oid!(2.5.4);
 pub const OID_CN: Oid<'static> = oid!(2.5.4.3);
@@ -112,14 +118,22 @@ pub const OID_ST: Oid<'static> = oid!(2.5.4.8);
 pub const OID_O: Oid<'static> = oid!(2.5.4.10);
 pub const OID_OU: Oid<'static> = oid!(2.5.4.11);
 
+pub const OID_ECDSA_SHA1: Oid<'static> = oid!(1.2.840.10045.4.1);
+pub const OID_ECDSA_SHA256: Oid<'static> = oid!(1.2.840.10045.4.3.2);
+pub const OID_ECDSA_SHA384: Oid<'static> = oid!(1.2.840.10045.4.3.3);
+pub const OID_ECDSA_SHA512: Oid<'static> = oid!(1.2.840.10045.4.3.4);
+
 pub const OID_PKCS9: Oid<'static> = oid!(1.2.840.113549.1.9);
 pub const OID_EMAIL: Oid<'static> = oid!(1.2.840.113549.1.9.1);
 
 // XXX ...
 
+pub const OID_RSADSI: Oid<'static> = oid!(1.2.840.113549);
 pub const OID_RSAENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
 pub const OID_RSASHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
 pub const OID_RSASHA256: Oid<'static> = oid!(1.2.840.113549.1.1.11);
+pub const OID_RSASHA384: Oid<'static> = oid!(1.2.840.113549.1.1.12);
+pub const OID_RSASHA512: Oid<'static> = oid!(1.2.840.113549.1.1.13);
 
 // certificateExtension (2.5.29)
 
@@ -149,7 +163,6 @@ lazy_static! {
         let mut m = HashMap::new();
         m.insert(oid!(0), OidEntry {sn: "UNDEF", ln: "undefined", nid: Nid::Undef});
         m.insert(OID_ALGO, OidEntry {sn: "Algorithm", ln: "algorithm", nid: Nid::Algorithm});
-        m.insert(OID_RSADSI, OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
         m.insert(OID_X500, OidEntry{sn:"X500", ln:"X500", nid:Nid::X500});
         m.insert(OID_X509, OidEntry{sn:"X509", ln:"X509", nid:Nid::X509});
         m.insert(OID_CN, OidEntry{sn:"CN", ln:"commonName", nid:Nid::CommonName});
@@ -162,9 +175,17 @@ lazy_static! {
         m.insert(OID_PKCS9, OidEntry{sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9});
         m.insert(OID_EMAIL, OidEntry{sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress});
         //
+        m.insert(OID_ECDSA_SHA1, OidEntry{sn:"ECDSA-SHA1", ln:"ecdsa-with-SHA1", nid:Nid::EcdsaSha1});
+        m.insert(OID_ECDSA_SHA256, OidEntry{sn:"ECDSA-SHA256", ln:"ecdsa-with-SHA256", nid:Nid::EcdsaSha256});
+        m.insert(OID_ECDSA_SHA384, OidEntry{sn:"ECDSA-SHA384", ln:"ecdsa-with-SHA384", nid:Nid::EcdsaSha384});
+        m.insert(OID_ECDSA_SHA512, OidEntry{sn:"ECDSA-SHA512", ln:"ecdsa-with-SHA512", nid:Nid::EcdsaSha512});
+        //
         m.insert(OID_RSAENCRYPTION, OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
+        m.insert(OID_RSADSI, OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
         m.insert(OID_RSASHA1, OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
         m.insert(OID_RSASHA256, OidEntry{sn:"RSA-SHA256", ln:"sha256WithRSAEncryption", nid:Nid::RsaSha256});
+        m.insert(OID_RSASHA384, OidEntry{sn:"RSA-SHA384", ln:"sha384WithRSAEncryption", nid:Nid::RsaSha384});
+        m.insert(OID_RSASHA512, OidEntry{sn:"RSA-SHA512", ln:"sha512WithRSAEncryption", nid:Nid::RsaSha512});
         //
         // extensions
         m.insert(OID_EXT_SKI, OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
