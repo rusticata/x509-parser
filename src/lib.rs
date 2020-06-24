@@ -58,6 +58,7 @@
         unstable_features,
         unused_import_braces, unused_qualifications)]
 #![forbid(unsafe_code)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub use x509::*;
 pub mod x509;
