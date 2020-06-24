@@ -382,7 +382,7 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
 /// #
 /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 /// #
-/// fn display_x509_info(x509: &X509Certificate) {
+/// fn display_x509_info(x509: &X509Certificate<'_>) {
 ///      let subject = &x509.tbs_certificate.subject;
 ///      let issuer = &x509.tbs_certificate.issuer;
 ///      println!("X.509 Subject: {}", subject);

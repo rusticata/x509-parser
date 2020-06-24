@@ -61,7 +61,18 @@
 #![deny(/*missing_docs,*/
         unstable_features,
         unused_import_braces, unused_qualifications)]
+#![warn(
+    missing_debug_implementations,
+    /* missing_docs,
+    rust_2018_idioms,*/
+    unreachable_pub
+)]
 #![forbid(unsafe_code)]
+#![deny(intra_doc_link_resolution_failure)]
+#![doc(test(
+    no_crate_inject,
+    attr(deny(warnings, rust_2018_idioms), allow(dead_code, unused_variables))
+))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub use x509::*;

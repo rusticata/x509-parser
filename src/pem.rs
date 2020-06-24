@@ -8,7 +8,6 @@
 //! ```rust,no_run
 //! use std::io::Cursor;
 //! use x509_parser::pem::{pem_to_der, Pem};
-//! use x509_parser::parse_x509_der;
 //!
 //! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
 //!
