@@ -20,7 +20,7 @@ fn print_x509_info(file_name: &str, x509: &X509Certificate) {
             _ => println!("    {}", oid),
         }
     }
-    println!("");
+    println!();
 }
 
 pub fn main() -> io::Result<()> {
