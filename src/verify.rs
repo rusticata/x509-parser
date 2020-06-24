@@ -1,4 +1,5 @@
 #[cfg(feature = "verify")]
+#[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
 mod x509_verify {
     use crate::error::X509Error;
     use crate::objects::*;
