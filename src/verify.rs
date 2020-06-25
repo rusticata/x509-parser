@@ -23,13 +23,13 @@ mod x509_verify {
             let signature_alg = &self.signature_algorithm.algorithm;
             // identify verification algorithm
             let verification_alg: &dyn signature::VerificationAlgorithm =
-                if *signature_alg == OID_RSASHA1 {
+                if *signature_alg == OID_RSA_SHA1 {
                     &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
-                } else if *signature_alg == OID_RSASHA256 {
+                } else if *signature_alg == OID_RSA_SHA256 {
                     &signature::RSA_PKCS1_2048_8192_SHA256
-                } else if *signature_alg == OID_RSASHA384 {
+                } else if *signature_alg == OID_RSA_SHA384 {
                     &signature::RSA_PKCS1_2048_8192_SHA384
-                } else if *signature_alg == OID_RSASHA512 {
+                } else if *signature_alg == OID_RSA_SHA512 {
                     &signature::RSA_PKCS1_2048_8192_SHA512
                 } else if *signature_alg == OID_ECDSA_SHA256 {
                     &signature::ECDSA_P256_SHA256_ASN1
