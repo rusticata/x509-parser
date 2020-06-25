@@ -55,6 +55,20 @@
 //! # Features
 //!
 //! - The `verify` feature adds support for (cryptographic) signature verification, based on ring.
+//!   It adds the `verify_signature` to `X509Certificate`.
+//!
+//! ```rust
+//! # #[cfg(feature = "verify")]
+//! # use x509_parser::X509Certificate;
+//! /// Cryptographic signature verification: returns true if certificate was signed by issuer
+//! #[cfg(feature = "verify")]
+//! pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
+//!     let issuer_public_key = &issuer.tbs_certificate.subject_pki;
+//!     cert
+//!         .verify_signature(Some(issuer_public_key))
+//!         .is_ok()
+//! }
+//! ```
 //!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
 
