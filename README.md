@@ -55,6 +55,18 @@ See also `examples/print-cert.rs`.
 # Features
 
 - The `verify` feature adds support for (cryptographic) signature verification, based on ring.
+  It adds the `verify_signature` to `X509Certificate`.
+
+```rust
+/// Cryptographic signature verification: returns true if certificate was signed by issuer
+#[cfg(feature = "verify")]
+pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
+    let issuer_public_key = &issuer.tbs_certificate.subject_pki;
+    cert
+        .verify_signature(Some(issuer_public_key))
+        .is_ok()
+}
+```
 
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 
@@ -85,6 +97,7 @@ cargo update -p lexical-core --precise 0.6.7
 - Implement parsing for some extensions
   - Support for extensions is not complete, support for more types will be added later
 - Add example to decode and print certificates
+- Add `verify` feature to verify cryptographic signature by a public key
 
 Thanks: @jannschu
 
