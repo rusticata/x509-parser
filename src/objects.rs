@@ -128,12 +128,12 @@ pub const OID_EMAIL: Oid<'static> = oid!(1.2.840.113549.1.9.1);
 
 // XXX ...
 
-pub const OID_RSADSI: Oid<'static> = oid!(1.2.840.113549);
-pub const OID_RSAENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
-pub const OID_RSASHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
-pub const OID_RSASHA256: Oid<'static> = oid!(1.2.840.113549.1.1.11);
-pub const OID_RSASHA384: Oid<'static> = oid!(1.2.840.113549.1.1.12);
-pub const OID_RSASHA512: Oid<'static> = oid!(1.2.840.113549.1.1.13);
+pub const OID_RSA_DSI: Oid<'static> = oid!(1.2.840.113549);
+pub const OID_RSA_ENCRYPTION: Oid<'static> = oid!(1.2.840.113549.1.1.1);
+pub const OID_RSA_SHA1: Oid<'static> = oid!(1.2.840.113549.1.1.5);
+pub const OID_RSA_SHA256: Oid<'static> = oid!(1.2.840.113549.1.1.11);
+pub const OID_RSA_SHA384: Oid<'static> = oid!(1.2.840.113549.1.1.12);
+pub const OID_RSA_SHA512: Oid<'static> = oid!(1.2.840.113549.1.1.13);
 
 // certificateExtension (2.5.29)
 
@@ -180,12 +180,12 @@ lazy_static! {
         m.insert(OID_ECDSA_SHA384, OidEntry{sn:"ECDSA-SHA384", ln:"ecdsa-with-SHA384", nid:Nid::EcdsaSha384});
         m.insert(OID_ECDSA_SHA512, OidEntry{sn:"ECDSA-SHA512", ln:"ecdsa-with-SHA512", nid:Nid::EcdsaSha512});
         //
-        m.insert(OID_RSAENCRYPTION, OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
-        m.insert(OID_RSADSI, OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
-        m.insert(OID_RSASHA1, OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
-        m.insert(OID_RSASHA256, OidEntry{sn:"RSA-SHA256", ln:"sha256WithRSAEncryption", nid:Nid::RsaSha256});
-        m.insert(OID_RSASHA384, OidEntry{sn:"RSA-SHA384", ln:"sha384WithRSAEncryption", nid:Nid::RsaSha384});
-        m.insert(OID_RSASHA512, OidEntry{sn:"RSA-SHA512", ln:"sha512WithRSAEncryption", nid:Nid::RsaSha512});
+        m.insert(OID_RSA_ENCRYPTION, OidEntry{sn:"RSA-ENC", ln:"rsaEncryption", nid:Nid::RsaEncryption});
+        m.insert(OID_RSA_DSI, OidEntry{sn:"rsadsi", ln:"rsadsi", nid:Nid::RsaDsi});
+        m.insert(OID_RSA_SHA1, OidEntry{sn:"RSA-SHA1", ln:"sha1WithRSAEncryption", nid:Nid::RsaSha1});
+        m.insert(OID_RSA_SHA256, OidEntry{sn:"RSA-SHA256", ln:"sha256WithRSAEncryption", nid:Nid::RsaSha256});
+        m.insert(OID_RSA_SHA384, OidEntry{sn:"RSA-SHA384", ln:"sha384WithRSAEncryption", nid:Nid::RsaSha384});
+        m.insert(OID_RSA_SHA512, OidEntry{sn:"RSA-SHA512", ln:"sha512WithRSAEncryption", nid:Nid::RsaSha512});
         //
         // extensions
         m.insert(OID_EXT_SKI, OidEntry{sn:"subjectKeyIdentifier", ln:"X509v3 Subject Key Identifier", nid:Nid::SubjectKeyIdentifier});
@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn test_oid_match() {
         let oid = oid!(1.2.840.113549.1.1.5);
-        if oid == OID_RSASHA1 {
+        if oid == OID_RSA_SHA1 {
             // ok
         }
         // matching is not possible with Cow constants in pattern,
