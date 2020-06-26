@@ -20,11 +20,11 @@ programming), tests, and fuzzing. It also aims to be panic-free.
 The code is available on [Github](https://github.com/rusticata/x509-parser)
 and is part of the [Rusticata](https://github.com/rusticata) project.
 
-The main parsing method is [`parse_x509_der`](https://docs.rs/x509-parser/latest/x509-parser/fn.parse_x509_der.html), which takes a
+The main parsing method is [`parse_x509_der`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_der.html), which takes a
 DER-encoded certificate as input, and builds a
-[`X509Certificate`](https://docs.rs/x509-parser/latest/x509-parser/x509/struct.X509Certificate.html) object.
+[`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html) object.
 
-For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509-parser/pem/index.html) module.
+For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module.
 
 # Examples
 
@@ -55,6 +55,7 @@ See also `examples/print-cert.rs`.
 
 ```rust
 /// Cryptographic signature verification: returns true if certificate was signed by issuer
+#[cfg(feature = "verify")]
 pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
     let issuer_public_key = &issuer.tbs_certificate.subject_pki;
     cert
