@@ -153,7 +153,7 @@ pub(crate) mod parser {
     use der_parser::{oid::Oid, *};
     use nom::{alt, call, do_parse, eof, exact, many1, opt, take, verify, Err, IResult};
 
-    pub(crate) fn parse_extension<'a>(
+    fn parse_extension0<'a>(
         orig_i: &'a [u8],
         i: &'a [u8],
         oid: &Oid,
@@ -189,6 +189,18 @@ pub(crate) mod parser {
             ParsedExtension::UnsupportedExtension
         };
         Ok((orig_i, ext))
+    }
+
+    pub(crate) fn parse_extension<'a>(
+        orig_i: &'a [u8],
+        i: &'a [u8],
+        oid: &Oid,
+    ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
+        let r = parse_extension0(orig_i, i, oid);
+        if let Err(nom::Err::Incomplete(_)) = r {
+            return Ok((orig_i, ParsedExtension::UnsupportedExtension));
+        }
+        r
     }
 
     /// Parse a "Basic Constraints" extension
