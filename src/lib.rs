@@ -4,7 +4,7 @@
 //! [![crates.io](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Download numbers](https://img.shields.io/crates/d/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Travis CI](https://travis-ci.org/rusticata/x509-parser.svg?branch=master)](https://travis-ci.org/rusticata/x509-parser)
-//! [![AppVeyor CI](https://ci.appveyor.com/api/projects/status/github/rusticata/x509-parser?svg=true)](https://ci.appveyor.com/project/chifflier/x509-parser)
+//! [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
 //!
 //! # X.509 Parser
 //!
