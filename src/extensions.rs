@@ -203,16 +203,40 @@ pub(crate) mod parser {
     /// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
     /// unsigned integer, and parsing will fail if value if larger.
     fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], BasicConstraints, BerError> {
-        parse_der_struct!(
-            i,
-            TAG DerTag::Sequence,
-            ca:                 map_res!(parse_der_bool, |x: DerObject| x.as_bool()) >>
-            path_len_constraint: alt!(
-                complete!(opt!(map_res!(parse_der_integer, |x: DerObject| x.as_u32()))) |
-                map!(eof!(), |_| None)) >>
-            ( BasicConstraints{ ca, path_len_constraint } )
-        )
-        .map(|(rem, x)| (rem, x.1))
+        let (rem, obj) = parse_der_sequence(i)?;
+        if let Ok(seq) = obj.as_sequence() {
+            let (ca, path_len_constraint) = match seq.len() {
+                0 => (false, None),
+                1 => {
+                    if let Ok(b) = seq[0].as_bool() {
+                        (b, None)
+                    } else if let Ok(u) = seq[0].as_u32() {
+                        (false, Some(u))
+                    } else {
+                        return Err(nom::Err::Error(BerError::InvalidTag));
+                    }
+                }
+                2 => {
+                    let ca = seq[0]
+                        .as_bool()
+                        .or(Err(nom::Err::Error(BerError::InvalidLength)))?;
+                    let pl = seq[1]
+                        .as_u32()
+                        .or(Err(nom::Err::Error(BerError::InvalidLength)))?;
+                    (ca, Some(pl))
+                }
+                _ => return Err(nom::Err::Error(BerError::InvalidLength)),
+            };
+            Ok((
+                rem,
+                BasicConstraints {
+                    ca,
+                    path_len_constraint,
+                },
+            ))
+        } else {
+            Err(nom::Err::Error(BerError::InvalidLength))
+        }
     }
 
     fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], NameConstraints, BerError> {
