@@ -100,6 +100,8 @@ pub enum Nid {
     PolicyConstraints,
     ExtendedKeyUsage,
     InhibitAnyPolicy,
+
+    AuthorityInfoAccess,
 }
 
 struct OidEntry {
@@ -158,6 +160,25 @@ pub const OID_EXT_EXTENDEDKEYUSAGE: Oid<'static> = oid!(2.5.29.37);
 pub const OID_EXT_EKU: Oid<'static> = OID_EXT_EXTENDEDKEYUSAGE;
 pub const OID_EXT_INHIBITANYPOLICY: Oid<'static> = oid!(2.5.29.54);
 
+// PKIX Certificate Extension
+// https://www.iana.org/assignments/smi-numbers/smi-numbers.xhtml#smi-numbers-1.3.6.1.5.5.7.1
+pub const OID_EXT_AUTHORITYINFOACCESS: Oid<'static> = oid!(1.3.6.1.5.5.7.1.1);
+
+// PKIX Access Descriptor
+// https://www.iana.org/assignments/smi-numbers/smi-numbers.xhtml#smi-numbers-1.3.6.1.5.5.7.48
+pub const OID_ACCESSDESCRIPTOR_OCSP: Oid<'static> = oid!(1.3.6.1.5.5.7.48.1);
+pub const OID_ACCESSDESCRIPTOR_CAISSUERS: Oid<'static> = oid!(1.3.6.1.5.5.7.48.2);
+pub const OID_ACCESSDESCRIPTOR_TIMESTAMPING: Oid<'static> = oid!(1.3.6.1.5.5.7.48.3);
+pub const OID_ACCESSDESCRIPTOR_DVCS: Oid<'static> = oid!(1.3.6.1.5.5.7.48.4);
+pub const OID_ACCESSDESCRIPTOR_CAREPOSITORY: Oid<'static> = oid!(1.3.6.1.5.5.7.48.5);
+pub const OID_ACCESSDESCRIPTOR_HTTPCERTS: Oid<'static> = oid!(1.3.6.1.5.5.7.48.6);
+pub const OID_ACCESSDESCRIPTOR_HTTPCRLS: Oid<'static> = oid!(1.3.6.1.5.5.7.48.7);
+pub const OID_ACCESSDESCRIPTOR_RPKIMANIFEST: Oid<'static> = oid!(1.3.6.1.5.5.7.48.10);
+pub const OID_ACCESSDESCRIPTOR_SIGNEDOBJECT: Oid<'static> = oid!(1.3.6.1.5.5.7.48.11);
+pub const OID_ACCESSDESCRIPTOR_CMC: Oid<'static> = oid!(1.3.6.1.5.5.7.48.12);
+pub const OID_ACCESSDESCRIPTOR_RPKINOTIFY: Oid<'static> = oid!(1.3.6.1.5.5.7.48.13);
+pub const OID_ACCESSDESCRIPTOR_STIRTNLIST: Oid<'static> = oid!(1.3.6.1.5.5.7.48.14);
+
 lazy_static! {
     static ref OID_REGISTRY: HashMap<Oid<'static>, OidEntry> = {
         let mut m = HashMap::new();
@@ -202,6 +223,7 @@ lazy_static! {
         m.insert(OID_EXT_POLICYCONSTRAINTS, OidEntry{sn:"policyConstraints", ln:"X509v3 Policy Constraints", nid:Nid::PolicyConstraints});
         m.insert(OID_EXT_EKU, OidEntry{sn:"extendedKeyUsage", ln:"X509v3 Extended Key Usage", nid:Nid::ExtendedKeyUsage});
         m.insert(OID_EXT_INHIBITANYPOLICY, OidEntry{sn:"inhibitAnyPolicy", ln:"X509v3 Inhibit Any-Policy", nid:Nid::InhibitAnyPolicy});
+        m.insert(OID_EXT_AUTHORITYINFOACCESS, OidEntry{sn:"authorityInfoAccess", ln:"Authority Information Access", nid:Nid::AuthorityInfoAccess});
         m
     };
 }
