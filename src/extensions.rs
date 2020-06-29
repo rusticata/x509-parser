@@ -25,6 +25,8 @@ pub enum ParsedExtension<'a> {
     ExtendedKeyUsage(ExtendedKeyUsage<'a>),
     /// Section 4.2.1.14 of rfc 5280
     InhibitAnyPolicy(InhibitAnyPolicy),
+    /// Section 4.2.2.1 of rfc 5280
+    AuthorityInfoAccess(AuthorityInfoAccess<'a>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -84,6 +86,11 @@ pub struct ExtendedKeyUsage<'a> {
     pub time_stamping: bool,
     pub ocscp_signing: bool,
     pub other: Vec<Oid<'a>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AuthorityInfoAccess<'a> {
+    pub accessdescs: HashMap<Oid<'a>, GeneralName<'a>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -185,6 +192,9 @@ pub(crate) mod parser {
         } else if *oid == OID_EXT_INHIBITANYPOLICY {
             let (_ret, iap) = parse_inhibitanyplicy(i)?;
             ParsedExtension::InhibitAnyPolicy(iap)
+        } else if *oid == OID_EXT_AUTHORITYINFOACCESS {
+            let (_ret, aia) = parse_authorityinfoaccess(i)?;
+            ParsedExtension::AuthorityInfoAccess(aia)
         } else {
             ParsedExtension::UnsupportedExtension
         };
@@ -460,6 +470,40 @@ pub(crate) mod parser {
             }
         }
         Ok((ret, eku))
+    }
+
+    fn parse_authorityinfoaccess(i: &[u8]) -> IResult<&[u8], AuthorityInfoAccess, BerError> {
+        fn parse_aia<'a>(i: &'a [u8]) -> IResult<&'a [u8], (Oid<'a>, GeneralName<'a>), BerError> {
+            let (ret, content) = do_parse!(
+                i,
+                hdr: verify!(call!(der_read_element_header), |h| h.tag
+                    == DerTag::Sequence)
+                    >> content: take!(hdr.len)
+                    >> (content)
+            )?;
+            // Read first element, an oid.
+            let (gn, oid) = map_res!(content, parse_der_oid, |x: BerObject<'a>| x.as_oid_val())?;
+            // Parse second element
+            let (_rest, gn) = parse_generalname(gn)?;
+            Ok((ret, (oid, gn)))
+        }
+        let (ret, mut aia_raw) = do_parse!(
+            i,
+            hdr: verify!(call!(der_read_element_header), |s| s.tag
+                == DerTag::Sequence)
+                >> aia_raw: take!(hdr.len)
+                >> (aia_raw)
+        )?;
+        let mut accessdescs = HashMap::new();
+        while !aia_raw.is_empty() {
+            let (rest, (oid, gn)) = parse_aia(aia_raw)?;
+            aia_raw = rest;
+            if accessdescs.insert(oid, gn).is_some() {
+                // duplicate information is not allowed
+                return Err(Err::Failure(BerError::InvalidTag));
+            }
+        }
+        Ok((ret, AuthorityInfoAccess { accessdescs }))
     }
 
     #[rustversion::not(since(1.37))]
