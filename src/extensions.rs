@@ -1,6 +1,7 @@
 use crate::objects::*;
 use der_parser::oid::Oid;
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ParsedExtension<'a> {
@@ -73,6 +74,37 @@ impl KeyUsage {
     }
     pub fn decipher_only(&self) -> bool {
         (self.flags >> 8) & 1u16 == 1
+    }
+}
+
+// This list must have the same order as KeyUsage flags declaration (4.2.1.3)
+const KEY_USAGE_FLAGS: &[&str] = &[
+    "Digital Signature",
+    "Non Repudiation",
+    "Key Encipherment",
+    "Data Encipherment",
+    "Key Agreement",
+    "Key Cert Sign",
+    "CRL Sign",
+    "Encipher Only",
+    "Decipher Only",
+];
+
+impl fmt::Display for KeyUsage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = KEY_USAGE_FLAGS
+            .iter()
+            .enumerate()
+            .fold(String::new(), |acc, (idx, s)| {
+                if self.flags >> idx != 0 {
+                    acc + s + ", "
+                } else {
+                    acc
+                }
+            });
+        s.pop();
+        s.pop();
+        f.write_str(&s)
     }
 }
 
