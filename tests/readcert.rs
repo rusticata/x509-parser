@@ -79,7 +79,10 @@ fn test_x509_parser() {
                         4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
                         168, 48, 49, 54,
                     ],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::SubjectKeyIdentifier(KeyIdentifier(&[
+                        163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168,
+                        48, 49, 54,
+                    ])),
                 ),
                 X509Extension::new(
                     oid!(2.5.29.35),
