@@ -8,6 +8,8 @@ pub enum ParsedExtension<'a> {
     /// Crate parser does not support this extension (yet)
     UnsupportedExtension,
     ParseError,
+    /// Section 4.2.1.2 of rfc 5280
+    SubjectKeyIdentifier(KeyIdentifier<'a>),
     /// Section 4.2.1.3 of rfc 5280
     KeyUsage(KeyUsage),
     /// Section 4.2.1.4 of rfc 5280
@@ -41,6 +43,9 @@ pub struct BasicConstraints {
     pub ca: bool,
     pub path_len_constraint: Option<u32>,
 }
+
+#[derive(Debug, PartialEq)]
+pub struct KeyIdentifier<'a>(pub &'a [u8]);
 
 #[derive(Debug, PartialEq)]
 pub struct KeyUsage {
@@ -197,7 +202,10 @@ pub(crate) mod parser {
         i: &'a [u8],
         oid: &Oid,
     ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
-        let ext = if *oid == OID_EXT_KEYUSAGE {
+        let ext = if *oid == OID_EXT_SUBJECTKEYIDENTIFIER {
+            let (_ret, ki) = parse_keyidentifier(i)?;
+            ParsedExtension::SubjectKeyIdentifier(ki)
+        } else if *oid == OID_EXT_KEYUSAGE {
             let (_ret, ku) = parse_keyusage(i)?;
             ParsedExtension::KeyUsage(ku)
         } else if *oid == OID_EXT_SAN {
@@ -553,6 +561,15 @@ pub(crate) mod parser {
     #[inline]
     fn reverse_bits(n: u8) -> u8 {
         n.reverse_bits()
+    }
+
+    fn parse_keyidentifier<'a>(i: &'a [u8]) -> IResult<&'a [u8], KeyIdentifier, BerError> {
+        let (rest, obj) = parse_der_octetstring(i)?;
+        let id = obj
+            .content
+            .as_slice()
+            .or(Err(Err::Error(BerError::BerTypeError)))?;
+        Ok((rest, KeyIdentifier(id)))
     }
 
     fn parse_keyusage<'a>(i: &'a [u8]) -> IResult<&'a [u8], KeyUsage, BerError> {
