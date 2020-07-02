@@ -95,7 +95,7 @@ pub struct AuthorityInfoAccess<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct InhibitAnyPolicy {
-    skip_certs: u32,
+    pub skip_certs: u32,
 }
 
 #[derive(Debug, PartialEq)]
@@ -105,13 +105,13 @@ pub struct PolicyMappings<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct PolicyConstraints {
-    require_explicit_policy: Option<u32>,
-    inhibit_policy_mapping: Option<u32>,
+    pub require_explicit_policy: Option<u32>,
+    pub inhibit_policy_mapping: Option<u32>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct SubjectAlternativeName<'a> {
-    general_names: Vec<GeneralName<'a>>,
+    pub general_names: Vec<GeneralName<'a>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -139,15 +139,15 @@ pub enum GeneralName<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct NameConstraints<'a> {
-    permitted_subtrees: Option<Vec<GeneralSubtree<'a>>>,
-    excluded_subtrees: Option<Vec<GeneralSubtree<'a>>>,
+    pub permitted_subtrees: Option<Vec<GeneralSubtree<'a>>>,
+    pub excluded_subtrees: Option<Vec<GeneralSubtree<'a>>>,
 }
 
 #[derive(Debug, PartialEq)]
 /// Represents the structure used in the name contraints extensions.
 /// The fields minimum and maximum are not supported (openssl also has no support).
 pub struct GeneralSubtree<'a> {
-    base: GeneralName<'a>,
+    pub base: GeneralName<'a>,
     // minimum: u32,
     // maximum: Option<u32>,
 }
