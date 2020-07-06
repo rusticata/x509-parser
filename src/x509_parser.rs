@@ -51,7 +51,7 @@ fn parse_rdn(i: &[u8]) -> BerResult<RelativeDistinguishedName> {
     .map(|(rem, x)| (rem, x.1))
 }
 
-pub(crate) fn parse_name(i: &[u8]) -> BerResult<X509Name> {
+pub fn parse_name(i: &[u8]) -> BerResult<X509Name> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
