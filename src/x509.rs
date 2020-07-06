@@ -48,7 +48,7 @@ impl<'a> X509Extension<'a> {
     }
 
     /// Return the extension type or `None` if the extension is not implemented.
-    pub fn parsed_extension(&self) -> &ParsedExtension {
+    pub fn parsed_extension(&self) -> &ParsedExtension<'a> {
         &self.parsed_extension
     }
 }
