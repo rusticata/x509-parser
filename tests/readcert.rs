@@ -35,6 +35,8 @@ fn test_x509_parser() {
             //
             let expected_issuer = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.issuer), expected_issuer);
+            let expected_issuer_der = &IGCA_DER[35..171];
+            assert_eq!(tbs_cert.issuer.as_raw(), expected_issuer_der);
             //
             let sig_alg = &cert.signature_algorithm;
             assert_eq!(sig_alg.algorithm, OID_RSA_SHA1);

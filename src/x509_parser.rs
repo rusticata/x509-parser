@@ -56,9 +56,18 @@ pub(crate) fn parse_name(i: &[u8]) -> BerResult<X509Name> {
         i,
         TAG DerTag::Sequence,
         v: many1!(complete!(parse_rdn)) >>
-        ( X509Name{ rdn_seq:v } )
+        ( v )
     )
-    .map(|(rem, x)| (rem, x.1))
+    .map(|(rem, x)| {
+        let len = i.len() - rem.len();
+        (
+            rem,
+            X509Name {
+                rdn_seq: x.1,
+                raw: &i[..len],
+            },
+        )
+    })
 }
 
 fn parse_version(i: &[u8]) -> BerResult<u32> {

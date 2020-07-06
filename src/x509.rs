@@ -79,6 +79,14 @@ pub struct AlgorithmIdentifier<'a> {
 #[derive(Debug, PartialEq)]
 pub struct X509Name<'a> {
     pub rdn_seq: Vec<RelativeDistinguishedName<'a>>,
+    pub(crate) raw: &'a [u8],
+}
+
+impl<'a> X509Name<'a> {
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw
+    }
 }
 
 impl<'a> fmt::Display for X509Name<'a> {
@@ -502,6 +510,7 @@ mod tests {
                     ],
                 },
             ],
+            raw: &[], // incorrect, but enough for testing
         };
         assert_eq!(
             name.to_string(),
