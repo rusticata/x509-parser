@@ -51,7 +51,8 @@ fn parse_rdn(i: &[u8]) -> BerResult<RelativeDistinguishedName> {
     .map(|(rem, x)| (rem, x.1))
 }
 
-pub fn parse_name(i: &[u8]) -> BerResult<X509Name> {
+/// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
+pub fn parse_x509_name(i: &[u8]) -> BerResult<X509Name> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
@@ -260,9 +261,9 @@ fn parse_tbs_certificate<'a>(i: &'a [u8]) -> BerResult<TbsCertificate<'a>> {
         version:     parse_version >>
         serial:      map_opt!(parse_der_integer, get_serial_info) >>
         signature:   parse_algorithm_identifier >>
-        issuer:      parse_name >>
+        issuer:      parse_x509_name >>
         validity:    parse_validity >>
-        subject:     parse_name >>
+        subject:     parse_x509_name >>
         subject_pki: parse_subject_public_key_info >>
         issuer_uid:  parse_issuer_unique_id >>
         subject_uid: parse_subject_unique_id >>
@@ -296,7 +297,7 @@ fn parse_tbs_cert_list(i: &[u8]) -> IResult<&[u8], TbsCertList, BerError> {
         TAG DerTag::Sequence,
         version:              opt!(map_res!(parse_der_integer, |x:DerObject| x.as_u32())) >>
         signature:            parse_algorithm_identifier >>
-        issuer:               parse_name >>
+        issuer:               parse_x509_name >>
         this_update:          map_res!(parse_choice_of_time, der_to_utctime) >>
         next_update:          opt!(map_res!(parse_choice_of_time, der_to_utctime)) >>
         revoked_certificates: opt!(complete!(parse_revoked_certificates)) >>

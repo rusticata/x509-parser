@@ -335,7 +335,7 @@ pub(crate) mod parser {
     }
 
     fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
-        use crate::x509_parser::parse_name;
+        use crate::x509_parser::parse_x509_name;
         let (rest, hdr) = verify!(i, der_read_element_header, |hdr| hdr.is_contextspecific())?;
         if hdr.len as usize > rest.len() {
             return Err(nom::Err::Failure(BerError::ObjectTooShort));
@@ -365,7 +365,7 @@ pub(crate) mod parser {
             3 => return Err(Err::Failure(BerError::Unsupported)), // x400Address
             4 => {
                 // directoryName, name
-                let (_, name) = exact!(&rest[..(hdr.len as usize)], parse_name)?;
+                let (_, name) = exact!(&rest[..(hdr.len as usize)], parse_x509_name)?;
                 GeneralName::DirectoryName(name)
             }
             5 => return Err(Err::Failure(BerError::Unsupported)), // ediPartyName
