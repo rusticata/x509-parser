@@ -88,13 +88,15 @@ cargo update -p lexical-core --precise 0.6.7
 - Add method to get a formatted string of the certificate serial number
 - Add method to get decoded version
 - Add convenience methods to access the most common fields (subject, issuer, etc.)
+- Expose the raw DER of an X509Name
+- Make `parse_x509_name` public, for parsing distinguished names
 - Make OID objects public
 - Implement parsing for some extensions
   - Support for extensions is not complete, support for more types will be added later
 - Add example to decode and print certificates
 - Add `verify` feature to verify cryptographic signature by a public key
 
-Thanks: @jannschu
+Thanks: @jannschu, @g2p
 
 ### 0.7.0
 
