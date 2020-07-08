@@ -4,6 +4,7 @@
 //!
 
 use crate::error::X509Error;
+use crate::time::ASN1Time;
 use crate::x509::*;
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Utc};
@@ -103,7 +104,7 @@ fn parse_choice_of_time(i: &[u8]) -> DerResult {
     )
 }
 
-fn der_to_utctime(obj: DerObject) -> Result<DateTime<Utc>, X509Error> {
+fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
     if let BerObjectContent::UTCTime(s) = obj.content {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
         let dt = if xs.ends_with('Z') {
@@ -121,7 +122,7 @@ fn der_to_utctime(obj: DerObject) -> Result<DateTime<Utc>, X509Error> {
                 }
                 // tm = tm.with_year(tm.year() + 1900).ok_or(X509Error::InvalidDate)?;
                 // eprintln!("date: {}", tm.rfc822());
-                Ok(tm)
+                Ok(ASN1Time::from_datetime_utc(tm))
             }
             Err(_e) => Err(X509Error::InvalidDate),
         }
@@ -133,7 +134,8 @@ fn der_to_utctime(obj: DerObject) -> Result<DateTime<Utc>, X509Error> {
         } else {
             DateTime::parse_from_str(xs, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
-        dt.or(Err(X509Error::InvalidDate))
+        dt.map(ASN1Time::from_datetime_utc)
+            .or(Err(X509Error::InvalidDate))
     } else {
         Err(X509Error::InvalidDate)
     }

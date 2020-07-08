@@ -4,7 +4,9 @@ use der_parser::{oid, oid::Oid};
 use std::collections::HashMap;
 use x509_parser::extensions::*;
 use x509_parser::objects::*;
-use x509_parser::{parse_crl_der, parse_subject_public_key_info, parse_x509_der, X509Extension};
+use x509_parser::{
+    parse_crl_der, parse_subject_public_key_info, parse_x509_der, ASN1Time, X509Extension,
+};
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &[u8] = include_bytes!("../assets/no_extensions.der");
@@ -45,12 +47,14 @@ fn test_x509_parser() {
             //
             let not_before = tbs_cert.validity.not_before;
             let not_after = tbs_cert.validity.not_after;
-            assert_eq!(not_before.year(), 2002);
-            assert_eq!(not_before.month(), 12);
-            assert_eq!(not_before.day(), 13);
-            assert_eq!(not_after.year(), 2020);
-            assert_eq!(not_after.month(), 10);
-            assert_eq!(not_after.day(), 17);
+            let nb = Utc.timestamp(not_before.timestamp(), 0);
+            let na = Utc.timestamp(not_after.timestamp(), 0);
+            assert_eq!(nb.year(), 2002);
+            assert_eq!(nb.month(), 12);
+            assert_eq!(nb.day(), 13);
+            assert_eq!(na.year(), 2020);
+            assert_eq!(na.month(), 10);
+            assert_eq!(na.day(), 17);
             let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())]
                 .into_iter()
                 .collect();
@@ -180,19 +184,24 @@ fn test_crl_parse() {
 
             let this_update = tbs_cert_list.this_update;
             let next_update = tbs_cert_list.next_update.unwrap();
-            assert_eq!(this_update.year(), 2013);
-            assert_eq!(this_update.month(), 2);
-            assert_eq!(this_update.day(), 18);
-            assert_eq!(next_update.year(), 2013);
-            assert_eq!(next_update.month(), 2);
-            assert_eq!(next_update.day(), 18);
+            let tu = Utc.timestamp(this_update.timestamp(), 0);
+            let nu = Utc.timestamp(next_update.timestamp(), 0);
+            assert_eq!(tu.year(), 2013);
+            assert_eq!(tu.month(), 2);
+            assert_eq!(tu.day(), 18);
+            assert_eq!(nu.year(), 2013);
+            assert_eq!(nu.month(), 2);
+            assert_eq!(nu.day(), 18);
+
+            let revocation_date =
+                ASN1Time::from_timestamp(Utc.ymd(2013, 2, 18).and_hms(10, 22, 12).timestamp());
 
             let revoked_certs = &tbs_cert_list.revoked_certificates;
             assert_eq!(
                 revoked_certs[0],
                 x509_parser::RevokedCertificate {
                     user_certificate: 1_341_767_u32.into(),
-                    revocation_date: Utc.ymd(2013, 2, 18).and_hms(10, 22, 12),
+                    revocation_date,
                     extensions: vec![
                         X509Extension::new(
                             oid!(2.5.29.21),
@@ -285,9 +294,11 @@ fn test_crl_parse_minimal() {
     match parse_crl_der(MINIMAL_CRL_DER) {
         Ok((e, cert)) => {
             assert!(e.is_empty());
+            let revocation_date =
+                ASN1Time::from_timestamp(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0).timestamp());
             let expected_revocations = &[x509_parser::RevokedCertificate {
                 user_certificate: 42u32.into(),
-                revocation_date: Utc.ymd(1970, 1, 1).and_hms(0, 0, 0),
+                revocation_date,
                 extensions: vec![],
             }];
             assert_eq!(

@@ -10,8 +10,7 @@ use num_bigint::BigUint;
 use crate::error::X509Error;
 use crate::extensions::*;
 use crate::objects::*;
-use chrono::offset::{Local, Utc};
-use chrono::DateTime;
+use crate::time::ASN1Time;
 use data_encoding::HEXUPPER;
 use der_parser::ber::{BerObjectContent, BitStringObject};
 use der_parser::der::DerObject;
@@ -147,8 +146,8 @@ impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct Validity {
-    pub not_before: DateTime<Utc>,
-    pub not_after: DateTime<Utc>,
+    pub not_before: ASN1Time,
+    pub not_after: ASN1Time,
 }
 
 impl Validity {
@@ -160,7 +159,7 @@ impl Validity {
     pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
         let nb = self.not_before;
         let na = self.not_after;
-        let now = Local::now().with_timezone(&nb.timezone());
+        let now = ASN1Time::now();
         if now < nb {
             // Not yet valid...
             return None;
@@ -171,18 +170,18 @@ impl Validity {
         }
         // Note that the duration below is guaranteed to be positive,
         // since we just checked that now < na
-        (na - now).to_std().ok()
+        na - now
     }
 }
 
 #[test]
 fn check_validity_expiration() {
     let mut v = Validity {
-        not_before: Utc::now(),
-        not_after: Utc::now(),
+        not_before: ASN1Time::now(),
+        not_after: ASN1Time::now(),
     };
     assert_eq!(v.time_to_expiration(), None);
-    v.not_after = v.not_after + chrono::Duration::minutes(1);
+    v.not_after = (v.not_after + std::time::Duration::new(60, 0)).unwrap();
     assert!(v.time_to_expiration().is_some());
     assert!(v.time_to_expiration().unwrap() <= std::time::Duration::from_secs(60));
     // The following assumes this timing won't take 10 seconds... I
@@ -316,8 +315,8 @@ pub struct TbsCertList<'a> {
     pub version: Option<u32>,
     pub signature: AlgorithmIdentifier<'a>,
     pub issuer: X509Name<'a>,
-    pub this_update: DateTime<Utc>,
-    pub next_update: Option<DateTime<Utc>>,
+    pub this_update: ASN1Time,
+    pub next_update: Option<ASN1Time>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
     pub extensions: Vec<X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
@@ -332,7 +331,7 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
 #[derive(Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
     pub user_certificate: BigUint,
-    pub revocation_date: DateTime<Utc>,
+    pub revocation_date: ASN1Time,
     pub extensions: Vec<X509Extension<'a>>,
 }
 

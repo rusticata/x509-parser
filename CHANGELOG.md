@@ -13,6 +13,7 @@
 - Upgrade to `der-parser` 4.0
 - Move from `time` to `chrono`
   - `time 0.1 is very old, and time 0.2 broke compatibility and cannot parse timezones
+  - Add public type `ASN1Time` object to abstract implementation
   - *this breaks API for direct access to `not_before`, `not_after` etc.*
 - Fix clippy warnings
   - `nid2obj` argument is now passed by copy, not reference

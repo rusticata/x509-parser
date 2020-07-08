@@ -92,6 +92,8 @@ pub mod error;
 pub mod extensions;
 pub mod objects;
 pub mod pem;
+mod time;
+pub use time::*;
 mod x509_parser;
 pub use crate::x509_parser::*;
 mod verify;
