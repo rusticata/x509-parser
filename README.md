@@ -96,6 +96,7 @@ cargo update -p lexical-core --precise 0.6.7
 - Add example to decode and print certificates
 - Add `verify` feature to verify cryptographic signature by a public key
 - Fix parsing of types not representable by string in X509Name (#36)
+- Fix parsing of certificates with empty subject (#37)
 
 Thanks: @jannschu, @g2p
 

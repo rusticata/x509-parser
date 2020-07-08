@@ -65,7 +65,7 @@ pub fn parse_x509_name(i: &[u8]) -> BerResult<X509Name> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
-        v: many1!(complete!(parse_rdn)) >>
+        v: many0!(complete!(parse_rdn)) >>
         ( v )
     )
     .map(|(rem, x)| {
