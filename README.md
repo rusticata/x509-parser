@@ -78,6 +78,8 @@ To fix it, force the version of `lexical-core` down:
 cargo update -p lexical-core --precise 0.6.7
 ```
 
+The `verify` feature is not compatible with rustc 1.34.
+
 ## Changes
 
 See [CHANGELOG.md](CHANGELOG.md)

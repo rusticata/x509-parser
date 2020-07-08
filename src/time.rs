@@ -43,7 +43,9 @@ impl Add<Duration> for ASN1Time {
     #[inline]
     fn add(self, rhs: Duration) -> Option<ASN1Time> {
         let secs = rhs.as_secs();
-        if secs > u32::MAX as u64 {
+        // u32::MAX is not supported in rust 1.34
+        const MAX_U32: u64 = 4_294_967_295;
+        if secs > MAX_U32 {
             return None;
         }
         let duration = chrono::Duration::seconds(secs as i64);
