@@ -38,6 +38,7 @@ pub enum Nid {
     StateOrProvinceName,
     OrganizationName,
     OrganizationalUnitName,
+    X500UniqueIdentifier,
     Rsa,
     Pkcs7,
     Pkcs7Data,
@@ -119,6 +120,7 @@ pub const OID_L: Oid<'static> = oid!(2.5.4.7);
 pub const OID_ST: Oid<'static> = oid!(2.5.4.8);
 pub const OID_O: Oid<'static> = oid!(2.5.4.10);
 pub const OID_OU: Oid<'static> = oid!(2.5.4.11);
+pub const OID_X500_UNIQUE_ID: Oid<'static> = oid!(2.5.4.45);
 
 pub const OID_ECDSA_SHA1: Oid<'static> = oid!(1.2.840.10045.4.1);
 pub const OID_ECDSA_SHA256: Oid<'static> = oid!(1.2.840.10045.4.3.2);
@@ -192,6 +194,7 @@ lazy_static! {
         m.insert(OID_ST, OidEntry{sn:"ST", ln:"stateOrProvinceName", nid:Nid::StateOrProvinceName});
         m.insert(OID_O, OidEntry{sn:"O", ln:"organizationName", nid:Nid::OrganizationName});
         m.insert(OID_OU, OidEntry{sn:"OU", ln:"organizationalUnitName", nid:Nid::OrganizationalUnitName});
+        m.insert(OID_X500_UNIQUE_ID, OidEntry{sn:"x500UniqueIdentifier", ln:"X.500 Unique Identifier", nid:Nid::X500UniqueIdentifier});
         //
         m.insert(OID_PKCS9, OidEntry{sn:"pkcs9", ln:"pkcs9", nid:Nid::Pkcs9});
         m.insert(OID_EMAIL, OidEntry{sn:"Email", ln:"emailAddress", nid:Nid::EmailAddress});

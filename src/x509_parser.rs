@@ -18,24 +18,33 @@ use der_parser::oid::Oid;
 use der_parser::*;
 use rusticata_macros::{flat_take, upgrade_error};
 
+// #[inline]
+// fn parse_directory_string(i: &[u8]) -> DerResult {
+//     alt!(
+//         i,
+//         complete!(parse_der_utf8string)
+//             | complete!(parse_der_printablestring)
+//             | complete!(parse_der_ia5string)
+//             | complete!(parse_der_t61string)
+//             | complete!(parse_der_bmpstring)
+//     )
+// }
+
+// AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
-fn parse_directory_string(i: &[u8]) -> DerResult {
-    alt!(
-        i,
-        complete!(parse_der_utf8string)
-            | complete!(parse_der_printablestring)
-            | complete!(parse_der_ia5string)
-            | complete!(parse_der_t61string)
-            | complete!(parse_der_bmpstring)
-    )
+fn parse_attribute_value(i: &[u8]) -> BerResult<DerObject> {
+    parse_der(i)
 }
 
+// AttributeTypeAndValue   ::= SEQUENCE {
+//     type    AttributeType,
+//     value   AttributeValue }
 fn parse_attr_type_and_value<'a>(i: &'a [u8]) -> BerResult<AttributeTypeAndValue<'a>> {
     parse_der_struct!(
         i,
         TAG DerTag::Sequence,
         oid: map_res!(parse_der_oid, |x:DerObject<'a>| x.as_oid_val()) >>
-        val: parse_directory_string >>
+        val: parse_attribute_value >>
         ( AttributeTypeAndValue{ attr_type:oid, attr_value:val } )
     )
     .map(|(rem, x)| (rem, x.1))

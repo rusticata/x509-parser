@@ -11,7 +11,8 @@ use time::Tm;
 use crate::error::X509Error;
 use crate::extensions::*;
 use crate::objects::*;
-use der_parser::ber::BitStringObject;
+use data_encoding::HEXUPPER;
+use der_parser::ber::{BerObjectContent, BitStringObject};
 use der_parser::der::DerObject;
 use der_parser::oid::Oid;
 use std::collections::HashMap;
@@ -334,10 +335,29 @@ pub struct RevokedCertificate<'a> {
     pub extensions: Vec<X509Extension<'a>>,
 }
 
-/// Convert a DER representation of a X.509 name to a human-readble string
+// Attempt to convert attribute to string. If type is not a string, return value is the hex
+// encoding of the attribute value
+fn attribute_value_to_string(attr: &DerObject, _attr_type: &Oid) -> Result<String, X509Error> {
+    match attr.content {
+        BerObjectContent::NumericString(s)
+        | BerObjectContent::PrintableString(s)
+        | BerObjectContent::UTF8String(s)
+        | BerObjectContent::IA5String(s) => Ok(s.to_owned()),
+        _ => {
+            // type is not a string, get slice and convert it to base64
+            attr.as_slice()
+                .and_then(|s| Ok(HEXUPPER.encode(s)))
+                .or(Err(X509Error::InvalidX509Name))
+        }
+    }
+}
+
+/// Convert a DER representation of a X.509 name to a human-readable string
 ///
 /// RDNs are separated with ","
 /// Multiple RDNs are separated with "+"
+///
+/// Attributes that cannot be represented by a string are hex-encoded
 fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X509Error> {
     rdn_seq.iter().fold(Ok(String::new()), |acc, rdn| {
         acc.and_then(|mut _vec| {
@@ -345,22 +365,15 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                 .iter()
                 .fold(Ok(String::new()), |acc2, attr| {
                     acc2.and_then(|mut _vec2| {
-                        match attr.attr_value.as_slice() {
-                            Ok(s) => {
-                                // println!("object: *** {:?} {:?}", oid, str::from_utf8(s));
-                                let sn_res = oid2nid(&attr.attr_type).and_then(nid2sn);
-                                let sn_str = match sn_res {
-                                    Ok(s) => String::from(s),
-                                    _ => format!("{:?}", attr.attr_type),
-                                };
-                                let val_str = String::from_utf8_lossy(s);
-                                let rdn = format!("{}={}", sn_str, val_str);
-                                match _vec2.len() {
-                                    0 => Ok(rdn),
-                                    _ => Ok(_vec2 + " + " + &rdn),
-                                }
-                            }
-                            _ => Err(X509Error::InvalidX509Name),
+                        let val_str = attribute_value_to_string(&attr.attr_value, &attr.attr_type)?;
+                        let sn_str = match oid2sn(&attr.attr_type) {
+                            Ok(s) => String::from(s),
+                            _ => format!("{:?}", attr.attr_type),
+                        };
+                        let rdn = format!("{}={}", sn_str, val_str);
+                        match _vec2.len() {
+                            0 => Ok(rdn),
+                            _ => Ok(_vec2 + " + " + &rdn),
                         }
                     })
                 })
