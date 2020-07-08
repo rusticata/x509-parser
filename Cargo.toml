@@ -12,6 +12,7 @@ readme = "README.md"
 edition = "2018"
 
 include = [
+  "CHANGELOG.md",
   "LICENSE-*",
   "README.md",
   ".gitignore",
