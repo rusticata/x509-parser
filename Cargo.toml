@@ -35,7 +35,7 @@ verify = ["ring"]
 
 [dependencies]
 base64 = "0.12"
-chrono = "0.4"
+chrono = { version="0.4", default-features=false, features=["std"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "5.0"

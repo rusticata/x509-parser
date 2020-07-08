@@ -2,6 +2,7 @@ use chrono::offset::{TimeZone, Utc};
 use chrono::DateTime;
 use std::ops::{Add, Sub};
 use std::time::Duration;
+use std::time::SystemTime;
 
 /// An ASN.1 timestamp.
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
@@ -27,7 +28,7 @@ impl ASN1Time {
     /// Returns a `ASN1Time` which corresponds to the current date.
     #[inline]
     pub fn now() -> Self {
-        ASN1Time(Utc::now())
+        ASN1Time(SystemTime::now().into())
     }
 
     /// Returns an RFC 2822 date and time string such as `Tue, 1 Jul 2003 10:52:37 +0200`.
