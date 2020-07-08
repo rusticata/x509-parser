@@ -1,9 +1,44 @@
+use der_parser::oid::Oid;
 use std::env;
 use std::io;
-use x509_parser::objects::oid2sn;
-use x509_parser::parse_x509_der;
+use x509_parser::extensions::*;
+use x509_parser::objects::*;
 use x509_parser::pem::pem_to_der;
 use x509_parser::x509::X509Certificate;
+use x509_parser::{parse_x509_der, X509Extension};
+
+fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
+    match oid2sn(oid) {
+        Ok(sn) => print!("    {}:", sn),
+        _ => print!("    {}:", oid),
+    }
+    print!(" Critical={}", ext.critical);
+    print!(" len={}", ext.value.len());
+    println!();
+    match ext.parsed_extension() {
+        ParsedExtension::BasicConstraints(bc) => {
+            println!("      X509v3 CA: {}", bc.ca);
+        }
+        ParsedExtension::KeyUsage(ku) => {
+            println!("      X509v3 Key Usage: {}", ku);
+        }
+        ParsedExtension::SubjectAlternativeName(san) => {
+            for name in &san.general_names {
+                println!("      X509v3 SAN: {:?}", name);
+            }
+        }
+        ParsedExtension::SubjectKeyIdentifier(id) => {
+            let mut s =
+                id.0.iter()
+                    .fold(String::with_capacity(3 * id.0.len()), |a, b| {
+                        a + &format!("{:02x}:", b)
+                    });
+            s.pop();
+            println!("      X509v3 Subject Key Identifier: {}", &s);
+        }
+        x => println!("      {:?}", x),
+    }
+}
 
 fn print_x509_info(file_name: &str, x509: &X509Certificate) {
     println!("File: {}", file_name);
@@ -15,13 +50,7 @@ fn print_x509_info(file_name: &str, x509: &X509Certificate) {
     println!("    NotAfter:  {}", x509.validity().not_after.rfc822());
     println!("  Extensions:");
     for (oid, ext) in x509.extensions() {
-        match oid2sn(oid) {
-            Ok(sn) => print!("    {}:", sn),
-            _ => print!("    {}:", oid),
-        }
-        print!(" Critical={}", ext.critical);
-        print!(" len={}", ext.value.len());
-        println!();
+        print_x509_extension(oid, ext);
     }
     println!();
 }
