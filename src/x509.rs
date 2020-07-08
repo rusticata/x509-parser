@@ -6,11 +6,12 @@
 use std::fmt;
 
 use num_bigint::BigUint;
-use time::Tm;
 
 use crate::error::X509Error;
 use crate::extensions::*;
 use crate::objects::*;
+use chrono::offset::{Local, Utc};
+use chrono::DateTime;
 use data_encoding::HEXUPPER;
 use der_parser::ber::{BerObjectContent, BitStringObject};
 use der_parser::der::DerObject;
@@ -146,8 +147,8 @@ impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct Validity {
-    pub not_before: Tm,
-    pub not_after: Tm,
+    pub not_before: DateTime<Utc>,
+    pub not_after: DateTime<Utc>,
 }
 
 impl Validity {
@@ -157,31 +158,31 @@ impl Validity {
     /// returned.  Otherwise, the `Duration` until the certificate
     /// expires is returned.
     pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
-        let now = time::now().to_timespec();
-        let nb = self.not_before.to_timespec();
-        let na = self.not_after.to_timespec();
+        let nb = self.not_before;
+        let na = self.not_after;
+        let now = Local::now().with_timezone(&nb.timezone());
         if now < nb {
             // Not yet valid...
             return None;
         }
-        if now.sec >= na.sec {
+        if now.timestamp() >= na.timestamp() {
             // Has already expired (or within a second, so who cares?).
             return None;
         }
         // Note that the duration below is guaranteed to be positive,
-        // since we just checked that now.sec >= na.sec.
-        Some(std::time::Duration::from_secs((na.sec - now.sec) as u64))
+        // since we just checked that now < na
+        (na - now).to_std().ok()
     }
 }
 
 #[test]
 fn check_validity_expiration() {
     let mut v = Validity {
-        not_before: time::now(),
-        not_after: time::now(),
+        not_before: Utc::now(),
+        not_after: Utc::now(),
     };
     assert_eq!(v.time_to_expiration(), None);
-    v.not_after = v.not_after + time::Duration::minutes(1);
+    v.not_after = v.not_after + chrono::Duration::minutes(1);
     assert!(v.time_to_expiration().is_some());
     assert!(v.time_to_expiration().unwrap() <= std::time::Duration::from_secs(60));
     // The following assumes this timing won't take 10 seconds... I
@@ -315,8 +316,8 @@ pub struct TbsCertList<'a> {
     pub version: Option<u32>,
     pub signature: AlgorithmIdentifier<'a>,
     pub issuer: X509Name<'a>,
-    pub this_update: Tm,
-    pub next_update: Option<Tm>,
+    pub this_update: DateTime<Utc>,
+    pub next_update: Option<DateTime<Utc>>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
     pub extensions: Vec<X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
@@ -331,7 +332,7 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
 #[derive(Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
     pub user_certificate: BigUint,
-    pub revocation_date: Tm,
+    pub revocation_date: DateTime<Utc>,
     pub extensions: Vec<X509Extension<'a>>,
 }
 

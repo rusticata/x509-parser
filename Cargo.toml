@@ -35,6 +35,7 @@ verify = ["ring"]
 
 [dependencies]
 base64 = "0.12"
+chrono = "0.4"
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "5.0"
@@ -42,7 +43,6 @@ rusticata-macros = "2.0.2"
 num-bigint = "0.2"
 ring = { version="0.16", optional=true }
 rustversion = "1.0"
-time = "0.1"
 der-parser = {version = "4.0.0", features=["bigint"] }
 der-oid-macro = "0.1"
 

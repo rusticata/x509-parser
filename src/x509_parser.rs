@@ -5,11 +5,12 @@
 
 use crate::error::X509Error;
 use crate::x509::*;
+use chrono::offset::TimeZone;
+use chrono::{DateTime, Datelike, Utc};
 use nom::{exact, many1, map_opt, opt, Err, IResult};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 use std::str;
-use time::{strptime, Tm};
 
 use der_parser::ber::{BerObjectContent, BerTag};
 use der_parser::der::*;
@@ -102,25 +103,37 @@ fn parse_choice_of_time(i: &[u8]) -> DerResult {
     )
 }
 
-fn der_to_utctime(obj: DerObject) -> Result<Tm, X509Error> {
+fn der_to_utctime(obj: DerObject) -> Result<DateTime<Utc>, X509Error> {
     if let BerObjectContent::UTCTime(s) = obj.content {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
-        match strptime(xs, "%y%m%d%H%M%S%Z") {
+        let dt = if xs.ends_with('Z') {
+            // UTC
+            Utc.datetime_from_str(xs, "%y%m%d%H%M%SZ")
+        } else {
+            DateTime::parse_from_str(xs, "%y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
+        };
+        match dt {
             Ok(mut tm) => {
-                if tm.tm_year < 50 {
-                    tm.tm_year += 100;
+                if tm.year() < 50 {
+                    tm = tm
+                        .with_year(tm.year() + 100)
+                        .ok_or(X509Error::InvalidDate)?;
                 }
+                // tm = tm.with_year(tm.year() + 1900).ok_or(X509Error::InvalidDate)?;
                 // eprintln!("date: {}", tm.rfc822());
                 Ok(tm)
             }
-            Err(_e) => {
-                // eprintln!("Error: {:?}",_e);
-                Err(X509Error::InvalidDate)
-            }
+            Err(_e) => Err(X509Error::InvalidDate),
         }
     } else if let BerObjectContent::GeneralizedTime(s) = obj.content {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
-        strptime(xs, "%Y%m%d%H%M%S%Z").or(Err(X509Error::InvalidDate))
+        let dt = if xs.ends_with('Z') {
+            // UTC
+            Utc.datetime_from_str(xs, "%Y%m%d%H%M%SZ")
+        } else {
+            DateTime::parse_from_str(xs, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
+        };
+        dt.or(Err(X509Error::InvalidDate))
     } else {
         Err(X509Error::InvalidDate)
     }

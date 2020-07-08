@@ -46,8 +46,8 @@ fn print_x509_info(file_name: &str, x509: &X509Certificate) {
     println!("  Issuer: {}", x509.issuer());
     println!("  Serial: {}", x509.tbs_certificate.raw_serial_as_string());
     println!("  Validity:");
-    println!("    NotBefore: {}", x509.validity().not_before.rfc822());
-    println!("    NotAfter:  {}", x509.validity().not_after.rfc822());
+    println!("    NotBefore: {}", x509.validity().not_before.to_rfc2822());
+    println!("    NotAfter:  {}", x509.validity().not_after.to_rfc2822());
     println!("  Extensions:");
     for (oid, ext) in x509.extensions() {
         print_x509_extension(oid, ext);
