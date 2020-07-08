@@ -172,6 +172,18 @@ impl Validity {
         // since we just checked that now < na
         na - now
     }
+
+    /// Check the certificate time validity for the provided date/time
+    #[inline]
+    pub fn is_valid_at(&self, time: ASN1Time) -> bool {
+        time >= self.not_before && time < self.not_after
+    }
+
+    /// Check the certificate time validity
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.is_valid_at(ASN1Time::now())
+    }
 }
 
 #[test]
