@@ -48,6 +48,7 @@ fn print_x509_info(file_name: &str, x509: &X509Certificate) {
     println!("  Validity:");
     println!("    NotBefore: {}", x509.validity().not_before.to_rfc2822());
     println!("    NotAfter:  {}", x509.validity().not_after.to_rfc2822());
+    println!("    is_valid:  {}", x509.validity().is_valid());
     println!("  Extensions:");
     for (oid, ext) in x509.extensions() {
         print_x509_extension(oid, ext);

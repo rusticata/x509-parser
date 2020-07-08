@@ -157,20 +157,13 @@ impl Validity {
     /// returned.  Otherwise, the `Duration` until the certificate
     /// expires is returned.
     pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
-        let nb = self.not_before;
-        let na = self.not_after;
         let now = ASN1Time::now();
-        if now < nb {
-            // Not yet valid...
-            return None;
-        }
-        if now.timestamp() >= na.timestamp() {
-            // Has already expired (or within a second, so who cares?).
+        if !self.is_valid_at(now) {
             return None;
         }
         // Note that the duration below is guaranteed to be positive,
         // since we just checked that now < na
-        na - now
+        self.not_after - now
     }
 
     /// Check the certificate time validity for the provided date/time
