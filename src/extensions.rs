@@ -127,7 +127,7 @@ pub struct ExtendedKeyUsage<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct AuthorityInfoAccess<'a> {
-    pub accessdescs: HashMap<Oid<'a>, GeneralName<'a>>,
+    pub accessdescs: HashMap<Oid<'a>, Vec<GeneralName<'a>>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -534,13 +534,14 @@ pub(crate) mod parser {
                 >> aia_raw: take!(hdr.len)
                 >> (aia_raw)
         )?;
-        let mut accessdescs = HashMap::new();
+        let mut accessdescs: HashMap<Oid, Vec<GeneralName>> = HashMap::new();
         while !aia_raw.is_empty() {
             let (rest, (oid, gn)) = parse_aia(aia_raw)?;
             aia_raw = rest;
-            if accessdescs.insert(oid, gn).is_some() {
-                // duplicate information is not allowed
-                return Err(Err::Failure(BerError::InvalidTag));
+            if let Some(general_names) = accessdescs.get_mut(&oid) {
+                general_names.push(gn);
+            } else {
+                accessdescs.insert(oid, vec![gn]);
             }
         }
         Ok((ret, AuthorityInfoAccess { accessdescs }))

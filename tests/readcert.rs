@@ -14,6 +14,8 @@ static V1: &[u8] = include_bytes!("../assets/v1.der");
 static CRL_DER: &[u8] = include_bytes!("../assets/example.crl");
 static EMPTY_CRL_DER: &[u8] = include_bytes!("../assets/empty.crl");
 static MINIMAL_CRL_DER: &[u8] = include_bytes!("../assets/minimal.crl");
+static DUPLICATE_VALUE_IN_AIA: &[u8] =
+    include_bytes!("../assets/duplicate_value_in_authority_info_access.der");
 
 #[test]
 fn test_x509_parser() {
@@ -307,6 +309,31 @@ fn test_crl_parse_minimal() {
             );
             assert!(cert.tbs_cert_list.extensions.is_empty());
             assert_eq!(cert.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
+        }
+        err => panic!("x509 parsing failed: {:?}", err),
+    }
+}
+
+#[test]
+fn test_duplicate_authority_info_access() {
+    match parse_x509_der(DUPLICATE_VALUE_IN_AIA) {
+        Ok((_, cert)) => {
+            let extension = cert
+                .tbs_certificate
+                .extensions
+                .get(sn2oid("authorityInfoAccess").unwrap())
+                .unwrap();
+            let mut accessdescs = HashMap::new();
+            let ca_issuers = vec![
+                GeneralName::URI("http://cdp1.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
+                GeneralName::URI("http://cdp2.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
+            ];
+            let ocsp = vec![GeneralName::URI("http://ocsp.pca.dfn.de/OCSP-Server/OCSP")];
+            accessdescs.insert(OID_ACCESSDESCRIPTOR_CAISSUERS, ca_issuers);
+            accessdescs.insert(OID_ACCESSDESCRIPTOR_OCSP, ocsp);
+            let expected_aia =
+                ParsedExtension::AuthorityInfoAccess(AuthorityInfoAccess { accessdescs });
+            assert_eq!(*extension.parsed_extension(), expected_aia);
         }
         err => panic!("x509 parsing failed: {:?}", err),
     }
