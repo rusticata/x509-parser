@@ -351,7 +351,7 @@ fn attribute_value_to_string(attr: &DerObject, _attr_type: &Oid) -> Result<Strin
         _ => {
             // type is not a string, get slice and convert it to base64
             attr.as_slice()
-                .and_then(|s| Ok(HEXUPPER.encode(s)))
+                .map(|s| HEXUPPER.encode(s))
                 .or(Err(X509Error::InvalidX509Name))
         }
     }
@@ -382,9 +382,9 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                         }
                     })
                 })
-                .and_then(|v| match _vec.len() {
-                    0 => Ok(v),
-                    _ => Ok(_vec + ", " + &v),
+                .map(|v| match _vec.len() {
+                    0 => v,
+                    _ => _vec + ", " + &v,
                 })
         })
     })
