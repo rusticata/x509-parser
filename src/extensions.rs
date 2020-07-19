@@ -1,5 +1,8 @@
 use crate::objects::*;
+use der_parser::ber::BerTag;
 use der_parser::oid::Oid;
+use nom::combinator::{complete, opt};
+use nom::multi::many0;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -8,6 +11,8 @@ pub enum ParsedExtension<'a> {
     /// Crate parser does not support this extension (yet)
     UnsupportedExtension,
     ParseError,
+    /// Section 4.2.1.1 of rfc 5280
+    AuthorityKeyIdentifier(AuthorityKeyIdentifier<'a>),
     /// Section 4.2.1.2 of rfc 5280
     SubjectKeyIdentifier(KeyIdentifier<'a>),
     /// Section 4.2.1.3 of rfc 5280
@@ -30,6 +35,13 @@ pub enum ParsedExtension<'a> {
     InhibitAnyPolicy(InhibitAnyPolicy),
     /// Section 4.2.2.1 of rfc 5280
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AuthorityKeyIdentifier<'a> {
+    pub key_identifier: Option<KeyIdentifier<'a>>,
+    pub authority_cert_issuer: Option<Vec<GeneralName<'a>>>,
+    pub authority_cert_serial: Option<&'a [u8]>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -235,6 +247,9 @@ pub(crate) mod parser {
         } else if *oid == OID_EXT_AUTHORITYINFOACCESS {
             let (_ret, aia) = parse_authorityinfoaccess(i)?;
             ParsedExtension::AuthorityInfoAccess(aia)
+        } else if *oid == OID_EXT_AUTHORITYKEYIDENTIFIER {
+            let (_ret, aki) = parse_authoritykeyidentifier(i)?;
+            ParsedExtension::AuthorityKeyIdentifier(aki)
         } else {
             ParsedExtension::UnsupportedExtension
         };
@@ -547,6 +562,33 @@ pub(crate) mod parser {
         Ok((ret, AuthorityInfoAccess { accessdescs }))
     }
 
+    use helper::*;
+
+    fn parse_aki_content(i: &[u8]) -> IResult<&[u8], AuthorityKeyIdentifier, BerError> {
+        let (i, key_identifier) = opt(complete(parse_der_tagged_implicit(0, |d, _, _| {
+            Ok((&[], KeyIdentifier(d)))
+        })))(i)?;
+        let (i, authority_cert_issuer) = opt(complete(parse_der_tagged_implicit(1, |d, _, _| {
+            many0(complete(parse_generalname))(d)
+        })))(i)?;
+        let (i, authority_cert_serial) = opt(complete(parse_der_tagged_implicit(
+            2,
+            parse_ber_content(BerTag::Integer),
+        )))(i)?;
+        let authority_cert_serial = authority_cert_serial.and_then(|o| o.as_slice().ok());
+        let aki = AuthorityKeyIdentifier {
+            key_identifier,
+            authority_cert_issuer,
+            authority_cert_serial,
+        };
+        Ok((i, aki))
+    }
+
+    // RFC 5280 section 4.2.1.1: Authority Key Identifier
+    fn parse_authoritykeyidentifier(i: &[u8]) -> IResult<&[u8], AuthorityKeyIdentifier, BerError> {
+        parse_der_sequence_defined(parse_aki_content)(i)
+    }
+
     #[rustversion::not(since(1.37))]
     fn reverse_bits(n: u8) -> u8 {
         let mut out = 0;
@@ -618,6 +660,108 @@ pub(crate) mod parser {
             }
         }
         Ok((ret, CertificatePolicies { policies }))
+    }
+}
+
+/// Helper functions - until merged in der_parser
+mod helper {
+    use der_parser::{ber::*, der::*, error::*};
+    use nom::bytes::complete::take;
+    use nom::Err;
+    use nom::IResult;
+
+    #[allow(dead_code)]
+    pub(crate) fn parse_der_sequence_of<'a, T, F>(
+        f: F,
+    ) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<T>, BerError>
+    where
+        F: Fn(&'a [u8]) -> IResult<&'a [u8], T, BerError>,
+    {
+        move |i: &[u8]| {
+            let (i, hdr) = der_read_element_header(i)?;
+            if hdr.tag != der_parser::ber::BerTag::Sequence {
+                return Err(Err::Error(BerError::BerTypeError));
+            }
+            let (i, mut data) = take(hdr.len as usize)(i)?;
+            let mut v = Vec::new();
+            while !data.is_empty() {
+                let (rest, item) = f(data)?;
+                data = rest;
+                v.push(item);
+            }
+            Ok((i, v))
+        }
+    }
+
+    pub(crate) fn parse_der_sequence_defined<'a, T, F>(
+        f: F,
+    ) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], T, BerError>
+    where
+        F: Fn(&'a [u8]) -> IResult<&'a [u8], T, BerError>,
+    {
+        move |i: &[u8]| {
+            let (i, hdr) = der_read_element_header(i)?;
+            if hdr.tag != der_parser::ber::BerTag::Sequence {
+                return Err(Err::Error(BerError::BerTypeError));
+            }
+            let (i, data) = take(hdr.len as usize)(i)?;
+            let (_rest, item) = f(data)?;
+            Ok((i, item))
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn parse_der_tagged_explicit<'a, T, F>(
+        tag: u32,
+        f: F,
+    ) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], T, BerError>
+    where
+        F: Fn(&'a [u8]) -> IResult<&'a [u8], T, BerError>,
+    {
+        move |i: &[u8]| {
+            let (i, hdr) = der_read_element_header(i)?;
+            if hdr.tag.0 != tag {
+                return Err(Err::Error(BerError::InvalidTag));
+            }
+            let (i, data) = take(hdr.len as usize)(i)?;
+            let (_rest, item) = f(data)?;
+            Ok((i, item))
+        }
+    }
+
+    pub(crate) fn parse_der_tagged_implicit<'a, T, F>(
+        tag: u32,
+        f: F,
+    ) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], T, BerError>
+    where
+        F: Fn(&'a [u8], &BerObjectHeader, usize) -> IResult<&'a [u8], T, BerError>,
+    {
+        move |i: &[u8]| {
+            let (i, hdr) = der_read_element_header(i)?;
+            // eprintln!("tag is [{}], expected {}", hdr.tag.0, tag);
+            if hdr.tag.0 != tag {
+                return Err(Err::Error(BerError::InvalidTag));
+            }
+            let (i, data) = take(hdr.len as usize)(i)?;
+            let (_rest, item) = f(data, &hdr, MAX_RECURSION)?;
+            // XXX check that _rest.is_empty()?
+            Ok((i, item))
+        }
+    }
+
+    pub(crate) fn parse_ber_content<'a>(
+        tag: BerTag,
+    ) -> impl Fn(&'a [u8], &'_ BerObjectHeader, usize) -> IResult<&'a [u8], BerObjectContent<'a>, BerError>
+    {
+        move |i: &[u8], hdr: &BerObjectHeader, max_recursion: usize| {
+            ber_read_element_content_as(
+                i,
+                tag,
+                hdr.len as usize,
+                hdr.is_constructed(),
+                max_recursion,
+            )
+        }
     }
 }
 

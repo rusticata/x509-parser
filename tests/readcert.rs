@@ -101,7 +101,14 @@ fn test_x509_parser() {
                         48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79,
                         255, 142, 78, 168, 48, 49, 54,
                     ],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::AuthorityKeyIdentifier(AuthorityKeyIdentifier {
+                        key_identifier: Some(KeyIdentifier(&[
+                            163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
+                            168, 48, 49, 54,
+                        ])),
+                        authority_cert_issuer: None,
+                        authority_cert_serial: None,
+                    }),
                 ),
             ];
             let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list
@@ -232,7 +239,14 @@ fn test_crl_parse() {
                         48, 22, 128, 20, 190, 18, 1, 204, 170, 234, 17, 128, 218, 46, 173, 178,
                         234, 199, 181, 251, 159, 249, 173, 52,
                     ],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::AuthorityKeyIdentifier(AuthorityKeyIdentifier {
+                        key_identifier: Some(KeyIdentifier(&[
+                            190, 18, 1, 204, 170, 234, 17, 128, 218, 46, 173, 178, 234, 199, 181,
+                            251, 159, 249, 173, 52,
+                        ])),
+                        authority_cert_issuer: None,
+                        authority_cert_serial: None,
+                    }),
                 ),
                 X509Extension::new(
                     oid!(2.5.29.20),
@@ -274,7 +288,14 @@ fn test_crl_parse_empty() {
                         48, 22, 128, 20, 34, 101, 12, 214, 90, 157, 52, 137, 243, 131, 180, 149,
                         82, 191, 80, 27, 57, 39, 6, 172,
                     ],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::AuthorityKeyIdentifier(AuthorityKeyIdentifier {
+                        key_identifier: Some(KeyIdentifier(&[
+                            34, 101, 12, 214, 90, 157, 52, 137, 243, 131, 180, 149, 82, 191, 80,
+                            27, 57, 39, 6, 172,
+                        ])),
+                        authority_cert_issuer: None,
+                        authority_cert_serial: None,
+                    }),
                 ),
             ];
             assert!(cert
