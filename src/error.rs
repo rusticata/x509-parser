@@ -8,32 +8,39 @@ use nom::error::{ErrorKind, ParseError};
 pub struct NidError;
 
 /// An error that can occur while parsing or validating a certificate.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum X509Error {
+    #[error("generic error")]
     Generic,
 
+    #[error("invalid version")]
     InvalidVersion,
+    #[error("invalid serial")]
     InvalidSerial,
+    #[error("invalid algorithm identifier")]
     InvalidAlgorithmIdentifier,
+    #[error("invalid X.509 name")]
     InvalidX509Name,
+    #[error("invalid date")]
     InvalidDate,
+    #[error("invalid extensions")]
     InvalidExtensions,
+    #[error("invalid TBS certificate")]
     InvalidTbsCertificate,
 
     /// Top-level certificate structure is invalid
+    #[error("invalid certificate")]
     InvalidCertificate,
 
+    #[error("signature verification error")]
     SignatureVerificationError,
+    #[error("signature unsupported algorithm")]
     SignatureUnsupportedAlgorithm,
 
-    Der(BerError),
+    #[error("BER error: {0}")]
+    Der(#[from] BerError),
+    #[error("nom error: {0:?}")]
     NomError(ErrorKind),
-}
-
-impl From<BerError> for X509Error {
-    fn from(e: BerError) -> X509Error {
-        X509Error::Der(e)
-    }
 }
 
 impl From<ErrorKind> for X509Error {
@@ -52,18 +59,17 @@ impl<I> ParseError<I> for X509Error {
 }
 
 /// An error that can occur while parsing or validating a certificate.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum PEMError {
+    #[error("base64 decode error")]
     Base64DecodeError,
+    #[error("incomplete PEM")]
     IncompletePEM,
+    #[error("invalid header")]
     InvalidHeader,
+    #[error("missing header")]
     MissingHeader,
 
-    IOError(std::io::Error),
-}
-
-impl From<std::io::Error> for PEMError {
-    fn from(e: std::io::Error) -> PEMError {
-        PEMError::IOError(e)
-    }
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
 }
