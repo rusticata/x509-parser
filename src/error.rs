@@ -10,32 +10,10 @@ pub struct NidError;
 /// An error that can occur while parsing or validating a certificate.
 #[derive(Debug, thiserror::Error)]
 pub enum X509Error {
-    #[error("generic error")]
-    Generic,
-
-    #[error("invalid version")]
-    InvalidVersion,
-    #[error("invalid serial")]
-    InvalidSerial,
-    #[error("invalid algorithm identifier")]
-    InvalidAlgorithmIdentifier,
     #[error("invalid X.509 name")]
     InvalidX509Name,
     #[error("invalid date")]
     InvalidDate,
-    #[error("invalid extensions")]
-    InvalidExtensions,
-    #[error("invalid TBS certificate")]
-    InvalidTbsCertificate,
-
-    /// Top-level certificate structure is invalid
-    #[error("invalid certificate")]
-    InvalidCertificate,
-
-    #[error("signature verification error")]
-    SignatureVerificationError,
-    #[error("signature unsupported algorithm")]
-    SignatureUnsupportedAlgorithm,
 
     #[error("BER error: {0}")]
     Der(#[from] BerError),
