@@ -193,7 +193,7 @@ pub struct NameConstraints<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-/// Represents the structure used in the name contraints extensions.
+/// Represents the structure used in the name constraints extensions.
 /// The fields minimum and maximum are not supported (openssl also has no support).
 pub struct GeneralSubtree<'a> {
     pub base: GeneralName<'a>,
@@ -380,7 +380,9 @@ pub(crate) mod parser {
             3 => return Err(Err::Failure(BerError::Unsupported)), // x400Address
             4 => {
                 // directoryName, name
-                let (_, name) = exact!(&rest[..(hdr.len as usize)], parse_x509_name)?;
+                let (_, name) = exact!(&rest[..(hdr.len as usize)], parse_x509_name)
+                    .or(Err(BerError::Unsupported)) // XXX remove me
+                    ?;
                 GeneralName::DirectoryName(name)
             }
             5 => return Err(Err::Failure(BerError::Unsupported)), // ediPartyName

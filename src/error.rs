@@ -2,18 +2,55 @@
 
 use der_parser::error::BerError;
 use nom::error::{ErrorKind, ParseError};
+use nom::IResult;
 
 /// An error that can occur while converting an OID to a Nid.
 #[derive(Debug, PartialEq)]
 pub struct NidError;
 
+/// Holds the result of parsing functions (X.509)
+///
+/// Note that this type is also a `Result`, so usual functions (`map`, `unwrap` etc.) are available.
+pub type X509Result<'a, T> = IResult<&'a [u8], T, X509Error>;
+
 /// An error that can occur while parsing or validating a certificate.
 #[derive(Debug, thiserror::Error)]
 pub enum X509Error {
+    #[error("generic error")]
+    Generic,
+
+    #[error("invalid version")]
+    InvalidVersion,
+    #[error("invalid serial")]
+    InvalidSerial,
+    #[error("invalid algorithm identifier")]
+    InvalidAlgorithmIdentifier,
     #[error("invalid X.509 name")]
     InvalidX509Name,
     #[error("invalid date")]
     InvalidDate,
+    #[error("invalid X.509 Subject Public Key Info")]
+    InvalidSPKI,
+    #[error("invalid X.509 Subject Unique ID")]
+    InvalidSubjectUID,
+    #[error("invalid X.509 Issuer Unique ID")]
+    InvalidIssuerUID,
+    #[error("invalid extensions")]
+    InvalidExtensions,
+    #[error("duplicate extensions")]
+    DuplicateExtensions,
+    #[error("invalid Signature DER Value")]
+    InvalidSignatureValue,
+    #[error("invalid TBS certificate")]
+    InvalidTbsCertificate,
+
+    // error types from CRL
+    #[error("invalid User certificate")]
+    InvalidUserCertificate,
+
+    /// Top-level certificate structure is invalid
+    #[error("invalid certificate")]
+    InvalidCertificate,
 
     #[error("signature verification error")]
     SignatureVerificationError,
@@ -24,6 +61,12 @@ pub enum X509Error {
     Der(#[from] BerError),
     #[error("nom error: {0:?}")]
     NomError(ErrorKind),
+}
+
+impl From<X509Error> for nom::Err<X509Error> {
+    fn from(e: X509Error) -> nom::Err<X509Error> {
+        nom::Err::Error(e)
+    }
 }
 
 impl From<ErrorKind> for X509Error {

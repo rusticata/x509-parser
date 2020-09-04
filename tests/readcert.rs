@@ -6,6 +6,7 @@ use x509_parser::extensions::*;
 use x509_parser::objects::*;
 use x509_parser::{
     parse_crl_der, parse_subject_public_key_info, parse_x509_der, ASN1Time, X509Extension,
+    X509Version,
 };
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
@@ -163,11 +164,10 @@ fn test_parse_subject_public_key_info() {
 
 #[test]
 fn test_version_v1() {
-    let res = parse_x509_der(V1);
-    assert!(res.is_ok());
-    assert!(res.as_ref().unwrap().0.is_empty());
-    let tbs_cert = res.unwrap().1.tbs_certificate;
-    assert_eq!(tbs_cert.version, 1);
+    let (rem, cert) = parse_x509_der(V1).expect("Could not parse v1 certificate");
+    assert!(rem.is_empty());
+    assert_eq!(cert.version(), X509Version::V1);
+    let tbs_cert = cert.tbs_certificate;
     assert_eq!(format!("{}", tbs_cert.subject), "CN=marquee");
     assert_eq!(format!("{}", tbs_cert.issuer), "CN=marquee");
 }
@@ -256,10 +256,11 @@ fn test_crl_parse() {
                 ),
             ];
 
-            assert!(tbs_cert_list
-                .extensions
-                .iter()
-                .eq(expected_extensions.iter()));
+            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions
+                .into_iter()
+                .map(|e| (e.oid.clone(), e))
+                .collect();
+            assert_eq!(tbs_cert_list.extensions, expected_extensions);
 
             assert_eq!(tbs_cert_list.as_ref(), &CRL_DER[4..(4 + 4 + 508)]);
         }
@@ -298,11 +299,12 @@ fn test_crl_parse_empty() {
                     }),
                 ),
             ];
-            assert!(cert
-                .tbs_cert_list
-                .extensions
-                .iter()
-                .eq(expected_extensions.iter()));
+            // do not compare iterators because of random order in hashmap
+            assert_eq!(cert.tbs_cert_list.extensions.len(), expected_extensions.len());
+            let parsed_extension_values: Vec<_> = cert.tbs_cert_list.extensions.values().collect();
+            for extension in &expected_extensions {
+                assert!(parsed_extension_values.contains(&extension));
+            }
             assert_eq!(
                 cert.tbs_cert_list.as_ref(),
                 &EMPTY_CRL_DER[4..(4 + 3 + 200)]

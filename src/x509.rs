@@ -323,7 +323,7 @@ pub struct TbsCertList<'a> {
     pub this_update: ASN1Time,
     pub next_update: Option<ASN1Time>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
-    pub extensions: Vec<X509Extension<'a>>,
+    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
 }
 
@@ -469,7 +469,7 @@ impl<'a> X509Certificate<'a> {
     }
 }
 
-/// An X.509 v2 Certificate Revocaton List (CRL).
+/// An X.509 v2 Certificate Revocation List (CRL).
 ///
 /// X.509 v2 CRLs are defined in [RFC5280](https://tools.ietf.org/html/rfc5280).
 #[derive(Debug)]

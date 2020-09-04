@@ -3,34 +3,23 @@
 //! Based on RFC5280
 //!
 
-use crate::error::X509Error;
+use crate::error::{X509Error, X509Result};
 use crate::time::ASN1Time;
 use crate::x509::*;
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Utc};
-use nom::{exact, many1, map_opt, opt, Err, IResult};
+use nom::combinator::{complete, map_opt, map_res, opt};
+use nom::multi::{many0, many1};
+use nom::{exact, Err, IResult, Offset};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 use std::str;
 
-use der_parser::ber::{BerObjectContent, BerTag};
+use der_parser::ber::*;
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::oid::Oid;
 use der_parser::*;
-use rusticata_macros::{flat_take, upgrade_error};
-
-// #[inline]
-// fn parse_directory_string(i: &[u8]) -> DerResult {
-//     alt!(
-//         i,
-//         complete!(parse_der_utf8string)
-//             | complete!(parse_der_printablestring)
-//             | complete!(parse_der_ia5string)
-//             | complete!(parse_der_t61string)
-//             | complete!(parse_der_bmpstring)
-//     )
-// }
 
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
@@ -41,59 +30,47 @@ fn parse_attribute_value(i: &[u8]) -> BerResult<DerObject> {
 // AttributeTypeAndValue   ::= SEQUENCE {
 //     type    AttributeType,
 //     value   AttributeValue }
-fn parse_attr_type_and_value<'a>(i: &'a [u8]) -> BerResult<AttributeTypeAndValue<'a>> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        oid: map_res!(parse_der_oid, |x:DerObject<'a>| x.as_oid_val()) >>
-        val: parse_attribute_value >>
-        ( AttributeTypeAndValue{ attr_type:oid, attr_value:val } )
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_attr_type_and_value<'a>(i: &'a [u8]) -> X509Result<AttributeTypeAndValue<'a>> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
+            .or(Err(X509Error::InvalidX509Name))?;
+        let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
+        let attr = AttributeTypeAndValue {
+            attr_type,
+            attr_value,
+        };
+        Ok((i, attr))
+    })(i)
 }
 
-fn parse_rdn(i: &[u8]) -> BerResult<RelativeDistinguishedName> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Set,
-        v: many1!(complete!(parse_attr_type_and_value)) >>
-        ( RelativeDistinguishedName{ set:v } )
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_rdn(i: &[u8]) -> X509Result<RelativeDistinguishedName> {
+    parse_ber_set_defined_g(|i| {
+        let (i, set) = many1(complete(parse_attr_type_and_value))(i)?;
+        let rdn = RelativeDistinguishedName { set };
+        Ok((i, rdn))
+    })(i)
 }
 
 /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
-pub fn parse_x509_name(i: &[u8]) -> BerResult<X509Name> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        v: many0!(complete!(parse_rdn)) >>
-        ( v )
-    )
-    .map(|(rem, x)| {
-        let len = i.len() - rem.len();
-        (
-            rem,
-            X509Name {
-                rdn_seq: x.1,
-                raw: &i[..len],
-            },
-        )
-    })
+pub fn parse_x509_name(i: &[u8]) -> X509Result<X509Name> {
+    let start_i = i;
+    parse_ber_sequence_defined_g(move |i| {
+        let (i, rdn_seq) = many0(complete(parse_rdn))(i)?;
+        let len = start_i.offset(i);
+        let name = X509Name {
+            rdn_seq,
+            raw: &start_i[..len],
+        };
+        Ok((i, name))
+    })(i)
 }
 
-fn parse_version(i: &[u8]) -> BerResult<u32> {
-    map_res!(
-        i,
-        call!(parse_der_explicit_optional, BerTag(0), parse_der_integer),
-        |x: DerObject| {
-            match x.as_context_specific() {
-                Ok((BerTag::EndOfContent, None)) => Ok(1),
-                Ok((_, Some(obj))) => obj.as_u32(),
-                _ => Err(BerError::BerTypeError),
-            }
-        }
-    )
+fn parse_version(i: &[u8]) -> X509Result<u32> {
+    parse_ber_tagged_explicit(0, parse_ber_u32)(i).or(Ok((i, 0)))
+}
+
+fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
+    map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
 }
 
 #[inline]
@@ -141,47 +118,40 @@ fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
     }
 }
 
-fn parse_validity(i: &[u8]) -> BerResult<Validity> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        start: map_res!(parse_choice_of_time, der_to_utctime) >>
-        end:   map_res!(parse_choice_of_time, der_to_utctime) >>
-        (
-            Validity{ not_before:start,not_after:end }
-        )
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_validity(i: &[u8]) -> X509Result<Validity> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, not_before) =
+            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
+        let (i, not_after) =
+            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
+        let v = Validity {
+            not_before,
+            not_after,
+        };
+        Ok((i, v))
+    })(i)
 }
 
 /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
-pub fn parse_subject_public_key_info<'a>(i: &'a [u8]) -> BerResult<SubjectPublicKeyInfo<'a>> {
-    parse_der_struct!(
-        i,
-        alg: parse_algorithm_identifier >>
-        spk: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
+pub fn parse_subject_public_key_info<'a>(i: &'a [u8]) -> X509Result<SubjectPublicKeyInfo<'a>> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, algorithm) = parse_algorithm_identifier(i)?;
+        let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
             match x.content {
                 BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
                 _ => Err(BerError::BerTypeError),
             }
-        }) >>
-        // spk: map_res!(parse_der_bitstring, |x:DerObject<'a>| x.content.as_bitstring()) >>
-        (
-            SubjectPublicKeyInfo{
-                algorithm: alg,
-                subject_public_key: spk
-            }
-        )
-    )
-    .map(|(rem, x)| (rem, x.1))
+        })(i)
+        .or(Err(X509Error::InvalidSPKI))?;
+        let spki = SubjectPublicKeyInfo {
+            algorithm,
+            subject_public_key,
+        };
+        Ok((i, spki))
+    })(i)
 }
 
-#[inline]
-fn der_read_bitstring_content(i: &[u8], _tag: BerTag, len: usize) -> BerResult<BerObjectContent> {
-    der_read_element_content_as(i, DerTag::BitString, len, false, 0)
-}
-
-fn bitstring_to_unique_id(x: DerObject) -> Result<Option<UniqueIdentifier>, BerError> {
+fn bitstring_to_unique_id(x: BerObjectContent) -> Result<Option<UniqueIdentifier>, BerError> {
     let (_, y) = x.as_context_specific()?;
     match y {
         None => Ok(None),
@@ -192,20 +162,22 @@ fn bitstring_to_unique_id(x: DerObject) -> Result<Option<UniqueIdentifier>, BerE
     }
 }
 
-fn parse_issuer_unique_id(i: &[u8]) -> BerResult<Option<UniqueIdentifier>> {
-    map_res!(
-        i,
-        call!(parse_der_implicit, BerTag(1), der_read_bitstring_content),
-        bitstring_to_unique_id
-    )
+fn parse_issuer_unique_id(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
+    match parse_ber_tagged_implicit(1, parse_ber_content(BerTag::BitString))(i) {
+        Ok((i, obj)) => bitstring_to_unique_id(obj)
+            .map(|uid| (i, uid))
+            .map_err(|_| X509Error::InvalidIssuerUID.into()),
+        Err(_) => Ok((i, None)),
+    }
 }
 
-fn parse_subject_unique_id(i: &[u8]) -> BerResult<Option<UniqueIdentifier>> {
-    map_res!(
-        i,
-        call!(parse_der_implicit, BerTag(2), der_read_bitstring_content),
-        bitstring_to_unique_id
-    )
+fn parse_subject_unique_id(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
+    match parse_ber_tagged_implicit(2, parse_ber_content(BerTag::BitString))(i) {
+        Ok((i, obj)) => bitstring_to_unique_id(obj)
+            .map(|uid| (i, uid))
+            .map_err(|_| X509Error::InvalidSubjectUID.into()),
+        Err(_) => Ok((i, None)),
+    }
 }
 
 #[inline]
@@ -213,61 +185,54 @@ fn der_read_opt_bool(i: &[u8]) -> DerResult {
     parse_der_optional!(i, parse_der_bool)
 }
 
-fn parse_extension<'a>(i: &'a [u8]) -> BerResult<X509Extension<'a>> {
-    parse_der_struct!(
-        i,
-        oid: map_res!(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())
-            >> critical: map_res!(der_read_opt_bool, |x: DerObject| {
-                match x.as_context_specific() {
-                    Ok((_, Some(obj))) => obj.as_bool(),
-                    _ => Ok(false), // default critical value
-                }
-            })
-            >> value: map_res!(parse_der_octetstring, |x: DerObject<'a>| x.as_slice())
-            >> parsed_extension: call!(crate::extensions::parser::parse_extension, value, &oid)
-            >> (X509Extension {
-                oid,
-                critical,
-                value,
-                parsed_extension,
-            })
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_extension<'a>(i: &'a [u8]) -> X509Result<X509Extension<'a>> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, oid) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)?;
+        let (i, critical) = map_res(der_read_opt_bool, |x: DerObject| {
+            match x.as_context_specific() {
+                Ok((_, Some(obj))) => obj.as_bool(),
+                _ => Ok(false), // default critical value
+            }
+        })(i)?;
+        let (i, value) = map_res(parse_der_octetstring, |x: DerObject<'a>| x.as_slice())(i)?;
+        let (i, parsed_extension) = crate::extensions::parser::parse_extension(i, value, &oid)?;
+        let ext = X509Extension {
+            oid,
+            critical,
+            value,
+            parsed_extension,
+        };
+        Ok((i, ext))
+    })(i)
+    .map_err(|_| X509Error::InvalidExtensions.into())
 }
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
-fn parse_extension_sequence(i: &[u8]) -> BerResult<Vec<X509Extension>> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        v: many0!(complete!(parse_extension)) >>
-        ( v )
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
+    parse_ber_sequence_defined_g(many0(complete(parse_extension)))(i)
 }
 
-fn parse_extensions(i: &[u8]) -> BerResult<HashMap<Oid, X509Extension>> {
+fn parse_extensions(i: &[u8], explicit_tag: BerTag) -> X509Result<HashMap<Oid, X509Extension>> {
     if i.is_empty() {
-        return Ok((&[], HashMap::new()));
+        return Ok((i, HashMap::new()));
     }
 
     match der_read_element_header(i) {
         Ok((rem, hdr)) => {
-            if hdr.tag != BerTag(3) {
-                return Err(Err::Error(BerError::InvalidTag));
+            if hdr.tag != explicit_tag {
+                return Err(Err::Error(X509Error::InvalidExtensions));
             }
             let mut extensions = HashMap::new();
-            // The allocation of the Vec could be avoided with an iterator
-            let (_, list) = exact!(rem, parse_extension_sequence)?;
+            let (rem, list) = exact!(rem, parse_extension_sequence)?;
             for ext in list.into_iter() {
                 if extensions.insert(ext.oid.clone(), ext).is_some() {
                     // duplicate extensions are not allowed
-                    return Err(Err::Failure(BerError::InvalidTag));
+                    return Err(Err::Failure(X509Error::DuplicateExtensions));
                 }
             }
             Ok((rem, extensions))
         }
-        Err(e) => Err(e),
+        Err(_) => Err(X509Error::InvalidExtensions.into()),
     }
 }
 
@@ -278,125 +243,102 @@ fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
     Some((slice, big))
 }
 
-fn parse_tbs_certificate<'a>(i: &'a [u8]) -> BerResult<TbsCertificate<'a>> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        version:     parse_version >>
-        serial:      map_opt!(parse_der_integer, get_serial_info) >>
-        signature:   parse_algorithm_identifier >>
-        issuer:      parse_x509_name >>
-        validity:    parse_validity >>
-        subject:     parse_x509_name >>
-        subject_pki: parse_subject_public_key_info >>
-        issuer_uid:  parse_issuer_unique_id >>
-        subject_uid: parse_subject_unique_id >>
-        extensions:  parse_extensions >>
-        (
-            TbsCertificate{
-                version,
-                serial: serial.1,
-                signature,
-                issuer,
-                validity,
-                subject,
-                subject_pki,
-                issuer_uid,
-                subject_uid,
-                extensions,
-                raw: &[],
-                raw_serial: serial.0,
-            }
-        )
-    )
-    .map(|(rem, (_hdr, mut tbs))| {
-        tbs.raw = &i[..(i.len() - rem.len())];
-        (rem, tbs)
-    })
+fn parse_tbs_certificate<'a>(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
+    let start_i = i;
+    parse_ber_sequence_defined_g(move |i| {
+        let (i, version) = parse_version(i)?;
+        let (i, serial) = parse_serial(i)?;
+        let (i, signature) = parse_algorithm_identifier(i)?;
+        let (i, issuer) = parse_x509_name(i)?;
+        let (i, validity) = parse_validity(i)?;
+        let (i, subject) = parse_x509_name(i)?;
+        let (i, subject_pki) = parse_subject_public_key_info(i)?;
+        let (i, issuer_uid) = parse_issuer_unique_id(i)?;
+        let (i, subject_uid) = parse_subject_unique_id(i)?;
+        let (i, extensions) = parse_extensions(i, BerTag(3))?;
+        let len = start_i.offset(i);
+        let tbs = TbsCertificate {
+            version,
+            serial: serial.1,
+            signature,
+            issuer,
+            validity,
+            subject,
+            subject_pki,
+            issuer_uid,
+            subject_uid,
+            extensions,
+
+            raw: &start_i[..len],
+            raw_serial: serial.0,
+        };
+        Ok((i, tbs))
+    })(i)
 }
 
-fn parse_tbs_cert_list(i: &[u8]) -> IResult<&[u8], TbsCertList, BerError> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        version:              opt!(map_res!(parse_der_integer, |x:DerObject| x.as_u32())) >>
-        signature:            parse_algorithm_identifier >>
-        issuer:               parse_x509_name >>
-        this_update:          map_res!(parse_choice_of_time, der_to_utctime) >>
-        next_update:          opt!(map_res!(parse_choice_of_time, der_to_utctime)) >>
-        revoked_certificates: opt!(complete!(parse_revoked_certificates)) >>
-        extensions:           opt!(complete!(parse_crl_extensions)) >>
-        (
-            TbsCertList{
-                version,
-                signature,
-                issuer,
-                this_update,
-                next_update,
-                revoked_certificates: revoked_certificates.unwrap_or_default(),
-                extensions: extensions.unwrap_or_default(),
-                raw: &[]
-            }
-        )
-    )
-    .map(|(rem, (_hdr, mut tbs))| {
-        tbs.raw = &i[..(i.len() - rem.len())];
-        (rem, tbs)
-    })
+fn parse_tbs_cert_list(i: &[u8]) -> X509Result<TbsCertList> {
+    let start_i = i;
+    parse_ber_sequence_defined_g(move |i| {
+        let (i, version) = opt(parse_ber_u32)(i).or(Err(X509Error::InvalidVersion))?;
+        let (i, signature) = parse_algorithm_identifier(i)?;
+        let (i, issuer) = parse_x509_name(i)?;
+        let (i, this_update) =
+            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
+        let (i, next_update) = opt(map_res(parse_choice_of_time, der_to_utctime))(i)
+            .or(Err(X509Error::InvalidDate))?;
+        let (i, revoked_certificates) = opt(complete(parse_revoked_certificates))(i)?;
+        let (i, extensions) = parse_extensions(i, BerTag(0))?;
+        let len = start_i.offset(i);
+        let tbs = TbsCertList {
+            version,
+            signature,
+            issuer,
+            this_update,
+            next_update,
+            revoked_certificates: revoked_certificates.unwrap_or_default(),
+            extensions,
+            raw: &start_i[..len],
+        };
+        Ok((i, tbs))
+    })(i)
 }
 
-fn parse_revoked_certificates(i: &[u8]) -> IResult<&[u8], Vec<RevokedCertificate>, BerError> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        v: many1!(complete!(parse_revoked_certificate)) >>
-        ( v )
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
+    parse_ber_sequence_defined_g(many1(complete(parse_revoked_certificate)))(i)
 }
 
-fn parse_revoked_certificate(i: &[u8]) -> IResult<&[u8], RevokedCertificate, BerError> {
-    parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        user_certificate: map_opt!(parse_der_integer, |x:DerObject| x.as_biguint()) >>
-        revocation_date:  map_res!(parse_choice_of_time, der_to_utctime) >>
-        extensions:       opt!(complete!(parse_extension_sequence)) >>
-        (
-            RevokedCertificate{
-                user_certificate,
-                revocation_date,
-                extensions: extensions.unwrap_or_default(),
-            }
-        )
-    )
-    .map(|(rem, x)| (rem, x.1))
-}
-
-fn parse_crl_extensions(i: &[u8]) -> IResult<&[u8], Vec<X509Extension>, BerError> {
-    parse_der_struct!(
-        i,
-        TAG BerTag(0x0),
-        extensions: parse_extension_sequence >>
-        ( extensions )
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_revoked_certificate(i: &[u8]) -> X509Result<RevokedCertificate> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, user_certificate) = map_opt(parse_der_integer, |x: DerObject| x.as_biguint())(i)
+            .or(Err(X509Error::InvalidUserCertificate))?;
+        let (i, revocation_date) =
+            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
+        let (i, extensions) = opt(complete(parse_extension_sequence))(i)?;
+        let revoked = RevokedCertificate {
+            user_certificate,
+            revocation_date,
+            extensions: extensions.unwrap_or_default(),
+        };
+        Ok((i, revoked))
+    })(i)
 }
 
 // lifetime is *not* useless, it is required to tell the compiler the content of the temporary
 // DerObject has the same lifetime as the input
 #[allow(clippy::needless_lifetimes)]
-fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> BerResult<AlgorithmIdentifier> {
-    parse_der_struct!(
-        i,
-        oid: map_res!(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())
-            >> params: parse_der_optional!(parse_der)
-            >> (AlgorithmIdentifier {
-                algorithm: oid,
-                parameters: params
-            })
-    )
-    .map(|(rem, x)| (rem, x.1))
+fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> X509Result<AlgorithmIdentifier> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, algorithm) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
+            .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
+        let (i, parameters) =
+            parse_der_optional!(i, parse_der).or(Err(X509Error::InvalidAlgorithmIdentifier))?;
+
+        let alg = AlgorithmIdentifier {
+            algorithm,
+            parameters,
+        };
+        Ok((i, alg))
+    })(i)
 }
 
 /// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
@@ -426,52 +368,42 @@ fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> BerResult<AlgorithmIdentifier>
 /// }
 /// # }
 /// ```
-pub fn parse_x509_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
-    upgrade_error!(parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        tbs: parse_tbs_certificate >>
-        alg: parse_algorithm_identifier >>
-        sig: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
-            match x.content {
-                BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
-                _ => Err(BerError::BerTypeError),
-            }
-        }) >>
-        (
-            X509Certificate{
-                tbs_certificate: tbs,
-                signature_algorithm: alg,
-                signature_value: sig
-            }
-        )
-    )
-    .map(|(rem, x)| (rem, x.1)))
+pub fn parse_x509_der<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, tbs_certificate) = parse_tbs_certificate(i)?;
+        let (i, signature_algorithm) = parse_algorithm_identifier(i)?;
+        let (i, signature_value) = parse_signature_value(i)?;
+        let cert = X509Certificate {
+            tbs_certificate,
+            signature_algorithm,
+            signature_value,
+        };
+        Ok((i, cert))
+    })(i)
 }
 
-pub fn parse_crl_der<'a>(
-    i: &'a [u8],
-) -> IResult<&'a [u8], CertificateRevocationList<'a>, X509Error> {
-    upgrade_error!(parse_der_struct!(
-        i,
-        TAG DerTag::Sequence,
-        tbs: parse_tbs_cert_list >>
-        alg: parse_algorithm_identifier >>
-        sig: map_res!(parse_der_bitstring, |x:DerObject<'a>| {
-            match x.content {
-                BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
-                _ => Err(BerError::BerTypeError),
-            }
-        }) >>
-        (
-            CertificateRevocationList{
-                tbs_cert_list: tbs,
-                signature_algorithm: alg,
-                signature_value: sig
-            }
-        )
-    )
-    .map(|(rem, x)| (rem, x.1)))
+pub fn parse_crl_der<'a>(i: &'a [u8]) -> X509Result<CertificateRevocationList<'a>> {
+    parse_ber_sequence_defined_g(|i| {
+        let (i, tbs_cert_list) = parse_tbs_cert_list(i)?;
+        let (i, signature_algorithm) = parse_algorithm_identifier(i)?;
+        let (i, signature_value) = parse_signature_value(i)?;
+        let crl = CertificateRevocationList {
+            tbs_cert_list,
+            signature_algorithm,
+            signature_value,
+        };
+        Ok((i, crl))
+    })(i)
+}
+
+fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
+    map_res(parse_der_bitstring, |x: DerObject| {
+        match x.content {
+            BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+            _ => Err(BerError::BerTypeError),
+        }
+    })(i)
+    .or(Err(Err::Error(X509Error::InvalidSignatureValue)))
 }
 
 #[deprecated(since = "0.4.0", note = "please use `parse_x509_der` instead")]

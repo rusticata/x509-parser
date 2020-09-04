@@ -98,3 +98,6 @@ mod x509_parser;
 pub use crate::x509_parser::*;
 mod verify;
 pub use verify::*;
+
+// reexports
+pub use nom::IResult;
