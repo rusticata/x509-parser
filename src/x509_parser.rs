@@ -8,6 +8,7 @@ use crate::time::ASN1Time;
 use crate::x509::*;
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Utc};
+use nom::branch::alt;
 use nom::combinator::{complete, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{exact, Err, IResult, Offset};
@@ -73,12 +74,11 @@ fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
     map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
 }
 
-#[inline]
 fn parse_choice_of_time(i: &[u8]) -> DerResult {
-    alt!(
-        i,
-        complete!(parse_der_utctime) | complete!(parse_der_generalizedtime)
-    )
+    alt((
+        complete(parse_der_utctime),
+        complete(parse_der_generalizedtime),
+    ))(i)
 }
 
 fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
