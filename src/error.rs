@@ -15,6 +15,11 @@ pub enum X509Error {
     #[error("invalid date")]
     InvalidDate,
 
+    #[error("signature verification error")]
+    SignatureVerificationError,
+    #[error("signature unsupported algorithm")]
+    SignatureUnsupportedAlgorithm,
+
     #[error("BER error: {0}")]
     Der(#[from] BerError),
     #[error("nom error: {0:?}")]
