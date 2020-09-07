@@ -43,7 +43,7 @@ rusticata-macros = "2.0.2"
 num-bigint = "0.3"
 ring = { version="0.16", optional=true }
 rustversion = "1.0"
-der-parser = {version = "4.0.2", features=["bigint"] }
+der-parser = {version = "4.1", features=["bigint"] }
 der-oid-macro = "0.2"
 thiserror = "1.0"
 

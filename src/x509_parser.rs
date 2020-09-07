@@ -85,7 +85,7 @@ pub fn parse_x509_name(i: &[u8]) -> BerResult<X509Name> {
 fn parse_version(i: &[u8]) -> BerResult<u32> {
     map_res!(
         i,
-        call!(parse_der_explicit, BerTag(0), parse_der_integer),
+        call!(parse_der_explicit_optional, BerTag(0), parse_der_integer),
         |x: DerObject| {
             match x.as_context_specific() {
                 Ok((BerTag::EndOfContent, None)) => Ok(1),
