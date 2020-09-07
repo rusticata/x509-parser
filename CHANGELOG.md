@@ -36,7 +36,8 @@
 ### Thanks
 
 - @jannschu, @g2p for the extensions parsing
-- @wayofthepie for the tests
+- @wayofthepie for the tests and contributions
+- @nicholasbishop for contributions
 
 ## 0.7.0
 
