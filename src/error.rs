@@ -14,7 +14,7 @@ pub struct NidError;
 pub type X509Result<'a, T> = IResult<&'a [u8], T, X509Error>;
 
 /// An error that can occur while parsing or validating a certificate.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error)]
 pub enum X509Error {
     #[error("generic error")]
     Generic,
