@@ -60,6 +60,24 @@ pub struct AttributeTypeAndValue<'a> {
     pub attr_value: DerObject<'a>, // XXX DirectoryString ?
 }
 
+impl<'a> AttributeTypeAndValue<'a> {
+    /// Attempt to get the content as `str`.
+    /// This can fail if the object does not contain a string type.
+    ///
+    /// Only NumericString, PrintableString, UTF8String and IA5String
+    /// are considered here. Other string types can be read using `as_slice`.
+    pub fn as_str(&self) -> Result<&'a str, X509Error> {
+        self.attr_value.as_str().map_err(|e| e.into())
+    }
+
+    /// Attempt to get the content as a slice.
+    /// This can fail if the object does not contain a type directly equivalent to a slice (e.g a
+    /// sequence).
+    pub fn as_slice(&self) -> Result<&'a [u8], X509Error> {
+        self.attr_value.as_slice().map_err(|e| e.into())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct RelativeDistinguishedName<'a> {
     pub set: Vec<AttributeTypeAndValue<'a>>,
@@ -96,6 +114,94 @@ impl<'a> fmt::Display for X509Name<'a> {
             Ok(o) => write!(f, "{}", o),
             Err(_) => write!(f, "<X509Error: Invalid X.509 name>"),
         }
+    }
+}
+
+impl<'a> X509Name<'a> {
+    /// Return an iterator over the `RelativeDistinguishedName` components of the name
+    pub fn iter_rdn(&self) -> impl Iterator<Item = &RelativeDistinguishedName<'a>> {
+        self.rdn_seq.iter()
+    }
+
+    /// Return an iterator over the attribute types and values of the name
+    pub fn iter_attributes(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
+        self.rdn_seq.iter().map(|rdn| rdn.set.iter()).flatten()
+    }
+
+    /// Return an iterator over the components identified by the given OID
+    ///
+    /// The type of the component AttributeValue is determined by the AttributeType; in
+    /// general it will be a DirectoryString.
+    ///
+    /// Attributes with same OID may be present multiple times, so the returned object is
+    /// an iterator.
+    /// Expected number of objects in this iterator are
+    ///   - 0: not found
+    ///   - 1: present once (common case)
+    ///   - 2 or more: attribute is present multiple times
+    pub fn iter_by_oid(&self, oid: &Oid<'a>) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
+        // this is necessary, otherwise rustc complains
+        // that caller creates a temporary value for reference (for ex.
+        // `self.iter_by_oid(&OID_L)`
+        // )
+        let oid = oid.clone();
+        self.iter_attributes()
+            .filter(move |obj| obj.attr_type == oid)
+    }
+
+    /// Return an iterator over the `CommonName` attributes of the X.509 Name.
+    ///
+    /// Returned iterator can be empty if there are no `CommonName` attributes.
+    /// If you expect only one `CommonName` to be present, then using `next()` will
+    /// get an `Option<&AttributeTypeAndValue>`.
+    ///
+    /// A common operation is to extract the `CommonName` as a string.
+    ///
+    /// ```
+    /// use x509_parser::X509Name;
+    ///
+    /// fn get_first_cn_as_str<'a>(name: &'a X509Name<'_>) -> Option<&'a str> {
+    ///     name.iter_common_name()
+    ///         .next()
+    ///         .and_then(|cn| cn.as_str().ok())
+    /// }
+    /// ```
+    ///
+    /// Note that there are multiple reasons for failure or incorrect behavior, for ex. if
+    /// the attribute is present multiple times, or is not a UTF-8 encoded string (it can be
+    /// UTF-16, or even an OCTETSTRING according to the standard).
+    pub fn iter_common_name(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_CN)
+    }
+
+    /// Return an iterator over the `Country` attributes of the X.509 Name.
+    pub fn iter_country(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_C)
+    }
+
+    /// Return an iterator over the `Organization` attributes of the X.509 Name.
+    pub fn iter_organization(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_O)
+    }
+
+    /// Return an iterator over the `OrganizationalUnit` attributes of the X.509 Name.
+    pub fn iter_organizational_unit(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_OU)
+    }
+
+    /// Return an iterator over the `StateOrProvinceName` attributes of the X.509 Name.
+    pub fn iter_state_or_province(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_ST)
+    }
+
+    /// Return an iterator over the `Locality` attributes of the X.509 Name.
+    pub fn iter_locality(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_L)
+    }
+
+    /// Return an iterator over the `EmailAddress` attributes of the X.509 Name.
+    pub fn iter_email(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+        self.iter_by_oid(&OID_EMAIL)
     }
 }
 

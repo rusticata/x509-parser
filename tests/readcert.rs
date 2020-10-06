@@ -2,6 +2,7 @@ use chrono::offset::{TimeZone, Utc};
 use chrono::Datelike;
 use der_parser::{oid, oid::Oid};
 use std::collections::HashMap;
+use x509_parser::error::*;
 use x509_parser::extensions::*;
 use x509_parser::objects::*;
 use x509_parser::{
@@ -28,7 +29,7 @@ fn test_x509_parser() {
         Ok((e, cert)) => {
             assert_eq!(e, empty);
             //
-            let tbs_cert = cert.tbs_certificate;
+            let tbs_cert = &cert.tbs_certificate;
             assert_eq!(tbs_cert.version, 2);
             //
             let s = tbs_cert.raw_serial_as_string();
@@ -36,6 +37,13 @@ fn test_x509_parser() {
             //
             let expected_subject = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.subject), expected_subject);
+            //
+            let cn_list: Result<Vec<_>, X509Error> = cert
+                .subject()
+                .iter_common_name()
+                .map(|attr| attr.as_str())
+                .collect();
+            assert_eq!(cn_list, Ok(vec!["IGC/A"]));
             //
             let sig = &tbs_cert.signature;
             assert_eq!(sig.algorithm, oid!(1.2.840.113549.1.1.5));
@@ -300,7 +308,10 @@ fn test_crl_parse_empty() {
                 ),
             ];
             // do not compare iterators because of random order in hashmap
-            assert_eq!(cert.tbs_cert_list.extensions.len(), expected_extensions.len());
+            assert_eq!(
+                cert.tbs_cert_list.extensions.len(),
+                expected_extensions.len()
+            );
             let parsed_extension_values: Vec<_> = cert.tbs_cert_list.extensions.values().collect();
             for extension in &expected_extensions {
                 assert!(parsed_extension_values.contains(&extension));
