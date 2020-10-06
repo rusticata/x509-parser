@@ -8,7 +8,7 @@ use nom::error::{ErrorKind, ParseError};
 pub struct NidError;
 
 /// An error that can occur while parsing or validating a certificate.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error)]
 pub enum X509Error {
     #[error("invalid X.509 name")]
     InvalidX509Name,
