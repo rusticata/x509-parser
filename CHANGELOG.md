@@ -6,6 +6,14 @@
 
 ### Thanks
 
+## 0.8.1
+
+- Upgrade base64 requirement from 0.12 to 0.13
+- Add PartialEq to X509Error
+- Add helper methods to X509Name and simplify accessing values (#50)
+
+### Thanks
+
 ## 0.8.0
 
 ### Added/Changed
