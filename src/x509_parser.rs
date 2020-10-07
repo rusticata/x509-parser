@@ -8,34 +8,42 @@ use crate::time::ASN1Time;
 use crate::x509::*;
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Utc};
-use nom::{exact, many1, map_opt, opt, Err, IResult};
+use nom::{alt, exact, many1, map_opt, opt, take, Err, IResult};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 use std::str;
 
-use der_parser::ber::{BerObjectContent, BerTag};
+use der_parser::ber::{ber_read_element_header, BerObjectContent, BerTag};
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::oid::Oid;
 use der_parser::*;
 use rusticata_macros::{flat_take, upgrade_error};
 
-// #[inline]
-// fn parse_directory_string(i: &[u8]) -> DerResult {
-//     alt!(
-//         i,
-//         complete!(parse_der_utf8string)
-//             | complete!(parse_der_printablestring)
-//             | complete!(parse_der_ia5string)
-//             | complete!(parse_der_t61string)
-//             | complete!(parse_der_bmpstring)
-//     )
-// }
+fn parse_malformed_string(i: &[u8]) -> DerResult {
+    let (rem, hdr) = ber_read_element_header(i)?;
+    if hdr.len > u64::from(std::u32::MAX) {
+        return Err(nom::Err::Error(BerError::InvalidLength));
+    }
+    match hdr.tag {
+        BerTag::PrintableString => {
+            // if we are in this function, the PrintableString could not be validated.
+            // Accept it without validating charset, because some tools do not respect the charset
+            // restrictions (for ex. they use '*' while explicingly disallowed)
+            let (rem, data) = take!(rem, hdr.len as usize)?;
+            let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
+            let content = BerObjectContent::PrintableString(s);
+            let obj = DerObject::from_header_and_content(hdr, content);
+            Ok((rem, obj))
+        }
+        _ => Err(nom::Err::Error(BerError::InvalidTag)),
+    }
+}
 
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
-fn parse_attribute_value(i: &[u8]) -> BerResult<DerObject> {
-    parse_der(i)
+fn parse_attribute_value(i: &[u8]) -> DerResult {
+    alt!(i, parse_der | parse_malformed_string)
 }
 
 // AttributeTypeAndValue   ::= SEQUENCE {
