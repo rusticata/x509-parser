@@ -9,6 +9,7 @@ use crate::x509::*;
 use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Utc};
 use nom::branch::alt;
+use nom::bytes::complete::take;
 use nom::combinator::{complete, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{exact, Err, IResult, Offset};
@@ -22,10 +23,30 @@ use der_parser::error::*;
 use der_parser::oid::Oid;
 use der_parser::*;
 
+fn parse_malformed_string(i: &[u8]) -> DerResult {
+    let (rem, hdr) = ber_read_element_header(i)?;
+    if hdr.len > u64::from(std::u32::MAX) {
+        return Err(nom::Err::Error(BerError::InvalidLength));
+    }
+    match hdr.tag {
+        BerTag::PrintableString => {
+            // if we are in this function, the PrintableString could not be validated.
+            // Accept it without validating charset, because some tools do not respect the charset
+            // restrictions (for ex. they use '*' while explicingly disallowed)
+            let (rem, data) = take(hdr.len as usize)(rem)?;
+            let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
+            let content = BerObjectContent::PrintableString(s);
+            let obj = DerObject::from_header_and_content(hdr, content);
+            Ok((rem, obj))
+        }
+        _ => Err(nom::Err::Error(BerError::InvalidTag)),
+    }
+}
+
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
-fn parse_attribute_value(i: &[u8]) -> BerResult<DerObject> {
-    parse_der(i)
+fn parse_attribute_value(i: &[u8]) -> DerResult {
+    alt((parse_der, parse_malformed_string))(i)
 }
 
 // AttributeTypeAndValue   ::= SEQUENCE {
