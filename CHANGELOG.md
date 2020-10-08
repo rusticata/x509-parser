@@ -6,6 +6,11 @@
 
 ### Thanks
 
+## 0.8.2
+
+- Objects: add OID for domainComponent
+- X509Name: relax check, allow some non-rfc compliant strings (#50)
+
 ## 0.8.1
 
 - Upgrade base64 requirement from 0.12 to 0.13
