@@ -34,7 +34,7 @@ default = []
 verify = ["ring"]
 
 [dependencies]
-base64 = "0.12"
+base64 = "0.13"
 chrono = { version="0.4", default-features=false, features=["std"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
