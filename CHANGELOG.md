@@ -6,6 +6,12 @@
 
 ### Thanks
 
+## 0.9.0
+
+### Added/Changed/Fixed
+
+- Upgrade to `der-parser` 5.0
+
 ## 0.8.0
 
 ### Added/Changed

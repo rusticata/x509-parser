@@ -92,7 +92,7 @@ pub struct SubjectPublicKeyInfo<'a> {
 #[derive(Debug, PartialEq)]
 pub struct AlgorithmIdentifier<'a> {
     pub algorithm: Oid<'a>,
-    pub parameters: DerObject<'a>,
+    pub parameters: Option<DerObject<'a>>,
 }
 
 #[derive(Debug, PartialEq)]

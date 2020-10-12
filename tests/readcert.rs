@@ -157,13 +157,7 @@ fn test_parse_subject_public_key_info() {
         .1;
     let oid = nid2obj(Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
     assert_eq!(res.algorithm.algorithm, *oid);
-    let (tag, p) = res
-        .algorithm
-        .parameters
-        .as_context_specific()
-        .expect("algorithm parameters");
-    assert_eq!(tag.0, 0);
-    let params = p.expect("algorithm parameters");
+    let params = res.algorithm.parameters.expect("algorithm parameters");
     assert_eq!(params.header.tag.0, 5);
     let spk = res.subject_public_key;
     println!("spk.data.len {}", spk.data.len());
