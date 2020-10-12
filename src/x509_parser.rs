@@ -264,7 +264,7 @@ fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
     Some((slice, big))
 }
 
-fn parse_tbs_certificate<'a>(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
+pub fn parse_tbs_certificate<'a>(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
     let start_i = i;
     parse_ber_sequence_defined_g(move |i| {
         let (i, version) = parse_version(i)?;
