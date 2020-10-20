@@ -7,7 +7,7 @@ keywords = ["X509","Certificate","parser","nom"]
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 homepage = "https://github.com/rusticata/x509-parser"
 repository = "https://github.com/rusticata/x509-parser.git"
-categories = ["parser-implementations"]
+categories = ["parser-implementations", "cryptography"]
 readme = "README.md"
 edition = "2018"
 
