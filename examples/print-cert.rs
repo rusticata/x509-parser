@@ -41,7 +41,6 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
 }
 
 fn print_x509_info(file_name: &str, x509: &X509Certificate) {
-    println!("File: {}", file_name);
     println!("  Subject: {}", x509.subject());
     println!("  Issuer: {}", x509.issuer());
     println!("  Serial: {}", x509.tbs_certificate.raw_serial_as_string());
@@ -61,6 +60,7 @@ pub fn main() -> io::Result<()> {
         // placeholder to store decoded PEM data, if needed
         let tmpdata;
 
+        println!("File: {}", file_name);
         let data = std::fs::read(file_name.clone()).expect("Unable to read file");
         let der_data: &[u8] = if (data[0], data[1]) == (0x30, 0x82) {
             // probably DER
