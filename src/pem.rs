@@ -65,7 +65,7 @@ pub struct Pem {
 }
 
 #[deprecated(since = "0.8.3", note = "please use `parse_x509_pem` instead")]
-pub fn pem_to_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
+pub fn pem_to_der(i: &[u8]) -> IResult<&[u8], Pem, PEMError> {
     parse_x509_pem(i)
 }
 
@@ -76,7 +76,7 @@ pub fn pem_to_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
 ///
 /// For X.509 (`CERTIFICATE` tag), the data is a certificate, encoded in DER. To parse the
 /// certificate content, use `Pem::parse_x509` or `parse_x509_der`.
-pub fn parse_x509_pem<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
+pub fn parse_x509_pem(i: &[u8]) -> IResult<&'_ [u8], Pem, PEMError> {
     let reader = Cursor::new(i);
     let res = Pem::read(reader);
     match res {

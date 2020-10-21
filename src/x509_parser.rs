@@ -477,6 +477,6 @@ fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
 }
 
 #[deprecated(since = "0.4.0", note = "please use `parse_x509_der` instead")]
-pub fn x509_parser<'a>(i: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
+pub fn x509_parser(i: &[u8]) -> IResult<&[u8], X509Certificate<'_>, X509Error> {
     parse_x509_der(i)
 }

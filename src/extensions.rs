@@ -429,7 +429,7 @@ pub(crate) mod parser {
         Ok((i, SubjectAlternativeName { general_names }))
     }
 
-    fn parse_policyconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], PolicyConstraints, BerError> {
+    fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], PolicyConstraints, BerError> {
         let (ret, (require_explicit_policy, inhibit_policy_mapping)) = do_parse!(
             i,
             verify!(der_read_element_header, |hdr| hdr.tag == DerTag::Sequence)
@@ -457,8 +457,8 @@ pub(crate) mod parser {
     // PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
     //  issuerDomainPolicy      CertPolicyId,
     //  subjectDomainPolicy     CertPolicyId }
-    fn parse_policymappings<'a>(i: &'a [u8]) -> IResult<&'a [u8], PolicyMappings<'a>, BerError> {
-        fn parse_oid_pair<'b>(i: &'b [u8]) -> IResult<&'b [u8], Vec<DerObject<'b>>, BerError> {
+    fn parse_policymappings(i: &[u8]) -> IResult<&[u8], PolicyMappings<'_>, BerError> {
+        fn parse_oid_pair(i: &[u8]) -> IResult<&[u8], Vec<DerObject<'_>>, BerError> {
             // read 2 OID as a SEQUENCE OF OID - length will be checked later
             parse_ber_sequence_of_v(parse_der_oid)(i)
         }
@@ -482,14 +482,12 @@ pub(crate) mod parser {
         Ok((ret, PolicyMappings { mappings }))
     }
 
-    fn parse_inhibitanyplicy<'a>(i: &'a [u8]) -> IResult<&'a [u8], InhibitAnyPolicy, BerError> {
+    fn parse_inhibitanyplicy(i: &[u8]) -> IResult<&[u8], InhibitAnyPolicy, BerError> {
         let (ret, skip_certs) = map_res!(i, parse_der_integer, |x: BerObject| x.as_u32())?;
         Ok((ret, InhibitAnyPolicy { skip_certs }))
     }
 
-    fn parse_extendedkeyusage<'a>(
-        i: &'a [u8],
-    ) -> IResult<&'a [u8], ExtendedKeyUsage<'a>, BerError> {
+    fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage<'_>, BerError> {
         let (ret, seq) = parse_ber_sequence_of(parse_der_oid)(i)?;
         let mut seen = std::collections::HashSet::new();
         let mut eku = ExtendedKeyUsage {
@@ -614,7 +612,7 @@ pub(crate) mod parser {
         Ok((rest, KeyIdentifier(id)))
     }
 
-    fn parse_keyusage<'a>(i: &'a [u8]) -> IResult<&'a [u8], KeyUsage, BerError> {
+    fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, BerError> {
         let (rest, obj) = parse_der_bitstring(i)?;
         let bitstring = obj
             .content
