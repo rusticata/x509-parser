@@ -21,16 +21,16 @@
 //!
 //! This is the most direct method to parse PEM data.
 //!
-//! Another method to parse the certificate is to use `pem_to_der`:
+//! Another method to parse the certificate is to use `parse_x509_pem`:
 //!
 //! ```rust,no_run
-//! use x509_parser::pem::pem_to_der;
+//! use x509_parser::pem::parse_x509_pem;
 //! use x509_parser::parse_x509_der;
 //!
 //! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
 //!
 //! # fn main() {
-//! let res = pem_to_der(IGCA_PEM);
+//! let res = parse_x509_pem(IGCA_PEM);
 //! match res {
 //!     Ok((rem, pem)) => {
 //!         assert!(rem.is_empty());
@@ -64,10 +64,19 @@ pub struct Pem {
     pub contents: Vec<u8>,
 }
 
+#[deprecated(since = "0.8.3", note = "please use `parse_x509_pem` instead")]
+pub fn pem_to_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
+    parse_x509_pem(i)
+}
+
 /// Read a PEM-encoded structure, and decode the base64 data
 ///
+/// Return a structure describing the PEM object: the enclosing tag, and the data.
 /// Allocates a new buffer for the decoded data.
-pub fn pem_to_der<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
+///
+/// For X.509 (`CERTIFICATE` tag), the data is a certificate, encoded in DER. To parse the
+/// certificate content, use `Pem::parse_x509` or `parse_x509_der`.
+pub fn parse_x509_pem<'a>(i: &'a [u8]) -> IResult<&'a [u8], Pem, PEMError> {
     let reader = Cursor::new(i);
     let res = Pem::read(reader);
     match res {

@@ -3,7 +3,7 @@ use std::env;
 use std::io;
 use x509_parser::extensions::*;
 use x509_parser::objects::*;
-use x509_parser::pem::pem_to_der;
+use x509_parser::pem::parse_x509_pem;
 use x509_parser::x509::X509Certificate;
 use x509_parser::{parse_x509_der, X509Extension};
 
@@ -67,7 +67,7 @@ pub fn main() -> io::Result<()> {
             &data
         } else {
             // try as PEM
-            let (_, data) = pem_to_der(&data).expect("Could not decode the PEM file");
+            let (_, data) = parse_x509_pem(&data).expect("Could not decode the PEM file");
             tmpdata = data;
             &tmpdata.contents
         };
