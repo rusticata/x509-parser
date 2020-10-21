@@ -40,6 +40,33 @@ fn parse_malformed_string(i: &[u8]) -> DerResult {
     }
 }
 
+// allow relaxed parsing of UTCTime (ex: 370116130016+0000)
+fn parse_malformed_date(i: &[u8]) -> DerResult {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn check_char(b: &u8) -> bool {
+        (0x20 <= *b && *b <= 0x7f) || (*b == b'+')
+    }
+    let (rem, hdr) = ber_read_element_header(i)?;
+    if hdr.len > u64::from(std::u32::MAX) {
+        return Err(nom::Err::Error(BerError::InvalidLength));
+    }
+    match hdr.tag {
+        BerTag::UtcTime => {
+            // if we are in this function, the PrintableString could not be validated.
+            // Accept it without validating charset, because some tools do not respect the charset
+            // restrictions (for ex. they use '*' while explicingly disallowed)
+            let (rem, data) = take!(rem, hdr.len as usize)?;
+            if !data.iter().all(check_char) {
+                return Err(nom::Err::Error(BerError::BerValueError));
+            }
+            let content = BerObjectContent::UTCTime(data);
+            let obj = DerObject::from_header_and_content(hdr, content);
+            Ok((rem, obj))
+        }
+        _ => Err(nom::Err::Error(BerError::InvalidTag)),
+    }
+}
+
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
 fn parse_attribute_value(i: &[u8]) -> DerResult {
@@ -108,7 +135,9 @@ fn parse_version(i: &[u8]) -> BerResult<u32> {
 fn parse_choice_of_time(i: &[u8]) -> DerResult {
     alt!(
         i,
-        complete!(parse_der_utctime) | complete!(parse_der_generalizedtime)
+        complete!(parse_der_utctime)
+            | complete!(parse_der_generalizedtime)
+            | complete!(parse_malformed_date)
     )
 }
 
