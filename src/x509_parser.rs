@@ -136,7 +136,13 @@ fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
     if let BerObjectContent::UTCTime(s) = obj.content {
         let dt = if s.ends_with('Z') {
             // UTC
-            Utc.datetime_from_str(s, "%y%m%d%H%M%SZ")
+            if s.len() == 11 {
+                // some implementations do not encode the number of seconds
+                // accept certificate even if date is not correct
+                Utc.datetime_from_str(s, "%y%m%d%H%MZ")
+            } else {
+                Utc.datetime_from_str(s, "%y%m%d%H%M%SZ")
+            }
         } else {
             DateTime::parse_from_str(s, "%y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
@@ -156,7 +162,13 @@ fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
     } else if let BerObjectContent::GeneralizedTime(s) = obj.content {
         let dt = if s.ends_with('Z') {
             // UTC
-            Utc.datetime_from_str(s, "%Y%m%d%H%M%SZ")
+            if s.len() == 11 {
+                // some implementations do not encode the number of seconds
+                // accept certificate even if date is not correct
+                Utc.datetime_from_str(s, "%Y%m%d%H%MZ")
+            } else {
+                Utc.datetime_from_str(s, "%Y%m%d%H%M%SZ")
+            }
         } else {
             DateTime::parse_from_str(s, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
