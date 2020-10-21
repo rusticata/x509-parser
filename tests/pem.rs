@@ -5,13 +5,13 @@ extern crate x509_parser;
 
 use std::io::Cursor;
 use x509_parser::parse_x509_der;
-use x509_parser::pem::{pem_to_der, Pem};
+use x509_parser::pem::{parse_x509_pem, Pem};
 
 static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 
 #[test]
 fn test_x509_parse_pem() {
-    let (rem, pem) = pem_to_der(IGCA_PEM).expect("PEM parsing failed");
+    let (rem, pem) = parse_x509_pem(IGCA_PEM).expect("PEM parsing failed");
     // println!("{:?}", pem);
     assert!(rem.is_empty());
     assert_eq!(pem.label, String::from("CERTIFICATE"));
