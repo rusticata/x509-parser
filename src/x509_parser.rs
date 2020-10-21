@@ -146,7 +146,13 @@ fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
         let dt = if xs.ends_with('Z') {
             // UTC
-            Utc.datetime_from_str(xs, "%y%m%d%H%M%SZ")
+            if xs.len() == 11 {
+                // some implementations do not encode the number of seconds
+                // accept certificate even if date is not correct
+                Utc.datetime_from_str(xs, "%y%m%d%H%MZ")
+            } else {
+                Utc.datetime_from_str(xs, "%y%m%d%H%M%SZ")
+            }
         } else {
             DateTime::parse_from_str(xs, "%y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
@@ -167,7 +173,13 @@ fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
         let dt = if xs.ends_with('Z') {
             // UTC
-            Utc.datetime_from_str(xs, "%Y%m%d%H%M%SZ")
+            if xs.len() == 11 {
+                // some implementations do not encode the number of seconds
+                // accept certificate even if date is not correct
+                Utc.datetime_from_str(xs, "%Y%m%d%H%MZ")
+            } else {
+                Utc.datetime_from_str(xs, "%Y%m%d%H%M%SZ")
+            }
         } else {
             DateTime::parse_from_str(xs, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
