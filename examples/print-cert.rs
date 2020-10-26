@@ -40,7 +40,7 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     }
 }
 
-fn print_x509_info(file_name: &str, x509: &X509Certificate) {
+fn print_x509_info(x509: &X509Certificate) {
     println!("  Subject: {}", x509.subject());
     println!("  Issuer: {}", x509.issuer());
     println!("  Serial: {}", x509.tbs_certificate.raw_serial_as_string());
@@ -72,7 +72,7 @@ pub fn main() -> io::Result<()> {
             &tmpdata.contents
         };
         let (_, x509) = parse_x509_der(&der_data).expect("Could not decode DER data");
-        print_x509_info(&file_name, &x509);
+        print_x509_info(&x509);
     }
     Ok(())
 }
