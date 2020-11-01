@@ -35,6 +35,8 @@ pub enum ParsedExtension<'a> {
     InhibitAnyPolicy(InhibitAnyPolicy),
     /// Section 4.2.2.1 of rfc 5280
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
+    /// https://developer.apple.com/documentation/devicecheck/validating_apps_that_connect_to_your_server (OID 1.2.840.113635.100.8.2)
+    AppleDataSecurityAttestationData(&'a [u8])
 }
 
 #[derive(Debug, PartialEq)]
@@ -251,6 +253,9 @@ pub(crate) mod parser {
         } else if *oid == OID_EXT_AUTHORITYKEYIDENTIFIER {
             let (_ret, aki) = parse_authoritykeyidentifier(i)?;
             ParsedExtension::AuthorityKeyIdentifier(aki)
+        } else if *oid == OID_EXT_APPLEDATASECURITY_ATTESTATION {
+            let (_ret, data) = parse_sequence_single_octet_string(i)?;
+            ParsedExtension::AppleDataSecurityAttestationData(data)
         } else {
             ParsedExtension::UnsupportedExtension
         };
@@ -646,6 +651,26 @@ pub(crate) mod parser {
             }
         }
         Ok((ret, CertificatePolicies { policies }))
+    }
+
+    fn parse_sequence_single_octet_string<'a>(i: &'a [u8]) -> IResult<&'a [u8], &'a [u8], BerError> {
+        let (rest, obj) = parse_der_with_tag(i, BerTag::Sequence)?;
+        let seq = obj
+            .content
+            .as_sequence()
+            .or(Err(Err::Error(BerError::BerTypeError)))?
+            .first()
+            .ok_or(Err::Error(BerError::BerTypeError))?
+            .as_slice()
+            .or(Err(Err::Error(BerError::BerTypeError)))?;
+
+        let (_, obj) = parse_der_with_tag(seq, BerTag::OctetString)?;
+        let value = obj
+            .content
+            .as_slice()
+            .or(Err(Err::Error(BerError::BerTypeError)))?;
+
+        Ok((rest, value))
     }
 }
 
