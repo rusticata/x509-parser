@@ -1,7 +1,7 @@
 use crate::objects::*;
 use der_parser::ber::*;
 use der_parser::oid::Oid;
-use nom::combinator::{all_consuming, complete, opt};
+use nom::combinator::{all_consuming, complete, map_res, opt};
 use nom::multi::{many0, many1};
 use std::collections::HashMap;
 use std::fmt;
@@ -207,7 +207,8 @@ pub(crate) mod parser {
     use der_parser::der::*;
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
-    use nom::{alt, complete, do_parse, eof, exact, map, map_res, opt, verify, Err, IResult};
+    use nom::combinator::{map, verify};
+    use nom::{Err, IResult};
 
     fn parse_extension0<'a>(
         orig_i: &'a [u8],
@@ -318,13 +319,9 @@ pub(crate) mod parser {
 
     fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], NameConstraints, BerError> {
         fn parse_subtree<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralSubtree, BerError> {
-            do_parse!(
-                i,
-                _hdr: verify!(complete!(der_read_element_header), |hdr| hdr.tag
-                    == DerTag::Sequence)
-                    >> subtree: map!(parse_generalname, |base| GeneralSubtree { base })
-                    >> (subtree)
-            )
+            parse_ber_sequence_defined_g(|_, input| {
+                map(parse_generalname, |base| GeneralSubtree { base })(input)
+            })(i)
         }
         fn parse_subtrees(i: &[u8]) -> IResult<&[u8], Vec<GeneralSubtree>, BerError> {
             all_consuming(many1(complete(parse_subtree)))(i)
@@ -351,7 +348,7 @@ pub(crate) mod parser {
 
     fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
         use crate::x509_parser::parse_x509_name;
-        let (rest, hdr) = verify!(i, der_read_element_header, |hdr| hdr.is_contextspecific())?;
+        let (rest, hdr) = verify(der_read_element_header, |hdr| hdr.is_contextspecific())(i)?;
         let len = hdr.len.primitive()?;
         if len > rest.len() {
             return Err(nom::Err::Failure(BerError::ObjectTooShort));
@@ -375,7 +372,7 @@ pub(crate) mod parser {
             3 => return Err(Err::Failure(BerError::Unsupported)), // x400Address
             4 => {
                 // directoryName, name
-                let (_, name) = exact!(&rest[..len], parse_x509_name)
+                let (_, name) = all_consuming(parse_x509_name)(&rest[..len])
                     .or(Err(BerError::Unsupported)) // XXX remove me
                     ?;
                 GeneralName::DirectoryName(name)
@@ -415,43 +412,30 @@ pub(crate) mod parser {
     }
 
     fn parse_subjectalternativename<'a>(
-        mut i: &'a [u8],
+        i: &'a [u8],
     ) -> IResult<&'a [u8], SubjectAlternativeName, BerError> {
-        let (rest, _) = verify!(i, der_read_element_header, |hdr| hdr.tag
-            == DerTag::Sequence)?;
-        i = rest;
-        let mut general_names = Vec::new();
-        while !i.is_empty() {
-            let (rest, general_name) = parse_generalname(i)?;
-            i = rest;
-            general_names.push(general_name);
-        }
-        Ok((i, SubjectAlternativeName { general_names }))
+        parse_ber_sequence_defined_g(|_, input| {
+            let (i, general_names) = all_consuming(many0(complete(parse_generalname)))(input)?;
+            Ok((i, SubjectAlternativeName { general_names }))
+        })(i)
     }
 
     fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], PolicyConstraints, BerError> {
-        let (ret, (require_explicit_policy, inhibit_policy_mapping)) = do_parse!(
-            i,
-            verify!(der_read_element_header, |hdr| hdr.tag == DerTag::Sequence)
-                >> a: opt!(complete!(map_res!(
-                    parse_der_tagged!(IMPLICIT 0, DerTag::Integer),
-                    |x: BerObject| x.as_u32()
-                )))
-                >> b: alt!(
-                    opt!(complete!(map_res!(
-                        parse_der_tagged!(IMPLICIT 1, DerTag::Integer),
-                        |x: BerObject| x.as_u32()
-                    ))) | map!(eof!(), |_| None)
-                )
-                >> ((a, b))
-        )?;
-        Ok((
-            ret,
-            PolicyConstraints {
+        parse_ber_sequence_defined_g(|_, input| {
+            let (i, require_explicit_policy) = opt(complete(map_res(
+                parse_ber_tagged_implicit(0, parse_ber_content(BerTag::Integer)),
+                |x| x.as_u32(),
+            )))(input)?;
+            let (i, inhibit_policy_mapping) = all_consuming(opt(complete(map_res(
+                parse_ber_tagged_implicit(1, parse_ber_content(BerTag::Integer)),
+                |x| x.as_u32(),
+            ))))(i)?;
+            let policy_constraint = PolicyConstraints {
                 require_explicit_policy,
                 inhibit_policy_mapping,
-            },
-        ))
+            };
+            Ok((i, policy_constraint))
+        })(i)
     }
 
     // PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
@@ -483,7 +467,7 @@ pub(crate) mod parser {
     }
 
     fn parse_inhibitanyplicy(i: &[u8]) -> IResult<&[u8], InhibitAnyPolicy, BerError> {
-        let (ret, skip_certs) = map_res!(i, parse_der_integer, |x: BerObject| x.as_u32())?;
+        let (ret, skip_certs) = map_res(parse_der_integer, |x: BerObject| x.as_u32())(i)?;
         Ok((ret, InhibitAnyPolicy { skip_certs }))
     }
 
@@ -537,8 +521,7 @@ pub(crate) mod parser {
         fn parse_aia<'a>(i: &'a [u8]) -> IResult<&'a [u8], (Oid<'a>, GeneralName<'a>), BerError> {
             parse_ber_sequence_defined_g(|_, content| {
                 // Read first element, an oid.
-                let (gn, oid) =
-                    map_res!(content, parse_der_oid, |x: BerObject<'a>| x.as_oid_val())?;
+                let (gn, oid) = map_res(parse_der_oid, |x: BerObject<'a>| x.as_oid_val())(content)?;
                 // Parse second element
                 let (rest, gn) = parse_generalname(gn)?;
                 Ok((rest, (oid, gn)))
@@ -649,7 +632,7 @@ pub(crate) mod parser {
         ) -> IResult<&'a [u8], (Oid<'a>, &'a [u8]), BerError> {
             parse_ber_sequence_defined_g(|_, content| {
                 let (qualifier_set, oid) =
-                    map_res!(content, parse_der_oid, |x: BerObject<'a>| x.as_oid_val())?;
+                    map_res(parse_der_oid, |x: BerObject<'a>| x.as_oid_val())(content)?;
                 Ok((&[], (oid, qualifier_set)))
             })(i)
         }
