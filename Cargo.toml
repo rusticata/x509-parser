@@ -38,7 +38,7 @@ base64 = "0.13"
 chrono = { version="0.4", default-features=false, features=["std"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
-nom = "5.0"
+nom = "6.0"
 rusticata-macros = "2.0.2"
 num-bigint = "0.3"
 ring = { version="0.16", optional=true }
