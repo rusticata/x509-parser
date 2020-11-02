@@ -10,6 +10,7 @@
 
 ### Added/Changed/Fixed
 
+- Upgrade to `nom` 6.0
 - Upgrade to `der-parser` 5.0
 
 ## 0.8.0
