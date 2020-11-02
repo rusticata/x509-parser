@@ -207,7 +207,7 @@ pub(crate) mod parser {
     use der_parser::der::*;
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
-    use nom::{alt, do_parse, eof, exact, opt, verify, Err, IResult};
+    use nom::{alt, complete, do_parse, eof, exact, map, map_res, opt, verify, Err, IResult};
 
     fn parse_extension0<'a>(
         orig_i: &'a [u8],
