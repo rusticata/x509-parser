@@ -660,7 +660,7 @@ pub(crate) mod parser {
             .as_sequence()
             .or(Err(Err::Error(BerError::BerTypeError)))?
             .first()
-            .ok_or(Err::Error(BerError::BerTypeError))?
+            .ok_or(Err::Error(BerError::ObjectTooShort))?
             .as_slice()
             .or(Err(Err::Error(BerError::BerTypeError)))?;
 
