@@ -113,7 +113,7 @@ impl fmt::Display for KeyUsage {
             .iter()
             .enumerate()
             .fold(String::new(), |acc, (idx, s)| {
-                if self.flags >> idx != 0 {
+                if self.flags >> idx & 1 != 0 {
                     acc + s + ", "
                 } else {
                     acc
