@@ -15,6 +15,7 @@ use data_encoding::HEXUPPER;
 use der_parser::ber::{BerObjectContent, BitStringObject};
 use der_parser::der::DerObject;
 use der_parser::oid::Oid;
+use oid_registry::*;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -142,7 +143,7 @@ impl<'a> X509Name<'a> {
     pub fn iter_by_oid(&self, oid: &Oid<'a>) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         // this is necessary, otherwise rustc complains
         // that caller creates a temporary value for reference (for ex.
-        // `self.iter_by_oid(&OID_L)`
+        // `self.iter_by_oid(&OID_X509_LOCALITY_NAME)`
         // )
         let oid = oid.clone();
         self.iter_attributes()
@@ -171,37 +172,37 @@ impl<'a> X509Name<'a> {
     /// the attribute is present multiple times, or is not a UTF-8 encoded string (it can be
     /// UTF-16, or even an OCTETSTRING according to the standard).
     pub fn iter_common_name(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_CN)
+        self.iter_by_oid(&OID_X509_COMMON_NAME)
     }
 
     /// Return an iterator over the `Country` attributes of the X.509 Name.
     pub fn iter_country(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_C)
+        self.iter_by_oid(&OID_X509_COUNTRY_NAME)
     }
 
     /// Return an iterator over the `Organization` attributes of the X.509 Name.
     pub fn iter_organization(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_O)
+        self.iter_by_oid(&OID_X509_ORGANIZATION_NAME)
     }
 
     /// Return an iterator over the `OrganizationalUnit` attributes of the X.509 Name.
     pub fn iter_organizational_unit(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_OU)
+        self.iter_by_oid(&OID_X509_ORGANIZATIONAL_UNIT)
     }
 
     /// Return an iterator over the `StateOrProvinceName` attributes of the X.509 Name.
     pub fn iter_state_or_province(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_ST)
+        self.iter_by_oid(&OID_X509_STREET_ADDRESS)
     }
 
     /// Return an iterator over the `Locality` attributes of the X.509 Name.
     pub fn iter_locality(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_L)
+        self.iter_by_oid(&OID_X509_LOCALITY_NAME)
     }
 
     /// Return an iterator over the `EmailAddress` attributes of the X.509 Name.
     pub fn iter_email(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_EMAIL)
+        self.iter_by_oid(&OID_PKCS9_EMAIL_ADDRESS)
     }
 }
 
@@ -310,7 +311,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn basic_constraints(&self) -> Option<(bool, &BasicConstraints)> {
-        let ext = self.extensions.get(&OID_EXT_BC)?;
+        let ext = self.extensions.get(&OID_X509_EXT_BASIC_CONSTRAINTS)?;
         match ext.parsed_extension {
             ParsedExtension::BasicConstraints(ref bc) => Some((ext.critical, bc)),
             _ => None,
@@ -318,7 +319,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn key_usage(&self) -> Option<(bool, &KeyUsage)> {
-        let ext = self.extensions.get(&OID_EXT_KU)?;
+        let ext = self.extensions.get(&OID_X509_EXT_KEY_USAGE)?;
         match ext.parsed_extension {
             ParsedExtension::KeyUsage(ref ku) => Some((ext.critical, ku)),
             _ => None,
@@ -326,7 +327,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn extended_key_usage(&self) -> Option<(bool, &ExtendedKeyUsage)> {
-        let ext = self.extensions.get(&OID_EXT_EKU)?;
+        let ext = self.extensions.get(&OID_X509_EXT_EXTENDED_KEY_USAGE)?;
         match ext.parsed_extension {
             ParsedExtension::ExtendedKeyUsage(ref eku) => Some((ext.critical, eku)),
             _ => None,
@@ -334,7 +335,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn policy_constraints(&self) -> Option<(bool, &PolicyConstraints)> {
-        let ext = self.extensions.get(&OID_EXT_POLICYCONSTRAINTS)?;
+        let ext = self.extensions.get(&OID_X509_EXT_POLICY_CONSTRAINTS)?;
         match ext.parsed_extension {
             ParsedExtension::PolicyConstraints(ref pc) => Some((ext.critical, pc)),
             _ => None,
@@ -342,7 +343,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn inhibit_anypolicy(&self) -> Option<(bool, &InhibitAnyPolicy)> {
-        let ext = self.extensions.get(&OID_EXT_INHIBITANYPOLICY)?;
+        let ext = self.extensions.get(&OID_X509_EXT_INHIBITANT_ANY_POLICY)?;
         match ext.parsed_extension {
             ParsedExtension::InhibitAnyPolicy(ref iap) => Some((ext.critical, iap)),
             _ => None,
@@ -350,7 +351,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn policy_mappings(&self) -> Option<(bool, &PolicyMappings)> {
-        let ext = self.extensions.get(&OID_EXT_POLICYMAPPINGS)?;
+        let ext = self.extensions.get(&OID_X509_EXT_POLICY_MAPPINGS)?;
         match ext.parsed_extension {
             ParsedExtension::PolicyMappings(ref pm) => Some((ext.critical, pm)),
             _ => None,
@@ -358,7 +359,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn subject_alternative_name(&self) -> Option<(bool, &SubjectAlternativeName)> {
-        let ext = self.extensions.get(&OID_EXT_SAN)?;
+        let ext = self.extensions.get(&OID_X509_EXT_SUBJECT_ALT_NAME)?;
         match ext.parsed_extension {
             ParsedExtension::SubjectAlternativeName(ref san) => Some((ext.critical, san)),
             _ => None,
@@ -366,7 +367,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     pub fn name_constraints(&self) -> Option<(bool, &NameConstraints)> {
-        let ext = self.extensions.get(&OID_EXT_NAMECONSTRAINTS)?;
+        let ext = self.extensions.get(&OID_X509_EXT_NAME_CONSTRAINTS)?;
         match ext.parsed_extension {
             ParsedExtension::NameConstraints(ref nc) => Some((ext.critical, nc)),
             _ => None,
@@ -477,11 +478,12 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                 .fold(Ok(String::new()), |acc2, attr| {
                     acc2.and_then(|mut _vec2| {
                         let val_str = attribute_value_to_string(&attr.attr_value, &attr.attr_type)?;
-                        let sn_str = match oid2sn(&attr.attr_type) {
+                        // XXX look ABBREV, and if not found, shortname
+                        let abbrev = match oid2abbrev(&attr.attr_type) {
                             Ok(s) => String::from(s),
                             _ => format!("{:?}", attr.attr_type),
                         };
-                        let rdn = format!("{}={}", sn_str, val_str);
+                        let rdn = format!("{}={}", abbrev, val_str);
                         match _vec2.len() {
                             0 => Ok(rdn),
                             _ => Ok(_vec2 + " + " + &rdn),

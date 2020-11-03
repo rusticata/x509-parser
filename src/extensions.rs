@@ -1,8 +1,8 @@
-use crate::objects::*;
 use der_parser::ber::*;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_res, opt};
 use nom::multi::{many0, many1};
+use oid_registry::*;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -215,40 +215,40 @@ pub(crate) mod parser {
         i: &'a [u8],
         oid: &Oid,
     ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
-        let ext = if *oid == OID_EXT_SUBJECTKEYIDENTIFIER {
+        let ext = if *oid == OID_X509_EXT_SUBJECT_KEY_IDENTIFIER {
             let (_ret, ki) = parse_keyidentifier(i)?;
             ParsedExtension::SubjectKeyIdentifier(ki)
-        } else if *oid == OID_EXT_KEYUSAGE {
+        } else if *oid == OID_X509_EXT_KEY_USAGE {
             let (_ret, ku) = parse_keyusage(i)?;
             ParsedExtension::KeyUsage(ku)
-        } else if *oid == OID_EXT_SAN {
+        } else if *oid == OID_X509_EXT_SUBJECT_ALT_NAME {
             let (_ret, san) = parse_subjectalternativename(i)?;
             ParsedExtension::SubjectAlternativeName(san)
-        } else if *oid == OID_EXT_BASICCONSTRAINTS {
+        } else if *oid == OID_X509_EXT_BASIC_CONSTRAINTS {
             let (_ret, bc) = parse_basicconstraints(i)?;
             ParsedExtension::BasicConstraints(bc)
-        } else if *oid == OID_EXT_NAMECONSTRAINTS {
+        } else if *oid == OID_X509_EXT_NAME_CONSTRAINTS {
             let (_ret, name) = parse_nameconstraints(i)?;
             ParsedExtension::NameConstraints(name)
-        } else if *oid == OID_EXT_CPOL {
+        } else if *oid == OID_X509_EXT_CERTIFICATE_POLICIES {
             let (_ret, cp) = parse_certificatepolicies(i)?;
             ParsedExtension::CertificatePolicies(cp)
-        } else if *oid == OID_EXT_POLICYMAPPINGS {
+        } else if *oid == OID_X509_EXT_POLICY_MAPPINGS {
             let (_ret, pm) = parse_policymappings(i)?;
             ParsedExtension::PolicyMappings(pm)
-        } else if *oid == OID_EXT_POLICYCONSTRAINTS {
+        } else if *oid == OID_X509_EXT_POLICY_CONSTRAINTS {
             let (_ret, pc) = parse_policyconstraints(i)?;
             ParsedExtension::PolicyConstraints(pc)
-        } else if *oid == OID_EXT_EKU {
+        } else if *oid == OID_X509_EXT_EXTENDED_KEY_USAGE {
             let (_ret, eku) = parse_extendedkeyusage(i)?;
             ParsedExtension::ExtendedKeyUsage(eku)
-        } else if *oid == OID_EXT_INHIBITANYPOLICY {
+        } else if *oid == OID_X509_EXT_INHIBITANT_ANY_POLICY {
             let (_ret, iap) = parse_inhibitanyplicy(i)?;
             ParsedExtension::InhibitAnyPolicy(iap)
-        } else if *oid == OID_EXT_AUTHORITYINFOACCESS {
+        } else if *oid == OID_PKIX_AUTHORITY_INFO_ACCESS {
             let (_ret, aia) = parse_authorityinfoaccess(i)?;
             ParsedExtension::AuthorityInfoAccess(aia)
-        } else if *oid == OID_EXT_AUTHORITYKEYIDENTIFIER {
+        } else if *oid == OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER {
             let (_ret, aki) = parse_authoritykeyidentifier(i)?;
             ParsedExtension::AuthorityKeyIdentifier(aki)
         } else {

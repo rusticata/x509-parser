@@ -1,4 +1,6 @@
 use der_parser::oid::Oid;
+use nom::HexDisplay;
+use std::cmp::min;
 use std::env;
 use std::io;
 use x509_parser::extensions::*;
@@ -7,11 +9,23 @@ use x509_parser::pem::parse_x509_pem;
 use x509_parser::x509::X509Certificate;
 use x509_parser::{parse_x509_der, X509Extension};
 
-fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
-    match oid2sn(oid) {
-        Ok(sn) => print!("    {}:", sn),
-        _ => print!("    {}:", oid),
+fn print_hex_dump(bytes: &[u8], max_len: usize) {
+    let m = min(bytes.len(), max_len);
+    print!("{}", &bytes[..m].to_hex(16));
+    if bytes.len() > max_len {
+        println!("... <continued>");
     }
+}
+
+fn format_oid(oid: &Oid) -> String {
+    match oid2sn(oid) {
+        Ok(s) => s.to_owned(),
+        _ => format!("{}", oid),
+    }
+}
+
+fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
+    print!("    {}: ", format_oid(oid));
     print!(" Critical={}", ext.critical);
     print!(" len={}", ext.value.len());
     println!();
@@ -40,8 +54,32 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     }
 }
 
+fn print_x509_digest_algorithm(alg: &x509_parser::AlgorithmIdentifier, level: usize) {
+    println!(
+        "{:indent$}Oid: {}",
+        "",
+        format_oid(&alg.algorithm),
+        indent = level
+    );
+    if let Some(parameter) = &alg.parameters {
+        println!(
+            "{:indent$}Parameter: <PRESENT> {:?}",
+            "",
+            parameter.header.tag,
+            indent = level
+        );
+        if let Ok(bytes) = parameter.as_slice() {
+            print_hex_dump(bytes, 32);
+        }
+    } else {
+        println!("{:indent$}Parameter: <ABSENT>", "", indent = level);
+    }
+}
+
 fn print_x509_info(x509: &X509Certificate) {
     println!("  Subject: {}", x509.subject());
+    println!("  Signature Algorithm:");
+    print_x509_digest_algorithm(&x509.signature_algorithm, 4);
     println!("  Issuer: {}", x509.issuer());
     println!("  Serial: {}", x509.tbs_certificate.raw_serial_as_string());
     println!("  Validity:");

@@ -1,10 +1,10 @@
 use chrono::offset::{TimeZone, Utc};
 use chrono::Datelike;
 use der_parser::{oid, oid::Oid};
+use oid_registry::*;
 use std::collections::HashMap;
 use x509_parser::error::*;
 use x509_parser::extensions::*;
-use x509_parser::objects::*;
 use x509_parser::{
     parse_crl_der, parse_subject_public_key_info, parse_x509_der, ASN1Time, X509Extension,
     X509Version,
@@ -54,7 +54,7 @@ fn test_x509_parser() {
             assert_eq!(tbs_cert.issuer.as_raw(), expected_issuer_der);
             //
             let sig_alg = &cert.signature_algorithm;
-            assert_eq!(sig_alg.algorithm, OID_RSA_SHA1);
+            assert_eq!(sig_alg.algorithm, OID_PKCS1_SHA1WITHRSA);
             //
             let not_before = tbs_cert.validity.not_before;
             let not_after = tbs_cert.validity.not_after;
@@ -155,8 +155,7 @@ fn test_parse_subject_public_key_info() {
     let res = parse_subject_public_key_info(&IGCA_DER[339..])
         .expect("Parse public key info")
         .1;
-    let oid = nid2obj(Nid::RsaEncryption).expect("Obj from Nid RsaEncryption");
-    assert_eq!(res.algorithm.algorithm, *oid);
+    assert_eq!(res.algorithm.algorithm, OID_PKCS1_RSAENCRYPTION);
     let params = res.algorithm.parameters.expect("algorithm parameters");
     assert_eq!(params.header.tag.0, 5);
     let spk = res.subject_public_key;
@@ -184,14 +183,14 @@ fn test_crl_parse() {
             assert_eq!(tbs_cert_list.version, Some(1));
 
             let sig = &tbs_cert_list.signature;
-            assert_eq!(sig.algorithm, OID_RSA_SHA1);
+            assert_eq!(sig.algorithm, OID_PKCS1_SHA1WITHRSA);
 
             let expected_issuer =
                 "O=Sample Signer Organization, OU=Sample Signer Unit, CN=Sample Signer Cert";
             assert_eq!(format!("{}", tbs_cert_list.issuer), expected_issuer);
 
             let sig_alg = &cert.signature_algorithm;
-            assert_eq!(sig_alg.algorithm, OID_RSA_SHA1);
+            assert_eq!(sig_alg.algorithm, OID_PKCS1_SHA1WITHRSA);
 
             let this_update = tbs_cert_list.this_update;
             let next_update = tbs_cert_list.next_update.unwrap();
@@ -285,7 +284,7 @@ fn test_crl_parse_empty() {
                     ParsedExtension::UnsupportedExtension,
                 ),
                 X509Extension::new(
-                    OID_EXT_AUTHORITYKEYIDENTIFIER,
+                    OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
                     false,
                     &[
                         48, 22, 128, 20, 34, 101, 12, 214, 90, 157, 52, 137, 243, 131, 180, 149,
@@ -349,7 +348,7 @@ fn test_duplicate_authority_info_access() {
             let extension = cert
                 .tbs_certificate
                 .extensions
-                .get(sn2oid("authorityInfoAccess").unwrap())
+                .get(&OID_PKIX_AUTHORITY_INFO_ACCESS)
                 .unwrap();
             let mut accessdescs = HashMap::new();
             let ca_issuers = vec![
@@ -357,8 +356,8 @@ fn test_duplicate_authority_info_access() {
                 GeneralName::URI("http://cdp2.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
             ];
             let ocsp = vec![GeneralName::URI("http://ocsp.pca.dfn.de/OCSP-Server/OCSP")];
-            accessdescs.insert(OID_ACCESSDESCRIPTOR_CAISSUERS, ca_issuers);
-            accessdescs.insert(OID_ACCESSDESCRIPTOR_OCSP, ocsp);
+            accessdescs.insert(OID_PKIX_ACCESS_DESCRIPTOR_CA_ISSUERS, ca_issuers);
+            accessdescs.insert(OID_PKIX_ACCESS_DESCRIPTOR_OCSP, ocsp);
             let expected_aia =
                 ParsedExtension::AuthorityInfoAccess(AuthorityInfoAccess { accessdescs });
             assert_eq!(*extension.parsed_extension(), expected_aia);

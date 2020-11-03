@@ -2,8 +2,8 @@
 #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
 mod x509_verify {
     use crate::error::X509Error;
-    use crate::objects::*;
     use crate::x509::{SubjectPublicKeyInfo, X509Certificate};
+    use oid_registry::*;
     use ring::signature;
 
     impl<'a> X509Certificate<'a> {
@@ -23,17 +23,17 @@ mod x509_verify {
             let signature_alg = &self.signature_algorithm.algorithm;
             // identify verification algorithm
             let verification_alg: &dyn signature::VerificationAlgorithm =
-                if *signature_alg == OID_RSA_SHA1 {
+                if *signature_alg == OID_PKCS1_SHA1WITHRSA {
                     &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
-                } else if *signature_alg == OID_RSA_SHA256 {
+                } else if *signature_alg == OID_PKCS1_SHA256WITHRSA {
                     &signature::RSA_PKCS1_2048_8192_SHA256
-                } else if *signature_alg == OID_RSA_SHA384 {
+                } else if *signature_alg == OID_PKCS1_SHA384WITHRSA {
                     &signature::RSA_PKCS1_2048_8192_SHA384
-                } else if *signature_alg == OID_RSA_SHA512 {
+                } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
                     &signature::RSA_PKCS1_2048_8192_SHA512
-                } else if *signature_alg == OID_ECDSA_SHA256 {
+                } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
                     &signature::ECDSA_P256_SHA256_ASN1
-                } else if *signature_alg == OID_ECDSA_SHA384 {
+                } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
                     &signature::ECDSA_P384_SHA384_ASN1
                 } else {
                     return Err(X509Error::SignatureUnsupportedAlgorithm);
