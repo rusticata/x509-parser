@@ -36,6 +36,9 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
         ParsedExtension::KeyUsage(ku) => {
             println!("      X509v3 Key Usage: {}", ku);
         }
+        ParsedExtension::NSCertType(ty) => {
+            println!("      Netscape Cert Type: {}", ty);
+        }
         ParsedExtension::SubjectAlternativeName(san) => {
             for name in &san.general_names {
                 println!("      X509v3 SAN: {:?}", name);

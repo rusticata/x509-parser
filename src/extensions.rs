@@ -35,6 +35,8 @@ pub enum ParsedExtension<'a> {
     InhibitAnyPolicy(InhibitAnyPolicy),
     /// Section 4.2.2.1 of rfc 5280
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
+    /// Netscape certificate type (subject is SSL client, an SSL server, or a CA)
+    NSCertType(NSCertType),
 }
 
 #[derive(Debug, PartialEq)]
@@ -135,6 +137,70 @@ pub struct ExtendedKeyUsage<'a> {
     pub time_stamping: bool,
     pub ocscp_signing: bool,
     pub other: Vec<Oid<'a>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct NSCertType(u8);
+
+// The value is a bit-string, where the individual bit positions are defined as:
+//
+//     bit-0 SSL client - this cert is certified for SSL client authentication use
+//     bit-1 SSL server - this cert is certified for SSL server authentication use
+//     bit-2 S/MIME - this cert is certified for use by clients (New in PR3)
+//     bit-3 Object Signing - this cert is certified for signing objects such as Java applets and plugins(New in PR3)
+//     bit-4 Reserved - this bit is reserved for future use
+//     bit-5 SSL CA - this cert is certified for issuing certs for SSL use
+//     bit-6 S/MIME CA - this cert is certified for issuing certs for S/MIME use (New in PR3)
+//     bit-7 Object Signing CA - this cert is certified for issuing certs for Object Signing (New in PR3)
+impl NSCertType {
+    pub fn ssl_client(&self) -> bool {
+        self.0 & 0x1 == 1
+    }
+    pub fn ssl_server(&self) -> bool {
+        (self.0 >> 1) & 1 == 1
+    }
+    pub fn smime(&self) -> bool {
+        (self.0 >> 2) & 1 == 1
+    }
+    pub fn object_signing(&self) -> bool {
+        (self.0 >> 3) & 1 == 1
+    }
+    pub fn ssl_ca(&self) -> bool {
+        (self.0 >> 5) & 1 == 1
+    }
+    pub fn smime_ca(&self) -> bool {
+        (self.0 >> 6) & 1 == 1
+    }
+    pub fn object_signing_ca(&self) -> bool {
+        (self.0 >> 7) & 1 == 1
+    }
+}
+
+const NS_CERT_TYPE_FLAGS: &[&str] = &[
+    "SSL CLient",
+    "SSL Server",
+    "S/MIME",
+    "Object Signing",
+    "Reserved",
+    "SSL CA",
+    "S/MIME CA",
+    "Object Signing CA",
+];
+
+impl fmt::Display for NSCertType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        let mut acc = self.0;
+        for flag_text in NS_CERT_TYPE_FLAGS {
+            if acc & 1 != 0 {
+                s = s + flag_text + ", ";
+            }
+            acc >>= 1;
+        }
+        s.pop();
+        s.pop();
+        f.write_str(&s)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -250,6 +316,7 @@ pub(crate) mod parser {
                 OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
                 parse_authoritykeyidentifier
             );
+            add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype);
             m
         };
     }
@@ -634,6 +701,20 @@ pub(crate) mod parser {
             .rev()
             .fold(0, |acc, x| acc << 8 | (reverse_bits(*x) as u16));
         Ok((rest, ParsedExtension::KeyUsage(KeyUsage { flags })))
+    }
+
+    fn parse_nscerttype(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        let (rest, obj) = parse_der_bitstring(i)?;
+        let bitstring = obj
+            .content
+            .as_bitstring()
+            .or(Err(Err::Error(BerError::BerTypeError)))?;
+        // bitstring should be 1 byte long
+        if bitstring.data.len() != 1 {
+            return Err(Err::Error(BerError::BerValueError));
+        }
+        let flags = reverse_bits(bitstring.data[0]);
+        Ok((rest, ParsedExtension::NSCertType(NSCertType(flags))))
     }
 
     // CertificatePolicies ::= SEQUENCE SIZE (1..MAX) OF PolicyInformation
