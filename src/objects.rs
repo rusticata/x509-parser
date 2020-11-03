@@ -104,6 +104,8 @@ pub enum Nid {
     InhibitAnyPolicy,
 
     AuthorityInfoAccess,
+
+    AppleDataSecurityDeviceCheck,
 }
 
 struct OidEntry {
@@ -164,6 +166,8 @@ pub const OID_EXT_POLICYCONSTRAINTS: Oid<'static> = oid!(2.5.29.36);
 pub const OID_EXT_EXTENDEDKEYUSAGE: Oid<'static> = oid!(2.5.29.37);
 pub const OID_EXT_EKU: Oid<'static> = OID_EXT_EXTENDEDKEYUSAGE;
 pub const OID_EXT_INHIBITANYPOLICY: Oid<'static> = oid!(2.5.29.54);
+
+pub const OID_EXT_APPLEDATASECURITY_ATTESTATION: Oid<'static> = oid!(1.2.840.113635.100.8.2);
 
 // PKIX Certificate Extension
 // https://www.iana.org/assignments/smi-numbers/smi-numbers.xhtml#smi-numbers-1.3.6.1.5.5.7.1
@@ -231,6 +235,7 @@ lazy_static! {
         m.insert(OID_EXT_EKU, OidEntry{sn:"extendedKeyUsage", ln:"X509v3 Extended Key Usage", nid:Nid::ExtendedKeyUsage});
         m.insert(OID_EXT_INHIBITANYPOLICY, OidEntry{sn:"inhibitAnyPolicy", ln:"X509v3 Inhibit Any-Policy", nid:Nid::InhibitAnyPolicy});
         m.insert(OID_EXT_AUTHORITYINFOACCESS, OidEntry{sn:"authorityInfoAccess", ln:"Authority Information Access", nid:Nid::AuthorityInfoAccess});
+        m.insert(OID_EXT_APPLEDATASECURITY_ATTESTATION, OidEntry{sn:"appleDataSecurityDeviceCheck", ln:"Apple data security device check", nid:Nid::AppleDataSecurityDeviceCheck});
         m
     };
 }
