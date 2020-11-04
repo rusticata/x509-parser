@@ -21,9 +21,18 @@ programming), tests, and fuzzing. It also aims to be panic-free.
 The code is available on [Github](https://github.com/rusticata/x509-parser)
 and is part of the [Rusticata](https://github.com/rusticata) project.
 
-The main parsing method is [`parse_x509_der`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_der.html), which takes a
-DER-encoded certificate as input, and builds a
+Certificates are usually encoded in two main formats: PEM (usually the most common format) or
+DER.  A PEM-encoded certificate is a container, storing a DER object. See the
+[`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module for more documentation.
+
+To decode a DER-encoded certificate, the main parsing method is
+[`parse_x509_der`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_der.html), which builds a
 [`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html) object.
+
+The returned objects for parsers follow the definitions of the RFC. This means that accessing
+fields is done by accessing struct members recursively. Some helper functions are provided, for
+example [X509Certificate::issuer()](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html#method.issuer) returns the
+same as accessing `<object>.tbs_certificate.issuer`.
 
 For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module.
 
@@ -34,7 +43,7 @@ Parsing a certificate in DER format:
 ```rust
 use x509_parser::parse_x509_der;
 
-static IGCA_DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 
 let res = parse_x509_der(IGCA_DER);
 match res {
@@ -44,6 +53,23 @@ match res {
         assert_eq!(cert.tbs_certificate.version, 2);
     },
     _ => panic!("x509 parsing failed: {:?}", res),
+}
+```
+
+To parse a CRL and print information about revoked certificates:
+
+```rust
+#
+#
+let res = parse_crl_der(DER);
+match res {
+    Ok((_rem, crl)) => {
+        for revoked in crl.iter_revoked_certificates() {
+            println!("Revoked certificate serial: {}", revoked.raw_serial_as_string());
+            println!("  Reason: {}", revoked.reason_code().unwrap_or_default());
+        }
+    },
+    _ => panic!("CRL parsing failed: {:?}", res),
 }
 ```
 

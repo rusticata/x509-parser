@@ -1,5 +1,11 @@
 //! Decoding functions for PEM-encoded data
 //!
+//! A PEM object is a container, which can store (amongst other formats) a public X.509
+//! Certificate, or a CRL, etc. It contains only printable characters.
+//! PEM-encoded binary data is essentially a beginning and matching end tag that encloses
+//! base64-encoded binary data (see:
+//! [https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail](https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail))
+//!
 //! # Examples
 //!
 //! To parse a certificate in PEM format, first create the `Pem` object, then decode
