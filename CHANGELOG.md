@@ -22,6 +22,7 @@
 - CRL: add method to iterate revoked certificates
 - Add support for ReasonCode extension
 - Refactor error handling, return meaningful errors when possible
+- Make many more functions public (parse_tbs_certificate, etc.)
 
 ## 0.8.0
 

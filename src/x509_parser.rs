@@ -258,11 +258,19 @@ fn der_read_critical(i: &[u8]) -> BerResult<bool> {
     Ok((rem, value))
 }
 
-fn parse_extension<'a>(i: &'a [u8]) -> X509Result<X509Extension<'a>> {
+/// Parse a DER-encoded X.509 extension
+///
+/// <pre>
+// Extension  ::=  SEQUENCE  {
+//     extnID      OBJECT IDENTIFIER,
+//     critical    BOOLEAN DEFAULT FALSE,
+//     extnValue   OCTET STRING  }
+/// </pre>
+pub fn parse_extension(i: &[u8]) -> X509Result<X509Extension> {
     parse_ber_sequence_defined_g(|_, i| {
-        let (i, oid) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)?;
+        let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
         let (i, critical) = der_read_critical(i)?;
-        let (i, value) = map_res(parse_der_octetstring, |x: DerObject<'a>| x.as_slice())(i)?;
+        let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
         let (i, parsed_extension) = crate::extensions::parser::parse_extension(i, value, &oid)?;
         let ext = X509Extension {
             oid,
@@ -311,7 +319,25 @@ fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
     Some((slice, big))
 }
 
-fn parse_tbs_certificate<'a>(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
+/// Parse a DER-encoded TbsCertificate object
+///
+/// <pre>
+/// TBSCertificate  ::=  SEQUENCE  {
+///      version         [0]  Version DEFAULT v1,
+///      serialNumber         CertificateSerialNumber,
+///      signature            AlgorithmIdentifier,
+///      issuer               Name,
+///      validity             Validity,
+///      subject              Name,
+///      subjectPublicKeyInfo SubjectPublicKeyInfo,
+///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+///                           -- If present, version MUST be v2 or v3
+///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+///                           -- If present, version MUST be v2 or v3
+///      extensions      [3]  Extensions OPTIONAL
+///                           -- If present, version MUST be v3 --  }
+/// </pre>
+pub fn parse_tbs_certificate<'a>(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
     let start_i = i;
     parse_ber_sequence_defined_g(move |_, i| {
         let (i, version) = parse_version(i)?;
@@ -393,12 +419,26 @@ fn parse_revoked_certificate(i: &[u8]) -> X509Result<RevokedCertificate> {
     })(i)
 }
 
+/// Parse an algorithm identifier
+///
+/// An algorithm identifier is defined by the following ASN.1 structure:
+///
+/// <pre>
+/// AlgorithmIdentifier  ::=  SEQUENCE  {
+///      algorithm               OBJECT IDENTIFIER,
+///      parameters              ANY DEFINED BY algorithm OPTIONAL  }
+/// </pre>
+///
+/// The algorithm identifier is used to identify a cryptographic
+/// algorithm.  The OBJECT IDENTIFIER component identifies the algorithm
+/// (such as DSA with SHA-1).  The contents of the optional parameters
+/// field will vary according to the algorithm identified.
 // lifetime is *not* useless, it is required to tell the compiler the content of the temporary
 // DerObject has the same lifetime as the input
 #[allow(clippy::needless_lifetimes)]
-fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> X509Result<AlgorithmIdentifier> {
+pub fn parse_algorithm_identifier(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
     parse_ber_sequence_defined_g(|_, i| {
-        let (i, algorithm) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
+        let (i, algorithm) = map_res(parse_der_oid, |x| x.as_oid_val())(i)
             .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
         let (i, parameters) =
             opt(complete(parse_der))(i).or(Err(X509Error::InvalidAlgorithmIdentifier))?;
@@ -418,7 +458,9 @@ fn parse_algorithm_identifier<'a>(i: &'a [u8]) -> X509Result<AlgorithmIdentifier
 ///
 /// Note that only parsing is done, not validation.
 ///
-/// For example, to parse a certificate and print the subject and issuer:
+/// # Example
+///
+/// To parse a certificate and print the subject and issuer:
 ///
 /// ```rust
 /// # use x509_parser::parse_x509_der;
@@ -452,7 +494,41 @@ pub fn parse_x509_der<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
     })(i)
 }
 
-pub fn parse_crl_der<'a>(i: &'a [u8]) -> X509Result<CertificateRevocationList<'a>> {
+/// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
+/// object.
+///
+/// The returned object uses zero-copy, and so has the same lifetime as the input.
+///
+/// <pre>
+/// CertificateList  ::=  SEQUENCE  {
+///      tbsCertList          TBSCertList,
+///      signatureAlgorithm   AlgorithmIdentifier,
+///      signatureValue       BIT STRING  }
+/// </pre>
+///
+/// # Example
+///
+/// To parse a CRL and print information about revoked certificates:
+///
+/// ```rust
+/// # use x509_parser::parse_crl_der;
+/// #
+/// # static DER: &'static [u8] = include_bytes!("../assets/example.crl");
+/// #
+/// # fn main() {
+/// let res = parse_crl_der(DER);
+/// match res {
+///     Ok((_rem, crl)) => {
+///         for revoked in crl.iter_revoked_certificates() {
+///             println!("Revoked certificate serial: {}", revoked.raw_serial_as_string());
+///             println!("  Reason: {}", revoked.reason_code().unwrap_or_default());
+///         }
+///     },
+///     _ => panic!("CRL parsing failed: {:?}", res),
+/// }
+/// # }
+/// ```
+pub fn parse_crl_der(i: &[u8]) -> X509Result<CertificateRevocationList> {
     parse_ber_sequence_defined_g(|_, i| {
         let (i, tbs_cert_list) = parse_tbs_cert_list(i)?;
         let (i, signature_algorithm) = parse_algorithm_identifier(i)?;

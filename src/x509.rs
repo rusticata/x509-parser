@@ -460,6 +460,12 @@ impl display ReasonCode {
 }
 }
 
+impl Default for ReasonCode {
+    fn default() -> Self {
+        ReasonCode::Unspecified
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
     /// The Serial number of the revoked certificate
