@@ -14,6 +14,7 @@
 - Upgrade to `der-parser` 5.0
 - Re-export crates so crate users do not have to import them
 - CRL: extract raw serial, and add methods to access it
+- CRL: add method to iterate revoked certificates
 
 ## 0.8.0
 

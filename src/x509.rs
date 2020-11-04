@@ -615,6 +615,13 @@ pub struct CertificateRevocationList<'a> {
     pub signature_value: BitStringObject<'a>,
 }
 
+impl<'a> CertificateRevocationList<'a> {
+    /// Return an iterator over the `RevokedCertificate` objects
+    pub fn iter_revoked_certificates(&self) -> impl Iterator<Item = &RevokedCertificate<'a>> {
+        self.tbs_cert_list.revoked_certificates.iter()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
