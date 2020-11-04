@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use x509_parser::error::*;
 use x509_parser::extensions::*;
 use x509_parser::{
-    parse_crl_der, parse_subject_public_key_info, parse_x509_der, ASN1Time, X509Extension,
-    X509Version,
+    parse_crl_der, parse_subject_public_key_info, parse_x509_der, ASN1Time, ReasonCode,
+    X509Extension, X509Version,
 };
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
@@ -217,7 +217,7 @@ fn test_crl_parse() {
                         oid!(2.5.29.21),
                         false,
                         &[10, 1, 3],
-                        ParsedExtension::UnsupportedExtension,
+                        ParsedExtension::ReasonCode(ReasonCode::AffiliationChanged),
                     ),
                     X509Extension::new(
                         oid!(2.5.29.24),

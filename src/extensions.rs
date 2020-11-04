@@ -1,3 +1,4 @@
+use crate::ReasonCode;
 use der_parser::ber::*;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_res, opt};
@@ -37,6 +38,8 @@ pub enum ParsedExtension<'a> {
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
     /// Netscape certificate type (subject is SSL client, an SSL server, or a CA)
     NSCertType(NSCertType),
+    /// Section 5.3.1 of rfc 5280
+    ReasonCode(ReasonCode),
 }
 
 #[derive(Debug, PartialEq)]
@@ -317,6 +320,7 @@ pub(crate) mod parser {
                 parse_authoritykeyidentifier
             );
             add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype);
+            add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
             m
         };
     }
@@ -757,6 +761,19 @@ pub(crate) mod parser {
             ret,
             ParsedExtension::CertificatePolicies(CertificatePolicies { policies }),
         ))
+    }
+
+    fn parse_reason_code<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+        let (rest, obj) = parse_der_enum(i)?;
+        let code = obj
+            .content
+            .as_u32()
+            .or(Err(Err::Error(BerError::BerValueError)))?;
+        if code > 10 {
+            return Err(Err::Error(BerError::BerValueError));
+        }
+        let ret = ParsedExtension::ReasonCode(ReasonCode(code as u8));
+        Ok((rest, ret))
     }
 }
 

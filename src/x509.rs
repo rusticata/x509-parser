@@ -16,6 +16,7 @@ use der_parser::ber::{BerObjectContent, BitStringObject};
 use der_parser::der::DerObject;
 use der_parser::oid::Oid;
 use oid_registry::*;
+use rusticata_macros::newtype_enum;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -440,6 +441,25 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct ReasonCode(pub u8);
+
+newtype_enum! {
+impl display ReasonCode {
+    Unspecified = 0,
+    KeyCompromise = 1,
+    CACompromise = 2,
+    AffiliationChanged = 3,
+    Superseded = 4,
+    CessationOfOperation = 5,
+    CertificateHold = 6,
+    // value 7 is not used
+    RemoveFromCRL = 8,
+    PrivilegeWithdrawn = 9,
+    AACompromise = 10,
+}
+}
+
 #[derive(Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
     /// The Serial number of the revoked certificate
@@ -472,6 +492,21 @@ impl<'a> RevokedCertificate<'a> {
             });
         s.pop();
         s
+    }
+
+    /// Get the code identifying the reason for the revocation, if present
+    pub fn reason_code(&self) -> Option<ReasonCode> {
+        self.extensions
+            .iter()
+            .find(|&x| x.oid == OID_X509_EXT_REASON_CODE)
+            .map(|ext| {
+                if let ParsedExtension::ReasonCode(code) = &ext.parsed_extension {
+                    *code
+                } else {
+                    // defaults to 0
+                    ReasonCode::Unspecified
+                }
+            })
     }
 }
 

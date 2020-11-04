@@ -15,6 +15,7 @@
 - Re-export crates so crate users do not have to import them
 - CRL: extract raw serial, and add methods to access it
 - CRL: add method to iterate revoked certificates
+- Add support for ReasonCode extension
 
 ## 0.8.0
 
