@@ -442,9 +442,37 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
 
 #[derive(Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
+    /// The Serial number of the revoked certificate
     pub user_certificate: BigUint,
+    /// The date on which the revocation occurred is specified.
     pub revocation_date: ASN1Time,
+    /// Additional information about revocation
     pub extensions: Vec<X509Extension<'a>>,
+    pub(crate) raw_serial: &'a [u8],
+}
+
+impl<'a> RevokedCertificate<'a> {
+    /// Return the serial number of the revoked certificate
+    pub fn serial(&self) -> &BigUint {
+        &self.user_certificate
+    }
+
+    /// Get the raw bytes of the certificate serial number
+    pub fn raw_serial(&self) -> &[u8] {
+        self.raw_serial
+    }
+
+    /// Get a formatted string of the certificate serial number, separated by ':'
+    pub fn raw_serial_as_string(&self) -> String {
+        let mut s = self
+            .raw_serial
+            .iter()
+            .fold(String::with_capacity(3 * self.raw_serial.len()), |a, b| {
+                a + &format!("{:02x}:", b)
+            });
+        s.pop();
+        s
+    }
 }
 
 // Attempt to convert attribute to string. If type is not a string, return value is the hex

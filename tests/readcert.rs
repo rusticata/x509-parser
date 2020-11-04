@@ -207,26 +207,25 @@ fn test_crl_parse() {
                 ASN1Time::from_timestamp(Utc.ymd(2013, 2, 18).and_hms(10, 22, 12).timestamp());
 
             let revoked_certs = &tbs_cert_list.revoked_certificates;
+            let revoked_cert_0 = &revoked_certs[0];
+            assert_eq!(*revoked_cert_0.serial(), 0x147947u32.into());
+            assert_eq!(revoked_cert_0.revocation_date, revocation_date);
             assert_eq!(
-                revoked_certs[0],
-                x509_parser::RevokedCertificate {
-                    user_certificate: 1_341_767_u32.into(),
-                    revocation_date,
-                    extensions: vec![
-                        X509Extension::new(
-                            oid!(2.5.29.21),
-                            false,
-                            &[10, 1, 3],
-                            ParsedExtension::UnsupportedExtension,
-                        ),
-                        X509Extension::new(
-                            oid!(2.5.29.24),
-                            false,
-                            &[24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90],
-                            ParsedExtension::UnsupportedExtension,
-                        )
-                    ]
-                }
+                revoked_cert_0.extensions,
+                vec![
+                    X509Extension::new(
+                        oid!(2.5.29.21),
+                        false,
+                        &[10, 1, 3],
+                        ParsedExtension::UnsupportedExtension,
+                    ),
+                    X509Extension::new(
+                        oid!(2.5.29.24),
+                        false,
+                        &[24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90],
+                        ParsedExtension::UnsupportedExtension,
+                    )
+                ]
             );
 
             assert_eq!(revoked_certs.len(), 5);
@@ -321,21 +320,18 @@ fn test_crl_parse_empty() {
 #[test]
 fn test_crl_parse_minimal() {
     match parse_crl_der(MINIMAL_CRL_DER) {
-        Ok((e, cert)) => {
+        Ok((e, crl)) => {
             assert!(e.is_empty());
             let revocation_date =
                 ASN1Time::from_timestamp(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0).timestamp());
-            let expected_revocations = &[x509_parser::RevokedCertificate {
-                user_certificate: 42u32.into(),
-                revocation_date,
-                extensions: vec![],
-            }];
-            assert_eq!(
-                cert.tbs_cert_list.revoked_certificates,
-                expected_revocations
-            );
-            assert!(cert.tbs_cert_list.extensions.is_empty());
-            assert_eq!(cert.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
+            let revoked_certificates = &crl.tbs_cert_list.revoked_certificates;
+            assert_eq!(revoked_certificates.len(), 1);
+            let revoked_cert_0 = &revoked_certificates[0];
+            assert_eq!(*revoked_cert_0.serial(), 42u32.into());
+            assert_eq!(revoked_cert_0.revocation_date, revocation_date);
+            assert_eq!(revoked_cert_0.extensions, vec![]);
+            assert!(crl.tbs_cert_list.extensions.is_empty());
+            assert_eq!(crl.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
         }
         err => panic!("x509 parsing failed: {:?}", err),
     }

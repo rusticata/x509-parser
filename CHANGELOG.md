@@ -12,6 +12,8 @@
 
 - Upgrade to `nom` 6.0
 - Upgrade to `der-parser` 5.0
+- Re-export crates so crate users do not have to import them
+- CRL: extract raw serial, and add methods to access it
 
 ## 0.8.0
 

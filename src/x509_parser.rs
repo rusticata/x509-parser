@@ -379,8 +379,7 @@ fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
 
 fn parse_revoked_certificate(i: &[u8]) -> X509Result<RevokedCertificate> {
     parse_ber_sequence_defined_g(|_, i| {
-        let (i, user_certificate) = map_opt(parse_der_integer, |x: DerObject| x.as_biguint())(i)
-            .or(Err(X509Error::InvalidUserCertificate))?;
+        let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
         let (i, revocation_date) =
             map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
         let (i, extensions) = opt(complete(parse_extension_sequence))(i)?;
@@ -388,6 +387,7 @@ fn parse_revoked_certificate(i: &[u8]) -> X509Result<RevokedCertificate> {
             user_certificate,
             revocation_date,
             extensions: extensions.unwrap_or_default(),
+            raw_serial,
         };
         Ok((i, revoked))
     })(i)
