@@ -106,4 +106,5 @@ mod verify;
 pub use verify::*;
 
 // reexports
-pub use nom::IResult;
+pub extern crate nom;
+pub extern crate num_bigint;
