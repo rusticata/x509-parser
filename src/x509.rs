@@ -59,7 +59,7 @@ impl<'a> X509Extension<'a> {
 #[derive(Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
     pub attr_type: Oid<'a>,
-    pub attr_value: DerObject<'a>, // XXX DirectoryString ?
+    pub attr_value: DerObject<'a>, // ANY -- DEFINED BY AttributeType
 }
 
 impl<'a> AttributeTypeAndValue<'a> {
@@ -541,7 +541,7 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                 .fold(Ok(String::new()), |acc2, attr| {
                     acc2.and_then(|mut _vec2| {
                         let val_str = attribute_value_to_string(&attr.attr_value, &attr.attr_type)?;
-                        // XXX look ABBREV, and if not found, shortname
+                        // look ABBREV, and if not found, use shortname
                         let abbrev = match oid2abbrev(&attr.attr_type) {
                             Ok(s) => String::from(s),
                             _ => format!("{:?}", attr.attr_type),
