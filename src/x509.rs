@@ -29,8 +29,13 @@ pub enum X509Version {
 
 #[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
+    /// OID describing the extension content
     pub oid: Oid<'a>,
+    /// Boolean value describing the 'critical' attribute of the extension
+    ///
+    /// An extension includes the boolean critical, with a default value of FALSE.
     pub critical: bool,
+    /// Raw content of the extension
     pub value: &'a [u8],
     pub(crate) parsed_extension: ParsedExtension<'a>,
 }
@@ -50,7 +55,7 @@ impl<'a> X509Extension<'a> {
         }
     }
 
-    /// Return the extension type or `None` if the extension is not implemented.
+    /// Return the extension type or `UnsupportedExtension` if the extension is not implemented.
     pub fn parsed_extension(&self) -> &ParsedExtension<'a> {
         &self.parsed_extension
     }
