@@ -12,10 +12,16 @@
 
 - Upgrade to `nom` 6.0
 - Upgrade to `der-parser` 5.0
+- Upgrade MSRV to 1.44.0
 - Re-export crates so crate users do not have to import them
+- Add function parse_x509_pem and deprecate pem_to_der (#53)
+- Add helper methods to X509Name and simplify accessing values
+- X509Name: relax check, allow some non-rfc compliant strings (#50)
+- Relax some constraints for invalid dates
 - CRL: extract raw serial, and add methods to access it
 - CRL: add method to iterate revoked certificates
 - Add support for ReasonCode extension
+- Refactor error handling, return meaningful errors when possible
 
 ## 0.8.0
 
