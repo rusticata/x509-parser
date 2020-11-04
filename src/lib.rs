@@ -81,8 +81,10 @@
 //!
 //! # Features
 //!
-//! - The `verify` feature adds support for (cryptographic) signature verification, based on ring.
-//!   It adds the `verify_signature` to `X509Certificate`.
+//! - The `verify` feature adds support for (cryptographic) signature verification, based on `ring`.
+//!   It adds the
+//!   [X509Certificate::verify_signature()](x509/struct.X509Certificate.html#method.verify_signature)
+//!   to `X509Certificate`.
 //!
 //! ```rust
 //! # #[cfg(feature = "verify")]

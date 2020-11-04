@@ -4,7 +4,7 @@
 //! Certificate, or a CRL, etc. It contains only printable characters.
 //! PEM-encoded binary data is essentially a beginning and matching end tag that encloses
 //! base64-encoded binary data (see:
-//! [https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail](https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail))
+//! [https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail](https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail)).
 //!
 //! # Examples
 //!
@@ -15,7 +15,7 @@
 //! use std::io::Cursor;
 //! use x509_parser::pem::Pem;
 //!
-//! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
+//! static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 //!
 //! # fn main() {
 //! let reader = Cursor::new(IGCA_PEM);
@@ -33,7 +33,7 @@
 //! use x509_parser::pem::parse_x509_pem;
 //! use x509_parser::parse_x509_der;
 //!
-//! static IGCA_PEM: &'static [u8] = include_bytes!("../assets/IGC_A.pem");
+//! static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 //!
 //! # fn main() {
 //! let res = parse_x509_pem(IGCA_PEM);
