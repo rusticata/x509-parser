@@ -432,7 +432,7 @@ impl<'a> TbsCertificate<'a> {
 /// </pre>
 #[derive(Debug, PartialEq)]
 pub struct TbsCertList<'a> {
-    pub version: Option<u32>,
+    pub version: Option<X509Version>,
     pub signature: AlgorithmIdentifier<'a>,
     pub issuer: X509Name<'a>,
     pub this_update: ASN1Time,
@@ -526,6 +526,12 @@ impl<'a> RevokedCertificate<'a> {
             ParsedExtension::InvalidityDate(date) => Some((ext.critical, date)),
             _ => None,
         }
+    }
+
+    /// Get the certificate extensions.
+    #[inline]
+    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+        &self.extensions
     }
 }
 
@@ -665,9 +671,38 @@ pub struct CertificateRevocationList<'a> {
 }
 
 impl<'a> CertificateRevocationList<'a> {
+    /// Get the version of the encoded certificateu
+    pub fn version(&self) -> Option<X509Version> {
+        self.tbs_cert_list.version
+    }
+
+    /// Get the certificate issuer.
+    #[inline]
+    pub fn issuer(&self) -> &X509Name {
+        &self.tbs_cert_list.issuer
+    }
+
+    /// Get the date and time of the last (this) update.
+    #[inline]
+    pub fn last_update(&self) -> ASN1Time {
+        self.tbs_cert_list.this_update
+    }
+
+    /// Get the date and time of the next update, if present.
+    #[inline]
+    pub fn next_update(&self) -> Option<ASN1Time> {
+        self.tbs_cert_list.next_update
+    }
+
     /// Return an iterator over the `RevokedCertificate` objects
     pub fn iter_revoked_certificates(&self) -> impl Iterator<Item = &RevokedCertificate<'a>> {
         self.tbs_cert_list.revoked_certificates.iter()
+    }
+
+    /// Get the certificate extensions.
+    #[inline]
+    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+        &self.tbs_cert_list.extensions
     }
 }
 

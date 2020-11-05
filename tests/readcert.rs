@@ -180,7 +180,7 @@ fn test_crl_parse() {
             assert!(e.is_empty());
 
             let tbs_cert_list = cert.tbs_cert_list;
-            assert_eq!(tbs_cert_list.version, Some(1));
+            assert_eq!(tbs_cert_list.version, Some(X509Version::V2));
 
             let sig = &tbs_cert_list.signature;
             assert_eq!(sig.algorithm, OID_PKCS1_SHA1WITHRSA);

@@ -433,7 +433,8 @@ pub fn parse_tbs_certificate<'a>(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> 
 fn parse_tbs_cert_list(i: &[u8]) -> X509Result<TbsCertList> {
     let start_i = i;
     parse_ber_sequence_defined_g(move |_, i| {
-        let (i, version) = opt(parse_ber_u32)(i).or(Err(X509Error::InvalidVersion))?;
+        let (i, version) =
+            opt(map(parse_ber_u32, X509Version))(i).or(Err(X509Error::InvalidVersion))?;
         let (i, signature) = parse_algorithm_identifier(i)?;
         let (i, issuer) = parse_x509_name(i)?;
         let (i, this_update) =
