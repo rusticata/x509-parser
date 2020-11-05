@@ -205,6 +205,8 @@ fn test_crl_parse() {
 
             let revocation_date =
                 ASN1Time::from_timestamp(Utc.ymd(2013, 2, 18).and_hms(10, 22, 12).timestamp());
+            let invalidity_date =
+                ASN1Time::from_timestamp(Utc.ymd(2013, 2, 18).and_hms(10, 22, 00).timestamp());
 
             let revoked_certs = &tbs_cert_list.revoked_certificates;
             let revoked_cert_0 = &revoked_certs[0];
@@ -228,7 +230,7 @@ fn test_crl_parse() {
                     &[
                         24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90,
                     ],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::InvalidityDate(invalidity_date),
                 ),
             );
             assert_eq!(revoked_cert_0.extensions, extensions_map);

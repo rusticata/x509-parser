@@ -1,6 +1,7 @@
 //! X.509 Extensions objects and types
 
-use crate::ReasonCode;
+use crate::x509_parser::der_to_utctime;
+use crate::{ASN1Time, ReasonCode};
 use der_parser::ber::*;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_res, opt};
@@ -42,6 +43,8 @@ pub enum ParsedExtension<'a> {
     NSCertType(NSCertType),
     /// Section 5.3.1 of rfc 5280
     ReasonCode(ReasonCode),
+    /// Section 5.3.3 of rfc 5280
+    InvalidityDate(ASN1Time),
 }
 
 #[derive(Debug, PartialEq)]
@@ -323,6 +326,7 @@ pub(crate) mod parser {
             );
             add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype);
             add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
+            add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
             m
         };
     }
@@ -765,6 +769,7 @@ pub(crate) mod parser {
         ))
     }
 
+    // CRLReason ::= ENUMERATED { ...
     fn parse_reason_code<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
         let (rest, obj) = parse_der_enum(i)?;
         let code = obj
@@ -776,6 +781,12 @@ pub(crate) mod parser {
         }
         let ret = ParsedExtension::ReasonCode(ReasonCode(code as u8));
         Ok((rest, ret))
+    }
+
+    // invalidityDate ::=  GeneralizedTime
+    fn parse_invalidity_date<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+        let (rest, date) = map_res(parse_der_generalizedtime, der_to_utctime)(i)?;
+        Ok((rest, ParsedExtension::InvalidityDate(date)))
     }
 }
 

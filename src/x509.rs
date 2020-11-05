@@ -515,6 +515,18 @@ impl<'a> RevokedCertificate<'a> {
             _ => None,
         }
     }
+
+    /// Get the invalidity date, if present
+    ///
+    /// The invalidity date is the date on which it is known or suspected that the private
+    //  key was compromised or that the certificate otherwise became invalid.
+    pub fn invalidity_date(&self) -> Option<(bool, ASN1Time)> {
+        let ext = self.extensions.get(&OID_X509_EXT_INVALIDITY_DATE)?;
+        match ext.parsed_extension {
+            ParsedExtension::InvalidityDate(date) => Some((ext.critical, date)),
+            _ => None,
+        }
+    }
 }
 
 // Attempt to convert attribute to string. If type is not a string, return value is the hex

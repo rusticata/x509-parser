@@ -139,7 +139,7 @@ fn parse_choice_of_time(i: &[u8]) -> DerResult {
     ))(i)
 }
 
-fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
+pub(crate) fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
     if let BerObjectContent::UTCTime(s) = obj.content {
         let dt = if s.ends_with('Z') {
             // UTC
