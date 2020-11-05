@@ -116,8 +116,12 @@ pub fn parse_x509_name(i: &[u8]) -> X509Result<X509Name> {
     })(i)
 }
 
-fn parse_version(i: &[u8]) -> X509Result<u32> {
-    parse_ber_tagged_explicit_g(0, |_, a| parse_ber_u32(a))(i).or(Ok((i, 0)))
+fn parse_version(i: &[u8]) -> X509Result<X509Version> {
+    let res = parse_ber_tagged_explicit_g(0, |_, a| parse_ber_u32(a))(i);
+    match res {
+        Ok((rem, v)) => Ok((rem, X509Version(v))),
+        _ => Ok((i, X509Version::V1)),
+    }
 }
 
 fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {

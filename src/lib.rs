@@ -39,7 +39,7 @@
 //! Parsing a certificate in DER format:
 //!
 //! ```rust
-//! use x509_parser::parse_x509_der;
+//! use x509_parser::{parse_x509_der, X509Version};
 //!
 //! static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 //!
@@ -49,7 +49,7 @@
 //!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());
 //!         //
-//!         assert_eq!(cert.tbs_certificate.version, 2);
+//!         assert_eq!(cert.tbs_certificate.version, X509Version::V3);
 //!     },
 //!     _ => panic!("x509 parsing failed: {:?}", res),
 //! }

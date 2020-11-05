@@ -23,6 +23,7 @@
 - Add support for ReasonCode extension
 - Refactor error handling, return meaningful errors when possible
 - Make many more functions public (parse_tbs_certificate, etc.)
+- Change type of X509Version (now directly using the u32 value)
 
 ## 0.8.0
 

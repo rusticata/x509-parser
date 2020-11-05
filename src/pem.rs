@@ -14,6 +14,7 @@
 //! ```rust,no_run
 //! use std::io::Cursor;
 //! use x509_parser::pem::Pem;
+//! use x509_parser::X509Version;
 //!
 //! static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 //!
@@ -21,7 +22,7 @@
 //! let reader = Cursor::new(IGCA_PEM);
 //! let (pem,bytes_read) = Pem::read(reader).expect("Reading PEM failed");
 //! let x509 = pem.parse_x509().expect("X.509: decoding DER failed");
-//! assert_eq!(x509.tbs_certificate.version, 2);
+//! assert_eq!(x509.tbs_certificate.version, X509Version::V3);
 //! # }
 //! ```
 //!

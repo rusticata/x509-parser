@@ -19,12 +19,15 @@ use oid_registry::*;
 use rusticata_macros::newtype_enum;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
-pub enum X509Version {
-    V1,
-    V2,
-    V3,
-    Invalid(u32),
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct X509Version(pub u32);
+
+newtype_enum! {
+    impl display X509Version {
+        V1 = 0,
+        V2 = 1,
+        V3 = 2,
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -237,7 +240,7 @@ impl<'a> X509Name<'a> {
 #[derive(Debug, PartialEq)]
 pub struct TbsCertificate<'a> {
     /// Raw encoding of the version: 0 for v1, 1 for v2, 2 for v3
-    pub version: u32,
+    pub version: X509Version,
     pub serial: BigUint,
     pub signature: AlgorithmIdentifier<'a>,
     pub issuer: X509Name<'a>,
@@ -618,12 +621,7 @@ pub struct X509Certificate<'a> {
 impl<'a> X509Certificate<'a> {
     /// Get the version of the encoded certificate
     pub fn version(&self) -> X509Version {
-        match self.tbs_certificate.version {
-            0 => X509Version::V1,
-            1 => X509Version::V2,
-            2 => X509Version::V3,
-            n => X509Version::Invalid(n),
-        }
+        self.tbs_certificate.version
     }
 
     /// Get the certificate subject.

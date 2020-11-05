@@ -4,8 +4,8 @@ extern crate rusticata_macros;
 extern crate x509_parser;
 
 use std::io::Cursor;
-use x509_parser::parse_x509_der;
 use x509_parser::pem::{parse_x509_pem, Pem};
+use x509_parser::{parse_x509_der, X509Version};
 
 static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 
@@ -20,7 +20,7 @@ fn test_x509_parse_pem() {
     let (rem, crt) = parse_x509_der(&pem.contents).expect("X.509 parsing failed");
     // println!("res: {:?}", res);
     assert!(rem.is_empty());
-    assert_eq!(crt.tbs_certificate.version, 2);
+    assert_eq!(crt.tbs_certificate.version, X509Version::V3);
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn test_pem_read() {
     //
     // now check that the content is indeed a certificate
     let x509 = pem.parse_x509().expect("X.509: decoding DER failed");
-    assert_eq!(x509.tbs_certificate.version, 2);
+    assert_eq!(x509.tbs_certificate.version, X509Version::V3);
 }
 
 #[test]

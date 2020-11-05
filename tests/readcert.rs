@@ -30,7 +30,7 @@ fn test_x509_parser() {
             assert_eq!(e, empty);
             //
             let tbs_cert = &cert.tbs_certificate;
-            assert_eq!(tbs_cert.version, 2);
+            assert_eq!(tbs_cert.version, X509Version::V3);
             //
             let s = tbs_cert.raw_serial_as_string();
             assert_eq!(&s, "39:11:45:10:94");
@@ -143,7 +143,7 @@ fn test_x509_no_extensions() {
             assert_eq!(e, empty);
 
             let tbs_cert = cert.tbs_certificate;
-            assert_eq!(tbs_cert.version, 2);
+            assert_eq!(tbs_cert.version, X509Version::V3);
             assert_eq!(tbs_cert.extensions.len(), 0);
         }
         _ => panic!("x509 parsing failed: {:?}", res),
