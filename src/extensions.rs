@@ -4,8 +4,9 @@ use crate::x509_parser::der_to_utctime;
 use crate::{ASN1Time, ReasonCode};
 use der_parser::ber::*;
 use der_parser::oid::Oid;
-use nom::combinator::{all_consuming, complete, map_res, opt};
+use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
+use num_bigint::BigUint;
 use oid_registry::*;
 use std::collections::HashMap;
 use std::fmt;
@@ -41,6 +42,8 @@ pub enum ParsedExtension<'a> {
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
     /// Netscape certificate type (subject is SSL client, an SSL server, or a CA)
     NSCertType(NSCertType),
+    /// Section 5.3.1 of rfc 5280
+    CRLNumber(BigUint),
     /// Section 5.3.1 of rfc 5280
     ReasonCode(ReasonCode),
     /// Section 5.3.3 of rfc 5280
@@ -325,6 +328,7 @@ pub(crate) mod parser {
                 parse_authoritykeyidentifier
             );
             add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype);
+            add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
             add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
             add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
             m
@@ -787,6 +791,13 @@ pub(crate) mod parser {
     fn parse_invalidity_date<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
         let (rest, date) = map_res(parse_der_generalizedtime, der_to_utctime)(i)?;
         Ok((rest, ParsedExtension::InvalidityDate(date)))
+    }
+
+    // CRLNumber ::= INTEGER (0..MAX)
+    // Note from RFC 3280: "CRL verifiers MUST be able to handle CRLNumber values up to 20 octets."
+    fn parse_crl_number(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        let (rest, num) = map_opt(parse_der_integer, |obj| obj.as_biguint())(i)?;
+        Ok((rest, ParsedExtension::CRLNumber(num)))
     }
 }
 

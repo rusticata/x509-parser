@@ -22,6 +22,7 @@
 - CRL: add method to iterate revoked certificates
 - Add support for ReasonCode extension
 - Add support for InvalidityDate extension
+- Add support for CRL Number extension
 - RevokedCertificate: convert extensions list to hashmap
 - Refactor error handling, return meaningful errors when possible
 - Make many more functions public (parse_tbs_certificate, etc.)

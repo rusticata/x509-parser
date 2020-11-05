@@ -50,6 +50,9 @@ fn print_authority_key_identifier(aki: &AuthorityKeyIdentifier, level: usize) {
 
 fn print_x509_extension(oid: &Oid, ext: &X509Extension, level: usize) {
     match ext.parsed_extension() {
+        ParsedExtension::CRLNumber(num) => {
+            println!("{:indent$}X509v3 CRL Number: {}", "", num, indent = level);
+        }
         ParsedExtension::ReasonCode(code) => {
             println!(
                 "{:indent$}X509v3 CRL Reason Code: {}",
