@@ -259,7 +259,7 @@ fn test_crl_parse() {
                     oid!(2.5.29.20),
                     false,
                     &[2, 1, 3],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::CRLNumber(3u32.into()),
                 ),
             ];
 
@@ -287,7 +287,7 @@ fn test_crl_parse_empty() {
                     oid!(2.5.29.20),
                     false,
                     &[2, 1, 2],
-                    ParsedExtension::UnsupportedExtension,
+                    ParsedExtension::CRLNumber(2u32.into()),
                 ),
                 X509Extension::new(
                     OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
