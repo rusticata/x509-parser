@@ -704,6 +704,22 @@ impl<'a> CertificateRevocationList<'a> {
     pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
         &self.tbs_cert_list.extensions
     }
+
+    /// Get the CRL number, if present
+    ///
+    /// Note that the returned value is a `BigUint`, because of the following RFC specification:
+    /// <pre>
+    /// Given the requirements above, CRL numbers can be expected to contain long integers.  CRL
+    /// verifiers MUST be able to handle CRLNumber values up to 20 octets.  Conformant CRL issuers
+    /// MUST NOT use CRLNumber values longer than 20 octets.
+    /// </pre>
+    pub fn crl_number(&self) -> Option<&BigUint> {
+        let ext = self.extensions().get(&OID_X509_EXT_CRL_NUMBER)?;
+        match ext.parsed_extension {
+            ParsedExtension::CRLNumber(ref num) => Some(num),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
