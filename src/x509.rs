@@ -239,7 +239,6 @@ impl<'a> X509Name<'a> {
 /// </pre>
 #[derive(Debug, PartialEq)]
 pub struct TbsCertificate<'a> {
-    /// Raw encoding of the version: 0 for v1, 1 for v2, 2 for v3
     pub version: X509Version,
     pub serial: BigUint,
     pub signature: AlgorithmIdentifier<'a>,

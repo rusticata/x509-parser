@@ -10,7 +10,7 @@ use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Utc};
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
+use nom::combinator::{all_consuming, complete, map, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{exact, Err, IResult, Offset};
 use num_bigint::BigUint;
@@ -116,10 +116,13 @@ pub fn parse_x509_name(i: &[u8]) -> X509Result<X509Name> {
     })(i)
 }
 
+// Parse [0] EXPLICIT Version DEFAULT v1
 fn parse_version(i: &[u8]) -> X509Result<X509Version> {
-    let res = parse_ber_tagged_explicit_g(0, |_, a| parse_ber_u32(a))(i);
-    match res {
-        Ok((rem, v)) => Ok((rem, X509Version(v))),
+    let (rem, hdr) = ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+    match hdr.tag {
+        BerTag(0) => {
+            map(parse_ber_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+        }
         _ => Ok((i, X509Version::V1)),
     }
 }
