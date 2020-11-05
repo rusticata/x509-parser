@@ -508,6 +508,13 @@ pub fn parse_algorithm_identifier(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
 ///
 /// Note that only parsing is done, not validation.
 ///
+/// <pre>
+/// Certificate  ::=  SEQUENCE  {
+///         tbsCertificate       TBSCertificate,
+///         signatureAlgorithm   AlgorithmIdentifier,
+///         signatureValue       BIT STRING  }
+/// </pre>
+///
 /// # Example
 ///
 /// To parse a certificate and print the subject and issuer:
@@ -542,6 +549,19 @@ pub fn parse_x509_der<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
         };
         Ok((i, cert))
     })(i)
+}
+
+/// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
+/// object.
+///
+///
+/// This function is an alias to [parse_x509_der](fn.parse_x509_der.html). See this function
+/// for more information.
+///
+/// For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
+#[inline]
+pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
+    parse_x509_der(i)
 }
 
 /// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
@@ -590,6 +610,16 @@ pub fn parse_crl_der(i: &[u8]) -> X509Result<CertificateRevocationList> {
         };
         Ok((i, crl))
     })(i)
+}
+
+/// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
+/// object.
+///
+/// This function is an alias to [parse_crl_der](fn.parse_crl_der.html). See this function
+/// for more information.
+#[inline]
+pub fn parse_certificate_list(i: &[u8]) -> X509Result<CertificateRevocationList> {
+    parse_crl_der(i)
 }
 
 fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {

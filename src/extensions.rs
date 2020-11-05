@@ -1,3 +1,5 @@
+//! X.509 Extensions objects and types
+
 use crate::ReasonCode;
 use der_parser::ber::*;
 use der_parser::oid::Oid;

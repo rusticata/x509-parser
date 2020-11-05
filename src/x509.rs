@@ -1,4 +1,4 @@
-//! X.509 objects
+//! X.509 objects and types
 //!
 //! Based on RFC5280
 //!
