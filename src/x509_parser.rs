@@ -341,6 +341,20 @@ fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
     parse_ber_sequence_defined_g(|_, a| all_consuming(many0(complete(parse_extension)))(a))(i)
 }
 
+fn extensions_sequence_to_map<'a>(
+    i: &'a [u8],
+    v: Vec<X509Extension<'a>>,
+) -> X509Result<'a, HashMap<Oid<'a>, X509Extension<'a>>> {
+    let mut extensions = HashMap::new();
+    for ext in v.into_iter() {
+        if extensions.insert(ext.oid.clone(), ext).is_some() {
+            // duplicate extensions are not allowed
+            return Err(Err::Failure(X509Error::DuplicateExtensions));
+        }
+    }
+    Ok((i, extensions))
+}
+
 fn parse_extensions(i: &[u8], explicit_tag: BerTag) -> X509Result<HashMap<Oid, X509Extension>> {
     if i.is_empty() {
         return Ok((i, HashMap::new()));
@@ -351,15 +365,8 @@ fn parse_extensions(i: &[u8], explicit_tag: BerTag) -> X509Result<HashMap<Oid, X
             if hdr.tag != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
-            let mut extensions = HashMap::new();
             let (rem, list) = exact!(rem, parse_extension_sequence)?;
-            for ext in list.into_iter() {
-                if extensions.insert(ext.oid.clone(), ext).is_some() {
-                    // duplicate extensions are not allowed
-                    return Err(Err::Failure(X509Error::DuplicateExtensions));
-                }
-            }
-            Ok((rem, extensions))
+            extensions_sequence_to_map(rem, list)
         }
         Err(_) => Err(X509Error::InvalidExtensions.into()),
     }
@@ -456,12 +463,21 @@ fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
     })(i)
 }
 
+// revokedCertificates     SEQUENCE OF SEQUENCE  {
+//     userCertificate         CertificateSerialNumber,
+//     revocationDate          Time,
+//     crlEntryExtensions      Extensions OPTIONAL
+//                                   -- if present, MUST be v2
+//                          }  OPTIONAL,
 fn parse_revoked_certificate(i: &[u8]) -> X509Result<RevokedCertificate> {
     parse_ber_sequence_defined_g(|_, i| {
         let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
         let (i, revocation_date) =
             map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
-        let (i, extensions) = opt(complete(parse_extension_sequence))(i)?;
+        let (i, extensions) = opt(complete(|i| {
+            let (rem, v) = parse_extension_sequence(i)?;
+            extensions_sequence_to_map(rem, v)
+        }))(i)?;
         let revoked = RevokedCertificate {
             user_certificate,
             revocation_date,
@@ -594,7 +610,7 @@ pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>
 ///     Ok((_rem, crl)) => {
 ///         for revoked in crl.iter_revoked_certificates() {
 ///             println!("Revoked certificate serial: {}", revoked.raw_serial_as_string());
-///             println!("  Reason: {}", revoked.reason_code().unwrap_or_default());
+///             println!("  Reason: {}", revoked.reason_code().unwrap_or_default().1);
 ///         }
 ///     },
 ///     _ => panic!("CRL parsing failed: {:?}", res),

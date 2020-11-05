@@ -21,6 +21,7 @@
 - CRL: extract raw serial, and add methods to access it
 - CRL: add method to iterate revoked certificates
 - Add support for ReasonCode extension
+- RevokedCertificate: convert extensions list to hashmap
 - Refactor error handling, return meaningful errors when possible
 - Make many more functions public (parse_tbs_certificate, etc.)
 - Change type of X509Version (now directly using the u32 value)

@@ -69,7 +69,7 @@
 //!     Ok((_rem, crl)) => {
 //!         for revoked in crl.iter_revoked_certificates() {
 //!             println!("Revoked certificate serial: {}", revoked.raw_serial_as_string());
-//!             println!("  Reason: {}", revoked.reason_code().unwrap_or_default());
+//!             println!("  Reason: {}", revoked.reason_code().unwrap_or_default().1);
 //!         }
 //!     },
 //!     _ => panic!("CRL parsing failed: {:?}", res),

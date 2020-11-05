@@ -480,7 +480,7 @@ pub struct RevokedCertificate<'a> {
     /// The date on which the revocation occurred is specified.
     pub revocation_date: ASN1Time,
     /// Additional information about revocation
-    pub extensions: Vec<X509Extension<'a>>,
+    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
     pub(crate) raw_serial: &'a [u8],
 }
 
@@ -508,18 +508,12 @@ impl<'a> RevokedCertificate<'a> {
     }
 
     /// Get the code identifying the reason for the revocation, if present
-    pub fn reason_code(&self) -> Option<ReasonCode> {
-        self.extensions
-            .iter()
-            .find(|&x| x.oid == OID_X509_EXT_REASON_CODE)
-            .map(|ext| {
-                if let ParsedExtension::ReasonCode(code) = &ext.parsed_extension {
-                    *code
-                } else {
-                    // defaults to 0
-                    ReasonCode::Unspecified
-                }
-            })
+    pub fn reason_code(&self) -> Option<(bool, ReasonCode)> {
+        let ext = self.extensions.get(&OID_X509_EXT_REASON_CODE)?;
+        match ext.parsed_extension {
+            ParsedExtension::ReasonCode(code) => Some((ext.critical, code)),
+            _ => None,
+        }
     }
 }
 
