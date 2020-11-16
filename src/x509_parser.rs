@@ -127,6 +127,16 @@ fn parse_version(i: &[u8]) -> X509Result<X509Version> {
     }
 }
 
+fn parse_required_version(i: &[u8]) -> X509Result<X509Version> {
+    let (rem, hdr) = ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+    match hdr.tag {
+        BerTag(0) => {
+            map(parse_ber_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+        }
+        _ => Ok((&rem[1..], X509Version::V1)),
+    }
+}
+
 fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
     map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
 }
@@ -337,11 +347,11 @@ pub fn parse_extension(i: &[u8]) -> X509Result<X509Extension> {
 }
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
-fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
+pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
     parse_ber_sequence_defined_g(|_, a| all_consuming(many0(complete(parse_extension)))(a))(i)
 }
 
-fn extensions_sequence_to_map<'a>(
+pub(crate) fn extensions_sequence_to_map<'a>(
     i: &'a [u8],
     v: Vec<X509Extension<'a>>,
 ) -> X509Result<'a, HashMap<Oid<'a>, X509Extension<'a>>> {
@@ -377,6 +387,26 @@ fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
     let slice = o.as_slice().ok()?;
 
     Some((slice, big))
+}
+
+pub fn parse_attribute(i: &[u8]) -> X509Result<X509CriAttribute> {
+    parse_ber_sequence_defined_g(|_, i| {
+        let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
+        let value_start = i;
+        let (i, hdr) = der_read_element_header(i)?;
+        if hdr.tag != BerTag::Set {
+            return Err(Err::Error(BerError::BerTypeError));
+        };
+
+        let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)?;
+        let ext = X509CriAttribute {
+            oid,
+            value: &value_start[..value_start.len() - i.len()],
+            parsed_attribute,
+        };
+        Ok((i, ext))
+    })(i)
+    .map_err(|_| X509Error::InvalidAttributes.into())
 }
 
 /// Parse a DER-encoded TbsCertificate object
@@ -518,6 +548,84 @@ pub fn parse_algorithm_identifier(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
             parameters,
         };
         Ok((i, alg))
+    })(i)
+}
+
+fn attributes_sequence_to_map<'a>(
+    i: &'a [u8],
+    v: Vec<X509CriAttribute<'a>>,
+) -> X509Result<'a, HashMap<Oid<'a>, X509CriAttribute<'a>>> {
+    let mut attributes = HashMap::new();
+    for attr in v.into_iter() {
+        if attributes.insert(attr.oid.clone(), attr).is_some() {
+            // duplicate attributes are not allowed
+            return Err(Err::Failure(X509Error::DuplicateAttributes));
+        }
+    }
+    Ok((i, attributes))
+}
+
+fn parse_cri_attributes(i: &[u8]) -> X509Result<HashMap<Oid, X509CriAttribute>> {
+    let (i, hdr) = ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
+    (0..hdr.structured)
+        .into_iter()
+        .try_fold((i, Vec::new()), |(i, mut attrs), _| {
+            let (rem, attr) = parse_attribute(i)?;
+            attrs.push(attr);
+            Ok((rem, attrs))
+        })
+        .and_then(|(i, attrs)| attributes_sequence_to_map(i, attrs))
+}
+
+/// Parse a certification request info structure
+///
+/// Certification request information is defined by the following ASN.1 structure:
+///
+/// <pre>
+/// CertificationRequestInfo ::= SEQUENCE {
+///      version       INTEGER { v1(0) } (v1,...),
+///      subject       Name,
+///      subjectPKInfo SubjectPublicKeyInfo{{ PKInfoAlgorithms }},
+///      attributes    [0] Attributes{{ CRIAttributes }}
+/// }
+/// </pre>
+///
+/// version is the version number; subject is the distinguished name of the certificate
+/// subject; subject_pki contains information about the public key being certified, and
+/// attributes is a collection of attributes providing additional information about the
+/// subject of the certificate.
+pub fn parse_certification_request_info<'a>(
+    i: &'a [u8],
+) -> X509Result<X509CertificationRequestInfo<'a>> {
+    let start_i = i;
+    parse_ber_sequence_defined_g(move |_, i| {
+        let (i, version) = parse_required_version(i)?;
+        let (i, subject) = parse_x509_name(i)?;
+        let (i, subject_pki) = parse_subject_public_key_info(i)?;
+        let (i, attributes) = parse_cri_attributes(i)?;
+        let len = start_i.offset(i);
+        let tbs = X509CertificationRequestInfo {
+            version,
+            subject,
+            subject_pki,
+            attributes,
+            raw: &start_i[..len],
+        };
+        Ok((i, tbs))
+    })(i)
+}
+
+pub fn parse_x509_csr_der<'a>(i: &'a [u8]) -> X509Result<X509CertificationRequest<'a>> {
+    parse_ber_sequence_defined_g(|_, i| {
+        let (i, certification_request_info) = parse_certification_request_info(i)?;
+        let (i, signature_algorithm) = parse_algorithm_identifier(i)?;
+        let (i, signature_value) = parse_signature_value(i)?;
+        let cert = X509CertificationRequest {
+            certification_request_info,
+            signature_algorithm,
+            signature_value,
+        };
+        Ok((i, cert))
     })(i)
 }
 

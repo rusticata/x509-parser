@@ -37,8 +37,12 @@ pub enum X509Error {
     InvalidIssuerUID,
     #[error("invalid extensions")]
     InvalidExtensions,
+    #[error("invalid attributes")]
+    InvalidAttributes,
     #[error("duplicate extensions")]
     DuplicateExtensions,
+    #[error("duplicate attributes")]
+    DuplicateAttributes,
     #[error("invalid Signature DER Value")]
     InvalidSignatureValue,
     #[error("invalid TBS certificate")]

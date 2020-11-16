@@ -7,6 +7,7 @@ use std::fmt;
 
 use num_bigint::BigUint;
 
+use crate::cri_attributes::*;
 use crate::error::X509Error;
 use crate::extensions::*;
 use crate::objects::*;
@@ -62,6 +63,14 @@ impl<'a> X509Extension<'a> {
     pub fn parsed_extension(&self) -> &ParsedExtension<'a> {
         &self.parsed_extension
     }
+}
+
+/// Attributes for Certification Request
+#[derive(Debug, PartialEq)]
+pub struct X509CriAttribute<'a> {
+    pub oid: Oid<'a>,
+    pub value: &'a [u8],
+    pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -584,6 +593,42 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                 })
         })
     })
+}
+
+#[derive(Debug, PartialEq)]
+pub struct X509CertificationRequestInfo<'a> {
+    pub version: X509Version,
+    pub subject: X509Name<'a>,
+    pub subject_pki: SubjectPublicKeyInfo<'a>,
+    pub attributes: HashMap<Oid<'a>, X509CriAttribute<'a>>,
+    pub raw: &'a [u8],
+}
+
+#[derive(Debug, PartialEq)]
+pub struct X509CertificationRequest<'a> {
+    pub certification_request_info: X509CertificationRequestInfo<'a>,
+    pub signature_algorithm: AlgorithmIdentifier<'a>,
+    pub signature_value: BitStringObject<'a>,
+}
+
+impl<'a> X509CertificationRequest<'a> {
+    pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension<'a>>> {
+        self.certification_request_info
+            .attributes
+            .values()
+            .find_map(|attr| {
+                if let ParsedCriAttribute::ExtensionRequest(requested) = &attr.parsed_attribute {
+                    Some(
+                        requested
+                            .extensions
+                            .values()
+                            .map(|ext| &ext.parsed_extension),
+                    )
+                } else {
+                    None
+                }
+            })
+    }
 }
 
 /// An X.509 v3 Certificate.

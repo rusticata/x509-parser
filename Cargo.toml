@@ -50,3 +50,6 @@ thiserror = "1.0"
 
 [badges]
 travis-ci = { repository = "rusticata/x509-parser" }
+
+[patch.crates-io]
+oid-registry = { git = "https://github.com/djc/oid-registry", branch = "extension-request" }
