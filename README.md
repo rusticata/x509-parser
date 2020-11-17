@@ -100,19 +100,6 @@ dependencies.
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 <!-- cargo-sync-readme end -->
 
-## Compatibility with older rust versions
-
-### 1.34
-
-There is a build error in `arrayvec` with rust 1.34: `error[E0658]: use of unstable library feature 'maybe_uninit'`
-
-To fix it, force the version of `lexical-core` down:
-```
-cargo update -p lexical-core --precise 0.6.7
-```
-
-The `verify` feature is not compatible with rustc 1.34.
-
 ## Changes
 
 See [CHANGELOG.md](CHANGELOG.md)
