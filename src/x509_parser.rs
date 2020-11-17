@@ -6,8 +6,6 @@
 use crate::error::{X509Error, X509Result};
 use crate::time::ASN1Time;
 use crate::x509::*;
-use chrono::offset::TimeZone;
-use chrono::{DateTime, Datelike, Utc};
 use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{all_consuming, complete, map, map_opt, map_res, opt};
@@ -36,35 +34,6 @@ fn parse_malformed_string(i: &[u8]) -> DerResult {
             let (rem, data) = take(len as usize)(rem)?;
             let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
             let content = BerObjectContent::PrintableString(s);
-            let obj = DerObject::from_header_and_content(hdr, content);
-            Ok((rem, obj))
-        }
-        _ => Err(nom::Err::Error(BerError::InvalidTag)),
-    }
-}
-
-// allow relaxed parsing of UTCTime (ex: 370116130016+0000)
-fn parse_malformed_date(i: &[u8]) -> DerResult {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    fn check_char(b: &u8) -> bool {
-        (0x20 <= *b && *b <= 0x7f) || (*b == b'+')
-    }
-    let (rem, hdr) = ber_read_element_header(i)?;
-    let len = hdr.len.primitive()?;
-    if len > MAX_OBJECT_SIZE {
-        return Err(nom::Err::Error(BerError::InvalidLength));
-    }
-    match hdr.tag {
-        BerTag::UtcTime => {
-            // if we are in this function, the PrintableString could not be validated.
-            // Accept it without validating charset, because some tools do not respect the charset
-            // restrictions (for ex. they use '*' while explicingly disallowed)
-            let (rem, data) = take(len as usize)(rem)?;
-            if !data.iter().all(check_char) {
-                return Err(nom::Err::Error(BerError::BerValueError));
-            }
-            let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
-            let content = BerObjectContent::UTCTime(s);
             let obj = DerObject::from_header_and_content(hdr, content);
             Ok((rem, obj))
         }
@@ -141,67 +110,10 @@ fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
     map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
 }
 
-fn parse_choice_of_time(i: &[u8]) -> DerResult {
-    alt((
-        complete(parse_der_utctime),
-        complete(parse_der_generalizedtime),
-        complete(parse_malformed_date),
-    ))(i)
-}
-
-pub(crate) fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
-    if let BerObjectContent::UTCTime(s) = obj.content {
-        let dt = if s.ends_with('Z') {
-            // UTC
-            if s.len() == 11 {
-                // some implementations do not encode the number of seconds
-                // accept certificate even if date is not correct
-                Utc.datetime_from_str(s, "%y%m%d%H%MZ")
-            } else {
-                Utc.datetime_from_str(s, "%y%m%d%H%M%SZ")
-            }
-        } else {
-            DateTime::parse_from_str(s, "%y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
-        };
-        match dt {
-            Ok(mut tm) => {
-                if tm.year() < 50 {
-                    tm = tm
-                        .with_year(tm.year() + 100)
-                        .ok_or(X509Error::InvalidDate)?;
-                }
-                // tm = tm.with_year(tm.year() + 1900).ok_or(X509Error::InvalidDate)?;
-                // eprintln!("date: {}", tm.rfc822());
-                Ok(ASN1Time::from_datetime_utc(tm))
-            }
-            Err(_e) => Err(X509Error::InvalidDate),
-        }
-    } else if let BerObjectContent::GeneralizedTime(s) = obj.content {
-        let dt = if s.ends_with('Z') {
-            // UTC
-            if s.len() == 11 {
-                // some implementations do not encode the number of seconds
-                // accept certificate even if date is not correct
-                Utc.datetime_from_str(s, "%Y%m%d%H%MZ")
-            } else {
-                Utc.datetime_from_str(s, "%Y%m%d%H%M%SZ")
-            }
-        } else {
-            DateTime::parse_from_str(s, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
-        };
-        dt.map(ASN1Time::from_datetime_utc)
-            .or(Err(X509Error::InvalidDate))
-    } else {
-        Err(X509Error::InvalidDate)
-    }
-}
-
 fn parse_validity(i: &[u8]) -> X509Result<Validity> {
     parse_ber_sequence_defined_g(|_, i| {
-        let (i, not_before) =
-            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
-        let (i, not_after) =
-            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
+        let (i, not_before) = ASN1Time::from_der(i)?;
+        let (i, not_after) = ASN1Time::from_der(i)?;
         let v = Validity {
             not_before,
             not_after,
@@ -467,10 +379,8 @@ fn parse_tbs_cert_list(i: &[u8]) -> X509Result<TbsCertList> {
             opt(map(parse_ber_u32, X509Version))(i).or(Err(X509Error::InvalidVersion))?;
         let (i, signature) = parse_algorithm_identifier(i)?;
         let (i, issuer) = parse_x509_name(i)?;
-        let (i, this_update) =
-            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
-        let (i, next_update) = opt(map_res(parse_choice_of_time, der_to_utctime))(i)
-            .or(Err(X509Error::InvalidDate))?;
+        let (i, this_update) = ASN1Time::from_der(i)?;
+        let (i, next_update) = ASN1Time::from_der_opt(i)?;
         let (i, revoked_certificates) = opt(complete(parse_revoked_certificates))(i)?;
         let (i, extensions) = parse_extensions(i, BerTag(0))?;
         let len = start_i.offset(i);
@@ -503,8 +413,7 @@ fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
 fn parse_revoked_certificate(i: &[u8]) -> X509Result<RevokedCertificate> {
     parse_ber_sequence_defined_g(|_, i| {
         let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
-        let (i, revocation_date) =
-            map_res(parse_choice_of_time, der_to_utctime)(i).or(Err(X509Error::InvalidDate))?;
+        let (i, revocation_date) = ASN1Time::from_der(i)?;
         let (i, extensions) = opt(complete(|i| {
             let (rem, v) = parse_extension_sequence(i)?;
             extensions_sequence_to_map(rem, v)

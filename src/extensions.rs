@@ -1,6 +1,6 @@
 //! X.509 Extensions objects and types
 
-use crate::x509_parser::der_to_utctime;
+use crate::time::der_to_utctime;
 use crate::{ASN1Time, ReasonCode};
 use der_parser::ber::*;
 use der_parser::oid::Oid;
