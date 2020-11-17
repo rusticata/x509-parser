@@ -7,7 +7,7 @@ use x509_parser::extensions::*;
 use x509_parser::objects::*;
 use x509_parser::pem::parse_x509_pem;
 use x509_parser::x509::X509Certificate;
-use x509_parser::{parse_x509_der, X509Extension};
+use x509_parser::{parse_x509_certificate, X509Extension};
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {
     let m = min(bytes.len(), max_len);
@@ -112,7 +112,7 @@ pub fn main() -> io::Result<()> {
             tmpdata = data;
             &tmpdata.contents
         };
-        let (_, x509) = parse_x509_der(&der_data).expect("Could not decode DER data");
+        let (_, x509) = parse_x509_certificate(&der_data).expect("Could not decode DER data");
         print_x509_info(&x509);
     }
     Ok(())

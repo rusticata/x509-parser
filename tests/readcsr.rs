@@ -1,13 +1,14 @@
 use oid_registry::{OID_PKCS1_SHA256WITHRSA, OID_SIG_ECDSA_WITH_SHA256, OID_X509_COMMON_NAME};
 use x509_parser::extensions::{GeneralName, ParsedExtension};
-use x509_parser::{parse_x509_csr_der, pem, X509Version};
+use x509_parser::{pem, X509CertificationRequest, X509Version};
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 const CSR_DATA: &[u8] = include_bytes!("../assets/test.csr");
 
 #[test]
 fn read_csr_empty_attrib() {
-    let (rem, csr) = parse_x509_csr_der(CSR_DATA_EMPTY_ATTRIB).expect("could not parse CSR");
+    let (rem, csr) =
+        X509CertificationRequest::from_der(CSR_DATA_EMPTY_ATTRIB).expect("could not parse CSR");
 
     assert!(rem.is_empty());
     let cri = &csr.certification_request_info;
@@ -19,7 +20,8 @@ fn read_csr_empty_attrib() {
 #[test]
 fn read_csr_with_san() {
     let der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
-    let (rem, csr) = parse_x509_csr_der(&der.contents).expect("could not parse CSR");
+    let (rem, csr) =
+        X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
 
     assert!(rem.is_empty());
     let cri = &csr.certification_request_info;
@@ -57,7 +59,7 @@ fn read_csr_with_san() {
 #[test]
 fn read_csr_verify() {
     let der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
-    let (_, csr) = parse_x509_csr_der(&der.contents).expect("could not parse CSR");
+    let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
     csr.verify_signature(None).unwrap();
 
     let mut der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
@@ -67,6 +69,6 @@ fn read_csr_verify() {
     }
     assert_eq!(&der.contents[28..37], b"foobarbaz");
 
-    let (_, csr) = parse_x509_csr_der(&der.contents).expect("could not parse CSR");
+    let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
     csr.verify_signature(None).unwrap_err();
 }

@@ -1,7 +1,7 @@
 //! X.509 Extensions objects and types
 
 use crate::time::der_to_utctime;
-use crate::{ASN1Time, ReasonCode};
+use crate::{ASN1Time, ReasonCode, X509Name};
 use der_parser::ber::*;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
@@ -254,7 +254,7 @@ pub enum GeneralName<'a> {
     // X400Address,
     /// RFC5280 defines several string types, we always try to parse as utf-8
     /// which is more or less a superset of the string types.
-    DirectoryName(crate::x509::X509Name<'a>),
+    DirectoryName(X509Name<'a>),
     // EDIPartyName { name_assigner: Option<&'a str>, party_name: &'a str },
     /// An uniform resource identifier. The format is not checked.
     URI(&'a str),
@@ -440,7 +440,6 @@ pub(crate) mod parser {
     }
 
     fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
-        use crate::x509_parser::parse_x509_name;
         let (rest, hdr) = verify(der_read_element_header, |hdr| hdr.is_contextspecific())(i)?;
         let len = hdr.len.primitive()?;
         if len > rest.len() {
@@ -465,7 +464,7 @@ pub(crate) mod parser {
             3 => return Err(Err::Failure(BerError::Unsupported)), // x400Address
             4 => {
                 // directoryName, name
-                let (_, name) = all_consuming(parse_x509_name)(&rest[..len])
+                let (_, name) = all_consuming(X509Name::from_der)(&rest[..len])
                     .or(Err(BerError::Unsupported)) // XXX remove me
                     ?;
                 GeneralName::DirectoryName(name)
@@ -818,7 +817,7 @@ fn test_keyusage_flags() {
 #[test]
 fn test_extensions1() {
     use der_parser::oid;
-    let crt = crate::parse_x509_der(include_bytes!("../assets/extension1.der"))
+    let crt = crate::parse_x509_certificate(include_bytes!("../assets/extension1.der"))
         .unwrap()
         .1;
     let tbs = crt.tbs_certificate;
@@ -909,7 +908,7 @@ fn test_extensions1() {
 #[test]
 fn test_extensions2() {
     use der_parser::oid;
-    let crt = crate::parse_x509_der(include_bytes!("../assets/extension2.der"))
+    let crt = crate::parse_x509_certificate(include_bytes!("../assets/extension2.der"))
         .unwrap()
         .1;
     let tbs = crt.tbs_certificate;

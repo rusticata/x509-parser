@@ -32,7 +32,7 @@
 //!
 //! ```rust,no_run
 //! use x509_parser::pem::parse_x509_pem;
-//! use x509_parser::parse_x509_der;
+//! use x509_parser::parse_x509_certificate;
 //!
 //! static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 //!
@@ -44,7 +44,7 @@
 //!         //
 //!         assert_eq!(pem.label, String::from("CERTIFICATE"));
 //!         //
-//!         let res_x509 = parse_x509_der(&pem.contents);
+//!         let res_x509 = parse_x509_certificate(&pem.contents);
 //!         assert!(res_x509.is_ok());
 //!     },
 //!     _ => panic!("PEM parsing failed: {:?}", res),
@@ -58,7 +58,7 @@
 
 use crate::error::{PEMError, X509Error};
 use crate::x509::X509Certificate;
-use crate::x509_parser::parse_x509_der;
+use crate::x509_parser::parse_x509_certificate;
 use nom::{Err, IResult};
 use std::io::{BufRead, Cursor, Seek};
 
@@ -82,7 +82,7 @@ pub fn pem_to_der(i: &[u8]) -> IResult<&[u8], Pem, PEMError> {
 /// Allocates a new buffer for the decoded data.
 ///
 /// For X.509 (`CERTIFICATE` tag), the data is a certificate, encoded in DER. To parse the
-/// certificate content, use `Pem::parse_x509` or `parse_x509_der`.
+/// certificate content, use `Pem::parse_x509` or `parse_x509_certificate`.
 pub fn parse_x509_pem(i: &[u8]) -> IResult<&'_ [u8], Pem, PEMError> {
     let reader = Cursor::new(i);
     let res = Pem::read(reader);
@@ -149,7 +149,7 @@ impl Pem {
 
     /// Decode the PEM contents into a X.509 object
     pub fn parse_x509(&self) -> Result<X509Certificate, ::nom::Err<X509Error>> {
-        parse_x509_der(&self.contents).map(|(_, x509)| x509)
+        parse_x509_certificate(&self.contents).map(|(_, x509)| x509)
     }
 }
 

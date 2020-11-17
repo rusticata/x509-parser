@@ -1,6 +1,6 @@
 use std::io::Cursor;
 use x509_parser::pem::{parse_x509_pem, Pem};
-use x509_parser::{parse_x509_der, X509Version};
+use x509_parser::{parse_x509_certificate, X509Version};
 
 static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 
@@ -12,7 +12,7 @@ fn test_x509_parse_pem() {
     assert_eq!(pem.label, String::from("CERTIFICATE"));
     //
     // now check that the content is indeed a certificate
-    let (rem, crt) = parse_x509_der(&pem.contents).expect("X.509 parsing failed");
+    let (rem, crt) = parse_x509_certificate(&pem.contents).expect("X.509 parsing failed");
     // println!("res: {:?}", res);
     assert!(rem.is_empty());
     assert_eq!(crt.tbs_certificate.version, X509Version::V3);

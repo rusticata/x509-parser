@@ -4,7 +4,7 @@ extern crate nom;
 #[test]
 fn test01() {
     let data = b"0\x88\xff\xff\xff\xff\xff\xff\xff\xff00\x0f\x02\x000\x00\x00\x00\x00\x00\x0000\x0f\x00\xff\x0a\xbb\xff";
-    let _ = x509_parser::parse_x509_der(data);
+    let _ = x509_parser::parse_x509_certificate(data);
 }
 
 named!(parser02<&[u8],()>,

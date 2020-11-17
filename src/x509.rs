@@ -3,25 +3,56 @@
 //! Based on RFC5280
 //!
 
+use std::collections::HashMap;
 use std::fmt;
 
+use data_encoding::HEXUPPER;
+use der_parser::ber::*;
+use der_parser::der::*;
+use der_parser::error::*;
+use der_parser::oid::Oid;
+use der_parser::*;
+use nom::combinator::{complete, map, map_res, opt};
+use nom::multi::{many0, many1};
+use nom::{Err, Offset};
 use num_bigint::BigUint;
+use oid_registry::*;
+use rusticata_macros::newtype_enum;
 
 use crate::cri_attributes::*;
-use crate::error::X509Error;
+use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::objects::*;
 use crate::time::ASN1Time;
-use data_encoding::HEXUPPER;
-use der_parser::ber::{BerObjectContent, BitStringObject};
-use der_parser::der::DerObject;
-use der_parser::oid::Oid;
-use oid_registry::*;
-use rusticata_macros::newtype_enum;
-use std::collections::HashMap;
+use crate::x509_parser;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct X509Version(pub u32);
+
+impl X509Version {
+    // Parse [0] EXPLICIT Version DEFAULT v1
+    fn from_der(i: &[u8]) -> X509Result<X509Version> {
+        let (rem, hdr) =
+            ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+        match hdr.tag {
+            BerTag(0) => {
+                map(parse_ber_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+            }
+            _ => Ok((i, X509Version::V1)),
+        }
+    }
+
+    fn from_der_required(i: &[u8]) -> X509Result<X509Version> {
+        let (rem, hdr) =
+            ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+        match hdr.tag {
+            BerTag(0) => {
+                map(parse_ber_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+            }
+            _ => Ok((&rem[1..], X509Version::V1)),
+        }
+    }
+}
 
 newtype_enum! {
     impl display X509Version {
@@ -45,6 +76,77 @@ pub struct X509Extension<'a> {
 }
 
 impl<'a> X509Extension<'a> {
+    /// Parse a DER-encoded X.509 extension
+    ///
+    /// X.509 extensions allow adding attributes to objects like certificates or revocation lists.
+    ///
+    /// Each extension in a certificate is designated as either critical or non-critical.  A
+    /// certificate using system MUST reject the certificate if it encounters a critical extension it
+    /// does not recognize; however, a non-critical extension MAY be ignored if it is not recognized.
+    ///
+    /// Each extension includes an OID and an ASN.1 structure.  When an extension appears in a
+    /// certificate, the OID appears as the field extnID and the corresponding ASN.1 encoded structure
+    /// is the value of the octet string extnValue.  A certificate MUST NOT include more than one
+    /// instance of a particular extension.
+    ///
+    /// This function parses the global structure (described above), and will return the object if it
+    /// succeeds. During this step, it also attempts to parse the content of the extension, if known.
+    /// The returned object has a
+    /// [parsed_extension](x509/struct.X509Extension.html#method.parsed_extension) method. The returned
+    /// enum is either a known extension, or the special value `ParsedExtension::UnsupportedExtension`.
+    ///
+    /// <pre>
+    /// Extension  ::=  SEQUENCE  {
+    ///     extnID      OBJECT IDENTIFIER,
+    ///     critical    BOOLEAN DEFAULT FALSE,
+    ///     extnValue   OCTET STRING  }
+    /// </pre>
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use x509_parser::{X509Extension, extensions::ParsedExtension};
+    /// #
+    /// static DER: &[u8] = &[
+    ///    0x30, 0x1D, 0x06, 0x03, 0x55, 0x1D, 0x0E, 0x04, 0x16, 0x04, 0x14, 0xA3, 0x05, 0x2F, 0x18,
+    ///    0x60, 0x50, 0xC2, 0x89, 0x0A, 0xDD, 0x2B, 0x21, 0x4F, 0xFF, 0x8E, 0x4E, 0xA8, 0x30, 0x31,
+    ///    0x36 ];
+    ///
+    /// # fn main() {
+    /// let res = X509Extension::from_der(DER);
+    /// match res {
+    ///     Ok((_rem, ext)) => {
+    ///         println!("Extension OID: {}", ext.oid);
+    ///         println!("  Critical: {}", ext.critical);
+    ///         let parsed_ext = ext.parsed_extension();
+    ///         assert!(*parsed_ext != ParsedExtension::UnsupportedExtension);
+    ///         if let ParsedExtension::SubjectKeyIdentifier(key_id) = parsed_ext {
+    ///             assert!(key_id.0.len() > 0);
+    ///         } else {
+    ///             panic!("Extension has wrong type");
+    ///         }
+    ///     },
+    ///     _ => panic!("x509 extension parsing failed: {:?}", res),
+    /// }
+    /// # }
+    /// ```
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
+            let (i, critical) = x509_parser::der_read_critical(i)?;
+            let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
+            let (i, parsed_extension) = crate::extensions::parser::parse_extension(i, value, &oid)?;
+            let ext = X509Extension {
+                oid,
+                critical,
+                value,
+                parsed_extension,
+            };
+            Ok((i, ext))
+        })(i)
+        .map_err(|_| X509Error::InvalidExtensions.into())
+    }
+
     pub fn new(
         oid: Oid<'a>,
         critical: bool,
@@ -73,6 +175,28 @@ pub struct X509CriAttribute<'a> {
     pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
 }
 
+impl<'a> X509CriAttribute<'a> {
+    pub fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
+            let value_start = i;
+            let (i, hdr) = der_read_element_header(i)?;
+            if hdr.tag != BerTag::Set {
+                return Err(Err::Error(BerError::BerTypeError));
+            };
+
+            let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)?;
+            let ext = X509CriAttribute {
+                oid,
+                value: &value_start[..value_start.len() - i.len()],
+                parsed_attribute,
+            };
+            Ok((i, ext))
+        })(i)
+        .map_err(|_| X509Error::InvalidAttributes.into())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
     pub attr_type: Oid<'a>,
@@ -80,6 +204,23 @@ pub struct AttributeTypeAndValue<'a> {
 }
 
 impl<'a> AttributeTypeAndValue<'a> {
+    // AttributeTypeAndValue   ::= SEQUENCE {
+    //     type    AttributeType,
+    //     value   AttributeValue }
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
+                .or(Err(X509Error::InvalidX509Name))?;
+            let (i, attr_value) =
+                x509_parser::parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
+            let attr = AttributeTypeAndValue {
+                attr_type,
+                attr_value,
+            };
+            Ok((i, attr))
+        })(i)
+    }
+
     /// Attempt to get the content as `str`.
     /// This can fail if the object does not contain a string type.
     ///
@@ -102,16 +243,81 @@ pub struct RelativeDistinguishedName<'a> {
     pub set: Vec<AttributeTypeAndValue<'a>>,
 }
 
+impl<'a> RelativeDistinguishedName<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_set_defined_g(|_, i| {
+            let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
+            let rdn = RelativeDistinguishedName { set };
+            Ok((i, rdn))
+        })(i)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
     pub subject_public_key: BitStringObject<'a>,
 }
 
+impl<'a> SubjectPublicKeyInfo<'a> {
+    /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
+                match x.content {
+                    BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+                    _ => Err(BerError::BerTypeError),
+                }
+            })(i)
+            .or(Err(X509Error::InvalidSPKI))?;
+            let spki = SubjectPublicKeyInfo {
+                algorithm,
+                subject_public_key,
+            };
+            Ok((i, spki))
+        })(i)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct AlgorithmIdentifier<'a> {
     pub algorithm: Oid<'a>,
     pub parameters: Option<DerObject<'a>>,
+}
+
+impl<'a> AlgorithmIdentifier<'a> {
+    /// Parse an algorithm identifier
+    ///
+    /// An algorithm identifier is defined by the following ASN.1 structure:
+    ///
+    /// <pre>
+    /// AlgorithmIdentifier  ::=  SEQUENCE  {
+    ///      algorithm               OBJECT IDENTIFIER,
+    ///      parameters              ANY DEFINED BY algorithm OPTIONAL  }
+    /// </pre>
+    ///
+    /// The algorithm identifier is used to identify a cryptographic
+    /// algorithm.  The OBJECT IDENTIFIER component identifies the algorithm
+    /// (such as DSA with SHA-1).  The contents of the optional parameters
+    /// field will vary according to the algorithm identified.
+    // lifetime is *not* useless, it is required to tell the compiler the content of the temporary
+    // DerObject has the same lifetime as the input
+    #[allow(clippy::needless_lifetimes)]
+    pub fn from_der(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, algorithm) = map_res(parse_der_oid, |x| x.as_oid_val())(i)
+                .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
+            let (i, parameters) =
+                opt(complete(parse_der))(i).or(Err(X509Error::InvalidAlgorithmIdentifier))?;
+
+            let alg = AlgorithmIdentifier {
+                algorithm,
+                parameters,
+            };
+            Ok((i, alg))
+        })(i)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -130,6 +336,20 @@ impl<'a> fmt::Display for X509Name<'a> {
 }
 
 impl<'a> X509Name<'a> {
+    /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        let start_i = i;
+        parse_ber_sequence_defined_g(move |_, i| {
+            let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;
+            let len = start_i.offset(i);
+            let name = X509Name {
+                rdn_seq,
+                raw: &start_i[..len],
+            };
+            Ok((i, name))
+        })(i)
+    }
+
     // Not using the AsRef trait, as that would not give back the full 'a lifetime
     pub fn as_raw(&self) -> &'a [u8] {
         self.raw
@@ -260,6 +480,59 @@ pub struct TbsCertificate<'a> {
     pub(crate) raw_serial: &'a [u8],
 }
 
+impl<'a> TbsCertificate<'a> {
+    /// Parse a DER-encoded TbsCertificate object
+    ///
+    /// <pre>
+    /// TBSCertificate  ::=  SEQUENCE  {
+    ///      version         [0]  Version DEFAULT v1,
+    ///      serialNumber         CertificateSerialNumber,
+    ///      signature            AlgorithmIdentifier,
+    ///      issuer               Name,
+    ///      validity             Validity,
+    ///      subject              Name,
+    ///      subjectPublicKeyInfo SubjectPublicKeyInfo,
+    ///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+    ///                           -- If present, version MUST be v2 or v3
+    ///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+    ///                           -- If present, version MUST be v2 or v3
+    ///      extensions      [3]  Extensions OPTIONAL
+    ///                           -- If present, version MUST be v3 --  }
+    /// </pre>
+    pub fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
+        let start_i = i;
+        parse_ber_sequence_defined_g(move |_, i| {
+            let (i, version) = X509Version::from_der(i)?;
+            let (i, serial) = x509_parser::parse_serial(i)?;
+            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
+            let (i, issuer) = X509Name::from_der(i)?;
+            let (i, validity) = Validity::from_der(i)?;
+            let (i, subject) = X509Name::from_der(i)?;
+            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
+            let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
+            let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
+            let (i, extensions) = x509_parser::parse_extensions(i, BerTag(3))?;
+            let len = start_i.offset(i);
+            let tbs = TbsCertificate {
+                version,
+                serial: serial.1,
+                signature,
+                issuer,
+                validity,
+                subject,
+                subject_pki,
+                issuer_uid,
+                subject_uid,
+                extensions,
+
+                raw: &start_i[..len],
+                raw_serial: serial.0,
+            };
+            Ok((i, tbs))
+        })(i)
+    }
+}
+
 impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
     fn as_ref(&self) -> &[u8] {
         &self.raw
@@ -273,6 +546,18 @@ pub struct Validity {
 }
 
 impl Validity {
+    fn from_der(i: &[u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, not_before) = ASN1Time::from_der(i)?;
+            let (i, not_after) = ASN1Time::from_der(i)?;
+            let v = Validity {
+                not_before,
+                not_after,
+            };
+            Ok((i, v))
+        })(i)
+    }
+
     /// The time left before the certificate expires.
     ///
     /// If the certificate is not currently valid, then `None` is
@@ -318,6 +603,37 @@ fn check_validity_expiration() {
 
 #[derive(Debug, PartialEq)]
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
+
+impl<'a> UniqueIdentifier<'a> {
+    // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
+    fn from_der_issuer(i: &'a [u8]) -> X509Result<Option<Self>> {
+        Self::parse(i, 1).map_err(|_| X509Error::InvalidIssuerUID.into())
+    }
+
+    // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
+    fn from_der_subject(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
+        Self::parse(i, 2).map_err(|_| X509Error::InvalidSubjectUID.into())
+    }
+
+    // Parse a [tag] UniqueIdentifier OPTIONAL
+    //
+    // UniqueIdentifier  ::=  BIT STRING
+    fn parse(i: &[u8], tag: u32) -> BerResult<Option<UniqueIdentifier>> {
+        let (rem, obj) = parse_ber_optional(parse_ber_tagged_implicit(
+            tag,
+            parse_ber_content(BerTag::BitString),
+        ))(i)?;
+        let unique_id = match obj.content {
+            BerObjectContent::Optional(None) => Ok(None),
+            BerObjectContent::Optional(Some(o)) => match o.content {
+                BerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
+                _ => Err(BerError::BerTypeError),
+            },
+            _ => Err(BerError::BerTypeError),
+        }?;
+        Ok((rem, unique_id))
+    }
+}
 
 impl<'a> TbsCertificate<'a> {
     /// Get a reference to the map of extensions.
@@ -449,6 +765,35 @@ pub struct TbsCertList<'a> {
     pub(crate) raw: &'a [u8],
 }
 
+impl<'a> TbsCertList<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        let start_i = i;
+        parse_ber_sequence_defined_g(move |_, i| {
+            let (i, version) =
+                opt(map(parse_ber_u32, X509Version))(i).or(Err(X509Error::InvalidVersion))?;
+            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
+            let (i, issuer) = X509Name::from_der(i)?;
+            let (i, this_update) = ASN1Time::from_der(i)?;
+            let (i, next_update) = ASN1Time::from_der_opt(i)?;
+            let (i, revoked_certificates) =
+                opt(complete(x509_parser::parse_revoked_certificates))(i)?;
+            let (i, extensions) = x509_parser::parse_extensions(i, BerTag(0))?;
+            let len = start_i.offset(i);
+            let tbs = TbsCertList {
+                version,
+                signature,
+                issuer,
+                this_update,
+                next_update,
+                revoked_certificates: revoked_certificates.unwrap_or_default(),
+                extensions,
+                raw: &start_i[..len],
+            };
+            Ok((i, tbs))
+        })(i)
+    }
+}
+
 impl<'a> AsRef<[u8]> for TbsCertList<'a> {
     fn as_ref(&self) -> &[u8] {
         &self.raw
@@ -492,6 +837,30 @@ pub struct RevokedCertificate<'a> {
 }
 
 impl<'a> RevokedCertificate<'a> {
+    // revokedCertificates     SEQUENCE OF SEQUENCE  {
+    //     userCertificate         CertificateSerialNumber,
+    //     revocationDate          Time,
+    //     crlEntryExtensions      Extensions OPTIONAL
+    //                                   -- if present, MUST be v2
+    //                          }  OPTIONAL,
+    pub(crate) fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, (raw_serial, user_certificate)) = x509_parser::parse_serial(i)?;
+            let (i, revocation_date) = ASN1Time::from_der(i)?;
+            let (i, extensions) = opt(complete(|i| {
+                let (rem, v) = x509_parser::parse_extension_sequence(i)?;
+                x509_parser::extensions_sequence_to_map(rem, v)
+            }))(i)?;
+            let revoked = RevokedCertificate {
+                user_certificate,
+                revocation_date,
+                extensions: extensions.unwrap_or_default(),
+                raw_serial,
+            };
+            Ok((i, revoked))
+        })(i)
+    }
+
     /// Return the serial number of the revoked certificate
     pub fn serial(&self) -> &BigUint {
         &self.user_certificate
@@ -602,6 +971,44 @@ pub struct X509CertificationRequestInfo<'a> {
     pub raw: &'a [u8],
 }
 
+impl<'a> X509CertificationRequestInfo<'a> {
+    /// Parse a certification request info structure
+    ///
+    /// Certification request information is defined by the following ASN.1 structure:
+    ///
+    /// <pre>
+    /// CertificationRequestInfo ::= SEQUENCE {
+    ///      version       INTEGER { v1(0) } (v1,...),
+    ///      subject       Name,
+    ///      subjectPKInfo SubjectPublicKeyInfo{{ PKInfoAlgorithms }},
+    ///      attributes    [0] Attributes{{ CRIAttributes }}
+    /// }
+    /// </pre>
+    ///
+    /// version is the version number; subject is the distinguished name of the certificate
+    /// subject; subject_pki contains information about the public key being certified, and
+    /// attributes is a collection of attributes providing additional information about the
+    /// subject of the certificate.
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        let start_i = i;
+        parse_ber_sequence_defined_g(move |_, i| {
+            let (i, version) = X509Version::from_der_required(i)?;
+            let (i, subject) = X509Name::from_der(i)?;
+            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
+            let (i, attributes) = x509_parser::parse_cri_attributes(i)?;
+            let len = start_i.offset(i);
+            let tbs = X509CertificationRequestInfo {
+                version,
+                subject,
+                subject_pki,
+                attributes,
+                raw: &start_i[..len],
+            };
+            Ok((i, tbs))
+        })(i)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
@@ -610,6 +1017,33 @@ pub struct X509CertificationRequest<'a> {
 }
 
 impl<'a> X509CertificationRequest<'a> {
+    /// Parse a certification signing request (CSR)
+    ///
+    /// <pre>
+    /// CertificationRequest ::= SEQUENCE {
+    ///     certificationRequestInfo CertificationRequestInfo,
+    ///     signatureAlgorithm AlgorithmIdentifier{{ SignatureAlgorithms }},
+    ///     signature          BIT STRING
+    /// }
+    /// </pre>
+    ///
+    /// certificateRequestInfo is the "Certification request information", it is the value being
+    /// signed; signatureAlgorithm identifies the signature algorithm; and signature is the result
+    /// of signing the certification request information with the subject's private key.
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
+            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, signature_value) = x509_parser::parse_signature_value(i)?;
+            let cert = X509CertificationRequest {
+                certification_request_info,
+                signature_algorithm,
+                signature_value,
+            };
+            Ok((i, cert))
+        })(i)
+    }
+
     pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension<'a>>> {
         self.certification_request_info
             .attributes
@@ -683,7 +1117,7 @@ impl<'a> X509CertificationRequest<'a> {
 /// buffer containing the binary representation.
 ///
 /// ```rust
-/// # use x509_parser::parse_x509_der;
+/// # use x509_parser::parse_x509_certificate;
 /// # use x509_parser::x509::X509Certificate;
 /// #
 /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
@@ -697,7 +1131,7 @@ impl<'a> X509CertificationRequest<'a> {
 /// }
 /// #
 /// # fn main() {
-/// # let res = parse_x509_der(DER);
+/// # let res = parse_x509_certificate(DER);
 /// # match res {
 /// #     Ok((_rem, x509)) => {
 /// #         display_x509_info(&x509);
@@ -714,6 +1148,56 @@ pub struct X509Certificate<'a> {
 }
 
 impl<'a> X509Certificate<'a> {
+    /// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
+    /// object.
+    ///
+    /// The returned object uses zero-copy, and so has the same lifetime as the input.
+    ///
+    /// Note that only parsing is done, not validation.
+    ///
+    /// <pre>
+    /// Certificate  ::=  SEQUENCE  {
+    ///         tbsCertificate       TBSCertificate,
+    ///         signatureAlgorithm   AlgorithmIdentifier,
+    ///         signatureValue       BIT STRING  }
+    /// </pre>
+    ///
+    /// # Example
+    ///
+    /// To parse a certificate and print the subject and issuer:
+    ///
+    /// ```rust
+    /// # use x509_parser::parse_x509_certificate;
+    /// #
+    /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+    /// #
+    /// # fn main() {
+    /// let res = parse_x509_certificate(DER);
+    /// match res {
+    ///     Ok((_rem, x509)) => {
+    ///         let subject = &x509.tbs_certificate.subject;
+    ///         let issuer = &x509.tbs_certificate.issuer;
+    ///         println!("X.509 Subject: {}", subject);
+    ///         println!("X.509 Issuer: {}", issuer);
+    ///     },
+    ///     _ => panic!("x509 parsing failed: {:?}", res),
+    /// }
+    /// # }
+    /// ```
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, tbs_certificate) = TbsCertificate::from_der(i)?;
+            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, signature_value) = x509_parser::parse_signature_value(i)?;
+            let cert = X509Certificate {
+                tbs_certificate,
+                signature_algorithm,
+                signature_value,
+            };
+            Ok((i, cert))
+        })(i)
+    }
+
     /// Get the version of the encoded certificate
     pub fn version(&self) -> X509Version {
         self.tbs_certificate.version
@@ -796,6 +1280,54 @@ pub struct CertificateRevocationList<'a> {
 }
 
 impl<'a> CertificateRevocationList<'a> {
+    /// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
+    /// object.
+    ///
+    /// The returned object uses zero-copy, and so has the same lifetime as the input.
+    ///
+    /// <pre>
+    /// CertificateList  ::=  SEQUENCE  {
+    ///      tbsCertList          TBSCertList,
+    ///      signatureAlgorithm   AlgorithmIdentifier,
+    ///      signatureValue       BIT STRING  }
+    /// </pre>
+    ///
+    /// # Example
+    ///
+    /// To parse a CRL and print information about revoked certificates:
+    ///
+    /// ```rust
+    /// # use x509_parser::parse_certificate_list;
+    /// #
+    /// # static DER: &'static [u8] = include_bytes!("../assets/example.crl");
+    /// #
+    /// # fn main() {
+    /// let res = parse_certificate_list(DER);
+    /// match res {
+    ///     Ok((_rem, crl)) => {
+    ///         for revoked in crl.iter_revoked_certificates() {
+    ///             println!("Revoked certificate serial: {}", revoked.raw_serial_as_string());
+    ///             println!("  Reason: {}", revoked.reason_code().unwrap_or_default().1);
+    ///         }
+    ///     },
+    ///     _ => panic!("CRL parsing failed: {:?}", res),
+    /// }
+    /// # }
+    /// ```
+    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
+            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, signature_value) = x509_parser::parse_signature_value(i)?;
+            let crl = CertificateRevocationList {
+                tbs_cert_list,
+                signature_algorithm,
+                signature_value,
+            };
+            Ok((i, crl))
+        })(i)
+    }
+
     /// Get the version of the encoded certificateu
     pub fn version(&self) -> Option<X509Version> {
         self.tbs_cert_list.version

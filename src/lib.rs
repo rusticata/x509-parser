@@ -23,7 +23,7 @@
 //! [`pem`](pem/index.html) module for more documentation.
 //!
 //! To decode a DER-encoded certificate, the main parsing method is
-//! [`parse_x509_der`](fn.parse_x509_der.html), which builds a
+//! [`parse_x509_certificate`](fn.parse_x509_certificate.html), which builds a
 //! [`X509Certificate`](x509/struct.X509Certificate.html) object.
 //!
 //! The returned objects for parsers follow the definitions of the RFC. This means that accessing
@@ -38,12 +38,12 @@
 //! Parsing a certificate in DER format:
 //!
 //! ```rust
-//! use x509_parser::{parse_x509_der, X509Version};
+//! use x509_parser::{parse_x509_certificate, X509Version};
 //!
 //! static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 //!
 //! # fn main() {
-//! let res = parse_x509_der(IGCA_DER);
+//! let res = parse_x509_certificate(IGCA_DER);
 //! match res {
 //!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());
@@ -58,12 +58,12 @@
 //! To parse a CRL and print information about revoked certificates:
 //!
 //! ```rust
-//! # use x509_parser::parse_crl_der;
+//! # use x509_parser::parse_certificate_list;
 //! #
 //! # static DER: &[u8] = include_bytes!("../assets/example.crl");
 //! #
 //! # fn main() {
-//! let res = parse_crl_der(DER);
+//! let res = parse_certificate_list(DER);
 //! match res {
 //!     Ok((_rem, crl)) => {
 //!         for revoked in crl.iter_revoked_certificates() {

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use x509_parser::error::*;
 use x509_parser::extensions::*;
 use x509_parser::{
-    parse_crl_der, parse_subject_public_key_info, parse_x509_der, ASN1Time, ReasonCode,
+    parse_certificate_list, parse_x509_certificate, ASN1Time, ReasonCode, SubjectPublicKeyInfo,
     X509Extension, X509Version,
 };
 
@@ -23,7 +23,7 @@ static DUPLICATE_VALUE_IN_AIA: &[u8] =
 fn test_x509_parser() {
     let empty = &b""[..];
     //assert_eq!(x509_parser(IGCA_DER), IResult::Done(empty, (1)));
-    let res = parse_x509_der(IGCA_DER);
+    let res = parse_x509_certificate(IGCA_DER);
     // println!("res: {:?}", res);
     match res {
         Ok((e, cert)) => {
@@ -137,7 +137,7 @@ fn test_x509_parser() {
 #[test]
 fn test_x509_no_extensions() {
     let empty = &b""[..];
-    let res = parse_x509_der(NO_EXTENSIONS_DER);
+    let res = parse_x509_certificate(NO_EXTENSIONS_DER);
     match res {
         Ok((e, cert)) => {
             assert_eq!(e, empty);
@@ -152,7 +152,7 @@ fn test_x509_no_extensions() {
 
 #[test]
 fn test_parse_subject_public_key_info() {
-    let res = parse_subject_public_key_info(&IGCA_DER[339..])
+    let res = SubjectPublicKeyInfo::from_der(&IGCA_DER[339..])
         .expect("Parse public key info")
         .1;
     assert_eq!(res.algorithm.algorithm, OID_PKCS1_RSAENCRYPTION);
@@ -165,7 +165,7 @@ fn test_parse_subject_public_key_info() {
 
 #[test]
 fn test_version_v1() {
-    let (rem, cert) = parse_x509_der(V1).expect("Could not parse v1 certificate");
+    let (rem, cert) = parse_x509_certificate(V1).expect("Could not parse v1 certificate");
     assert!(rem.is_empty());
     assert_eq!(cert.version(), X509Version::V1);
     let tbs_cert = cert.tbs_certificate;
@@ -175,7 +175,7 @@ fn test_version_v1() {
 
 #[test]
 fn test_crl_parse() {
-    match parse_crl_der(CRL_DER) {
+    match parse_certificate_list(CRL_DER) {
         Ok((e, cert)) => {
             assert!(e.is_empty());
 
@@ -277,7 +277,7 @@ fn test_crl_parse() {
 
 #[test]
 fn test_crl_parse_empty() {
-    match parse_crl_der(EMPTY_CRL_DER) {
+    match parse_certificate_list(EMPTY_CRL_DER) {
         Ok((e, cert)) => {
             assert!(e.is_empty());
             assert!(cert.tbs_cert_list.revoked_certificates.is_empty());
@@ -326,7 +326,7 @@ fn test_crl_parse_empty() {
 
 #[test]
 fn test_crl_parse_minimal() {
-    match parse_crl_der(MINIMAL_CRL_DER) {
+    match parse_certificate_list(MINIMAL_CRL_DER) {
         Ok((e, crl)) => {
             assert!(e.is_empty());
             let revocation_date =
@@ -346,7 +346,7 @@ fn test_crl_parse_minimal() {
 
 #[test]
 fn test_duplicate_authority_info_access() {
-    match parse_x509_der(DUPLICATE_VALUE_IN_AIA) {
+    match parse_x509_certificate(DUPLICATE_VALUE_IN_AIA) {
         Ok((_, cert)) => {
             let extension = cert
                 .tbs_certificate
