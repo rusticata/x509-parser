@@ -14,19 +14,27 @@
 - Upgrade to `der-parser` 5.0
 - Upgrade MSRV to 1.44.0
 - Re-export crates so crate users do not have to import them
+
 - Add function parse_x509_pem and deprecate pem_to_der (#53)
 - Add helper methods to X509Name and simplify accessing values
+- Add support for ReasonCode extension
+- Add support for InvalidityDate extension
+- Add support for CRL Number extension
+- Add support for Certificate Signing Request (#58)
+
+- Change type of X509Version (now directly using the u32 value)
 - X509Name: relax check, allow some non-rfc compliant strings (#50)
 - Relax some constraints for invalid dates
 - CRL: extract raw serial, and add methods to access it
 - CRL: add method to iterate revoked certificates
-- Add support for ReasonCode extension
-- Add support for InvalidityDate extension
-- Add support for CRL Number extension
 - RevokedCertificate: convert extensions list to hashmap
+
 - Refactor error handling, return meaningful errors when possible
 - Make many more functions public (parse_tbs_certificate, etc.)
-- Change type of X509Version (now directly using the u32 value)
+
+### Thanks
+
+- Dirkjan Ochtman (@djc): support for Certificate Signing Request (CSR), code refactoring, etc.
 
 ## 0.8.0
 
