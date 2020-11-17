@@ -15,8 +15,8 @@ use nom::Err;
 use num_bigint::BigUint;
 
 use crate::certificate::*;
+use crate::revocation_list::*;
 use crate::error::{X509Error, X509Result};
-use crate::x509::*;
 
 fn parse_malformed_string(i: &[u8]) -> DerResult {
     let (rem, hdr) = ber_read_element_header(i)?;

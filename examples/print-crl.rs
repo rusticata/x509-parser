@@ -6,7 +6,7 @@ use std::io;
 use x509_parser::extensions::*;
 use x509_parser::objects::*;
 use x509_parser::pem::parse_x509_pem;
-use x509_parser::x509::CertificateRevocationList;
+use x509_parser::CertificateRevocationList;
 use x509_parser::{parse_certificate_list, RevokedCertificate, X509Extension, X509Version};
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {

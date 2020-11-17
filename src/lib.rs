@@ -133,6 +133,8 @@ pub mod extensions;
 pub use extensions::X509Extension;
 pub mod objects;
 pub mod pem;
+pub mod revocation_list;
+pub use revocation_list::*;
 mod time;
 pub use time::*;
 mod x509_parser;
