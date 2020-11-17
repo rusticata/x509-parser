@@ -4,7 +4,7 @@
 //! Certificate, or a CRL, etc. It contains only printable characters.
 //! PEM-encoded binary data is essentially a beginning and matching end tag that encloses
 //! base64-encoded binary data (see:
-//! [https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail](https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail)).
+//! <https://en.wikipedia.org/wiki/Privacy-enhanced_Electronic_Mail>).
 //!
 //! # Examples
 //!
