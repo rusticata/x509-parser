@@ -62,36 +62,6 @@ newtype_enum! {
     }
 }
 
-/// Attributes for Certification Request
-#[derive(Debug, PartialEq)]
-pub struct X509CriAttribute<'a> {
-    pub oid: Oid<'a>,
-    pub value: &'a [u8],
-    pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
-}
-
-impl<'a> X509CriAttribute<'a> {
-    pub fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
-        parse_ber_sequence_defined_g(|_, i| {
-            let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
-            let value_start = i;
-            let (i, hdr) = der_read_element_header(i)?;
-            if hdr.tag != BerTag::Set {
-                return Err(Err::Error(BerError::BerTypeError));
-            };
-
-            let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)?;
-            let ext = X509CriAttribute {
-                oid,
-                value: &value_start[..value_start.len() - i.len()],
-                parsed_attribute,
-            };
-            Ok((i, ext))
-        })(i)
-        .map_err(|_| X509Error::InvalidAttributes.into())
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
     pub attr_type: Oid<'a>,
@@ -875,7 +845,7 @@ impl<'a> X509CertificationRequestInfo<'a> {
             let (i, version) = X509Version::from_der_required(i)?;
             let (i, subject) = X509Name::from_der(i)?;
             let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
-            let (i, attributes) = x509_parser::parse_cri_attributes(i)?;
+            let (i, attributes) = parse_cri_attributes(i)?;
             let len = start_i.offset(i);
             let tbs = X509CertificationRequestInfo {
                 version,

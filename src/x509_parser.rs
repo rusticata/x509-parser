@@ -3,12 +3,9 @@
 //! Based on RFC5280
 //!
 
-use std::collections::HashMap;
-
 use der_parser::ber::*;
 use der_parser::der::*;
 use der_parser::error::*;
-use der_parser::oid::Oid;
 use der_parser::*;
 use nom::branch::alt;
 use nom::bytes::complete::take;
@@ -62,35 +59,6 @@ pub(crate) fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCert
     parse_ber_sequence_defined_g(|_, a| {
         all_consuming(many1(complete(RevokedCertificate::from_der)))(a)
     })(i)
-}
-
-fn attributes_sequence_to_map<'a>(
-    i: &'a [u8],
-    v: Vec<X509CriAttribute<'a>>,
-) -> X509Result<'a, HashMap<Oid<'a>, X509CriAttribute<'a>>> {
-    let mut attributes = HashMap::new();
-    for attr in v.into_iter() {
-        if attributes.insert(attr.oid.clone(), attr).is_some() {
-            // duplicate attributes are not allowed
-            return Err(Err::Failure(X509Error::DuplicateAttributes));
-        }
-    }
-    Ok((i, attributes))
-}
-
-pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<HashMap<Oid, X509CriAttribute>> {
-    let (i, hdr) = ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
-    if i.is_empty() {
-        return Ok((i, HashMap::new()));
-    }
-    (0..hdr.structured)
-        .into_iter()
-        .try_fold((i, Vec::new()), |(i, mut attrs), _| {
-            let (rem, attr) = X509CriAttribute::from_der(i)?;
-            attrs.push(attr);
-            Ok((rem, attrs))
-        })
-        .and_then(|(i, attrs)| attributes_sequence_to_map(i, attrs))
 }
 
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
