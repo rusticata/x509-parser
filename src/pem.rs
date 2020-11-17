@@ -56,8 +56,8 @@
 //! the PEM object requires allocation of buffers, and that the lifetime of X.509 certificates will
 //! be bound to these buffers.
 
+use crate::certificate::X509Certificate;
 use crate::error::{PEMError, X509Error};
-use crate::x509::X509Certificate;
 use crate::x509_parser::parse_x509_certificate;
 use nom::{Err, IResult};
 use std::io::{BufRead, Cursor, Seek};

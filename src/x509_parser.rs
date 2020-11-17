@@ -14,6 +14,7 @@ use nom::multi::many1;
 use nom::Err;
 use num_bigint::BigUint;
 
+use crate::certificate::*;
 use crate::error::{X509Error, X509Result};
 use crate::x509::*;
 
