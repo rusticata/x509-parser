@@ -34,7 +34,7 @@ fn print_authority_key_identifier(aki: &AuthorityKeyIdentifier, level: usize) {
         s.pop();
         println!("{:indent$}keyid: {}", "", &s, indent = level);
     }
-    if let Some(_) = aki.authority_cert_issuer {
+    if aki.authority_cert_issuer.is_some() {
         unimplemented!();
     }
     if let Some(serial) = aki.authority_cert_serial {
