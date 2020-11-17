@@ -11,15 +11,17 @@ use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::oid::Oid;
 use der_parser::*;
-use nom::combinator::{complete, map, map_res, opt};
+use nom::branch::alt;
+use nom::bytes::complete::take;
+use nom::combinator::{complete, map, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{Err, Offset};
+use num_bigint::BigUint;
 use oid_registry::*;
 use rusticata_macros::newtype_enum;
 
 use crate::error::{X509Error, X509Result};
 use crate::objects::*;
-use crate::x509_parser;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct X509Version(pub u32);
@@ -71,8 +73,7 @@ impl<'a> AttributeTypeAndValue<'a> {
         parse_ber_sequence_defined_g(|_, i| {
             let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
                 .or(Err(X509Error::InvalidX509Name))?;
-            let (i, attr_value) =
-                x509_parser::parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
+            let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
             let attr = AttributeTypeAndValue {
                 attr_type,
                 attr_value,
@@ -95,6 +96,33 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// sequence).
     pub fn as_slice(&self) -> Result<&'a [u8], X509Error> {
         self.attr_value.as_slice().map_err(|e| e.into())
+    }
+}
+
+// AttributeValue          ::= ANY -- DEFINED BY AttributeType
+#[inline]
+fn parse_attribute_value(i: &[u8]) -> DerResult {
+    alt((parse_der, parse_malformed_string))(i)
+}
+
+fn parse_malformed_string(i: &[u8]) -> DerResult {
+    let (rem, hdr) = ber_read_element_header(i)?;
+    let len = hdr.len.primitive()?;
+    if len > MAX_OBJECT_SIZE {
+        return Err(nom::Err::Error(BerError::InvalidLength));
+    }
+    match hdr.tag {
+        BerTag::PrintableString => {
+            // if we are in this function, the PrintableString could not be validated.
+            // Accept it without validating charset, because some tools do not respect the charset
+            // restrictions (for ex. they use '*' while explicingly disallowed)
+            let (rem, data) = take(len as usize)(rem)?;
+            let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
+            let content = BerObjectContent::PrintableString(s);
+            let obj = DerObject::from_header_and_content(hdr, content);
+            Ok((rem, obj))
+        }
+        _ => Err(nom::Err::Error(BerError::InvalidTag)),
     }
 }
 
@@ -376,6 +404,27 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                 })
         })
     })
+}
+
+pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
+    map_res(parse_der_bitstring, |x: DerObject| {
+        match x.content {
+            BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+            _ => Err(BerError::BerTypeError),
+        }
+    })(i)
+    .or(Err(Err::Error(X509Error::InvalidSignatureValue)))
+}
+
+pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
+    map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
+}
+
+fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
+    let big = o.as_biguint()?;
+    let slice = o.as_slice().ok()?;
+
+    Some((slice, big))
 }
 
 #[cfg(test)]

@@ -58,7 +58,7 @@
 
 use crate::certificate::X509Certificate;
 use crate::error::{PEMError, X509Error};
-use crate::x509_parser::parse_x509_certificate;
+use crate::parse_x509_certificate;
 use nom::{Err, IResult};
 use std::io::{BufRead, Cursor, Seek};
 

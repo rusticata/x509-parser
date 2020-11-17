@@ -139,10 +139,31 @@ pub mod revocation_list;
 pub use revocation_list::*;
 mod time;
 pub use time::*;
-mod x509_parser;
-pub use crate::x509_parser::*;
 
 // reexports
 pub use der_parser;
 pub use nom;
 pub use num_bigint;
+
+/// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
+/// object.
+///
+///
+/// This function is an alias to [X509Certificate::from_der](x509/struct.X509Certificate.html#method.from_der). See this function
+/// for more information.
+///
+/// For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
+#[inline]
+pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> error::X509Result<X509Certificate<'a>> {
+    X509Certificate::from_der(i)
+}
+
+/// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
+/// object.
+///
+/// This function is an alias to [CertificateRevocationList::from_der](x509/struct.CertificateRevocationList.html#method.from_der). See this function
+/// for more information.
+#[inline]
+pub fn parse_certificate_list(i: &[u8]) -> error::X509Result<CertificateRevocationList> {
+    CertificateRevocationList::from_der(i)
+}

@@ -11,8 +11,11 @@ use oid_registry::*;
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
-use crate::x509::{AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version};
-use crate::x509_parser;
+use crate::x509::{
+    parse_serial, parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name,
+    X509Version,
+};
+//use crate::x509_parser;
 
 /// An X.509 v3 Certificate.
 ///
@@ -98,7 +101,7 @@ impl<'a> X509Certificate<'a> {
         parse_ber_sequence_defined_g(|_, i| {
             let (i, tbs_certificate) = TbsCertificate::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = x509_parser::parse_signature_value(i)?;
+            let (i, signature_value) = parse_signature_value(i)?;
             let cert = X509Certificate {
                 tbs_certificate,
                 signature_algorithm,
@@ -240,7 +243,7 @@ impl<'a> TbsCertificate<'a> {
         let start_i = i;
         parse_ber_sequence_defined_g(move |_, i| {
             let (i, version) = X509Version::from_der(i)?;
-            let (i, serial) = x509_parser::parse_serial(i)?;
+            let (i, serial) = parse_serial(i)?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
             let (i, issuer) = X509Name::from_der(i)?;
             let (i, validity) = Validity::from_der(i)?;

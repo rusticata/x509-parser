@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use der_parser::ber::*;
 use der_parser::oid::Oid;
 use der_parser::*;
-use nom::combinator::{complete, map, opt};
+use nom::combinator::{all_consuming, complete, map, opt};
+use nom::multi::many1;
 use nom::Offset;
 use num_bigint::BigUint;
 use oid_registry::*;
@@ -11,8 +12,9 @@ use oid_registry::*;
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
-use crate::x509::{AlgorithmIdentifier, ReasonCode, X509Name, X509Version};
-use crate::x509_parser;
+use crate::x509::{
+    parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
+};
 
 /// An X.509 v2 Certificate Revocation List (CRL).
 ///
@@ -63,7 +65,7 @@ impl<'a> CertificateRevocationList<'a> {
         parse_ber_sequence_defined_g(|_, i| {
             let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = x509_parser::parse_signature_value(i)?;
+            let (i, signature_value) = parse_signature_value(i)?;
             let crl = CertificateRevocationList {
                 tbs_cert_list,
                 signature_algorithm,
@@ -169,8 +171,7 @@ impl<'a> TbsCertList<'a> {
             let (i, issuer) = X509Name::from_der(i)?;
             let (i, this_update) = ASN1Time::from_der(i)?;
             let (i, next_update) = ASN1Time::from_der_opt(i)?;
-            let (i, revoked_certificates) =
-                opt(complete(x509_parser::parse_revoked_certificates))(i)?;
+            let (i, revoked_certificates) = opt(complete(parse_revoked_certificates))(i)?;
             let (i, extensions) = parse_extensions(i, BerTag(0))?;
             let len = start_i.offset(i);
             let tbs = TbsCertList {
@@ -214,7 +215,7 @@ impl<'a> RevokedCertificate<'a> {
     //                          }  OPTIONAL,
     pub(crate) fn from_der(i: &'a [u8]) -> X509Result<Self> {
         parse_ber_sequence_defined_g(|_, i| {
-            let (i, (raw_serial, user_certificate)) = x509_parser::parse_serial(i)?;
+            let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
             let (i, revocation_date) = ASN1Time::from_der(i)?;
             let (i, extensions) = opt(complete(|i| {
                 let (rem, v) = parse_extension_sequence(i)?;
@@ -278,4 +279,10 @@ impl<'a> RevokedCertificate<'a> {
     pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
         &self.extensions
     }
+}
+
+fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
+    parse_ber_sequence_defined_g(|_, a| {
+        all_consuming(many1(complete(RevokedCertificate::from_der)))(a)
+    })(i)
 }

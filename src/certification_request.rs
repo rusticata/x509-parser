@@ -8,12 +8,13 @@ use nom::Offset;
 use oid_registry::*;
 
 use crate::cri_attributes::*;
-use crate::error::X509Result;
 #[cfg(feature = "verify")]
 use crate::error::X509Error;
+use crate::error::X509Result;
 use crate::extensions::*;
-use crate::x509::{AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version};
-use crate::x509_parser;
+use crate::x509::{
+    parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct X509CertificationRequest<'a> {
@@ -40,7 +41,7 @@ impl<'a> X509CertificationRequest<'a> {
         parse_ber_sequence_defined_g(|_, i| {
             let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = x509_parser::parse_signature_value(i)?;
+            let (i, signature_value) = parse_signature_value(i)?;
             let cert = X509CertificationRequest {
                 certification_request_info,
                 signature_algorithm,
