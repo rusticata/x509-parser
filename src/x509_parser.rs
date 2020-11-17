@@ -567,6 +567,9 @@ fn attributes_sequence_to_map<'a>(
 
 fn parse_cri_attributes(i: &[u8]) -> X509Result<HashMap<Oid, X509CriAttribute>> {
     let (i, hdr) = ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
+    if i.is_empty() {
+        return Ok((i, HashMap::new()));
+    }
     (0..hdr.structured)
         .into_iter()
         .try_fold((i, Vec::new()), |(i, mut attrs), _| {
