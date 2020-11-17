@@ -153,16 +153,21 @@ impl Pem {
     }
 }
 
-#[test]
-fn read_pem_from_file() {
-    let file = std::io::BufReader::new(std::fs::File::open("assets/certificate.pem").unwrap());
-    let subject = Pem::read(file)
-        .unwrap()
-        .0
-        .parse_x509()
-        .unwrap()
-        .tbs_certificate
-        .subject
-        .to_string();
-    assert_eq!(subject, "CN=lists.for-our.info");
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_pem_from_file() {
+        let file = std::io::BufReader::new(std::fs::File::open("assets/certificate.pem").unwrap());
+        let subject = Pem::read(file)
+            .unwrap()
+            .0
+            .parse_x509()
+            .unwrap()
+            .tbs_certificate
+            .subject
+            .to_string();
+        assert_eq!(subject, "CN=lists.for-our.info");
+    }
 }

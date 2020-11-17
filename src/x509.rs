@@ -586,21 +586,6 @@ impl Validity {
     }
 }
 
-#[test]
-fn check_validity_expiration() {
-    let mut v = Validity {
-        not_before: ASN1Time::now(),
-        not_after: ASN1Time::now(),
-    };
-    assert_eq!(v.time_to_expiration(), None);
-    v.not_after = (v.not_after + std::time::Duration::new(60, 0)).unwrap();
-    assert!(v.time_to_expiration().is_some());
-    assert!(v.time_to_expiration().unwrap() <= std::time::Duration::from_secs(60));
-    // The following assumes this timing won't take 10 seconds... I
-    // think that is safe.
-    assert!(v.time_to_expiration().unwrap() > std::time::Duration::from_secs(50));
-}
-
 #[derive(Debug, PartialEq)]
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
@@ -1384,6 +1369,21 @@ mod tests {
     use super::*;
     use der_parser::ber::BerObjectContent;
     use der_parser::oid;
+
+    #[test]
+    fn check_validity_expiration() {
+        let mut v = Validity {
+            not_before: ASN1Time::now(),
+            not_after: ASN1Time::now(),
+        };
+        assert_eq!(v.time_to_expiration(), None);
+        v.not_after = (v.not_after + std::time::Duration::new(60, 0)).unwrap();
+        assert!(v.time_to_expiration().is_some());
+        assert!(v.time_to_expiration().unwrap() <= std::time::Duration::from_secs(60));
+        // The following assumes this timing won't take 10 seconds... I
+        // think that is safe.
+        assert!(v.time_to_expiration().unwrap() > std::time::Duration::from_secs(50));
+    }
 
     #[test]
     fn test_x509_name() {
