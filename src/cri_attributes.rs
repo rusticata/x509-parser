@@ -1,7 +1,9 @@
-use crate::x509::X509Extension;
+use std::collections::HashMap;
+
 use der_parser::oid::Oid;
 use oid_registry::*;
-use std::collections::HashMap;
+
+use crate::extensions::X509Extension;
 
 /// Section 3.1 of rfc 5272
 #[derive(Debug, PartialEq)]
@@ -55,9 +57,9 @@ pub(crate) mod parser {
     fn parse_extension_request<'a>(
         i: &'a [u8],
     ) -> IResult<&'a [u8], ParsedCriAttribute<'a>, BerError> {
-        crate::x509_parser::parse_extension_sequence(i)
+        crate::extensions::parse_extension_sequence(i)
             .and_then(|(i, extensions)| {
-                crate::x509_parser::extensions_sequence_to_map(i, extensions)
+                crate::extensions::extensions_sequence_to_map(i, extensions)
             })
             .map(|(i, extensions)| {
                 (

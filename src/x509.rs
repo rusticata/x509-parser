@@ -62,111 +62,6 @@ newtype_enum! {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct X509Extension<'a> {
-    /// OID describing the extension content
-    pub oid: Oid<'a>,
-    /// Boolean value describing the 'critical' attribute of the extension
-    ///
-    /// An extension includes the boolean critical, with a default value of FALSE.
-    pub critical: bool,
-    /// Raw content of the extension
-    pub value: &'a [u8],
-    pub(crate) parsed_extension: ParsedExtension<'a>,
-}
-
-impl<'a> X509Extension<'a> {
-    /// Parse a DER-encoded X.509 extension
-    ///
-    /// X.509 extensions allow adding attributes to objects like certificates or revocation lists.
-    ///
-    /// Each extension in a certificate is designated as either critical or non-critical.  A
-    /// certificate using system MUST reject the certificate if it encounters a critical extension it
-    /// does not recognize; however, a non-critical extension MAY be ignored if it is not recognized.
-    ///
-    /// Each extension includes an OID and an ASN.1 structure.  When an extension appears in a
-    /// certificate, the OID appears as the field extnID and the corresponding ASN.1 encoded structure
-    /// is the value of the octet string extnValue.  A certificate MUST NOT include more than one
-    /// instance of a particular extension.
-    ///
-    /// This function parses the global structure (described above), and will return the object if it
-    /// succeeds. During this step, it also attempts to parse the content of the extension, if known.
-    /// The returned object has a
-    /// [parsed_extension](x509/struct.X509Extension.html#method.parsed_extension) method. The returned
-    /// enum is either a known extension, or the special value `ParsedExtension::UnsupportedExtension`.
-    ///
-    /// <pre>
-    /// Extension  ::=  SEQUENCE  {
-    ///     extnID      OBJECT IDENTIFIER,
-    ///     critical    BOOLEAN DEFAULT FALSE,
-    ///     extnValue   OCTET STRING  }
-    /// </pre>
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use x509_parser::{X509Extension, extensions::ParsedExtension};
-    /// #
-    /// static DER: &[u8] = &[
-    ///    0x30, 0x1D, 0x06, 0x03, 0x55, 0x1D, 0x0E, 0x04, 0x16, 0x04, 0x14, 0xA3, 0x05, 0x2F, 0x18,
-    ///    0x60, 0x50, 0xC2, 0x89, 0x0A, 0xDD, 0x2B, 0x21, 0x4F, 0xFF, 0x8E, 0x4E, 0xA8, 0x30, 0x31,
-    ///    0x36 ];
-    ///
-    /// # fn main() {
-    /// let res = X509Extension::from_der(DER);
-    /// match res {
-    ///     Ok((_rem, ext)) => {
-    ///         println!("Extension OID: {}", ext.oid);
-    ///         println!("  Critical: {}", ext.critical);
-    ///         let parsed_ext = ext.parsed_extension();
-    ///         assert!(*parsed_ext != ParsedExtension::UnsupportedExtension);
-    ///         if let ParsedExtension::SubjectKeyIdentifier(key_id) = parsed_ext {
-    ///             assert!(key_id.0.len() > 0);
-    ///         } else {
-    ///             panic!("Extension has wrong type");
-    ///         }
-    ///     },
-    ///     _ => panic!("x509 extension parsing failed: {:?}", res),
-    /// }
-    /// # }
-    /// ```
-    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
-            let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
-            let (i, critical) = x509_parser::der_read_critical(i)?;
-            let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
-            let (i, parsed_extension) = crate::extensions::parser::parse_extension(i, value, &oid)?;
-            let ext = X509Extension {
-                oid,
-                critical,
-                value,
-                parsed_extension,
-            };
-            Ok((i, ext))
-        })(i)
-        .map_err(|_| X509Error::InvalidExtensions.into())
-    }
-
-    pub fn new(
-        oid: Oid<'a>,
-        critical: bool,
-        value: &'a [u8],
-        parsed_extension: ParsedExtension<'a>,
-    ) -> X509Extension<'a> {
-        X509Extension {
-            oid,
-            critical,
-            value,
-            parsed_extension,
-        }
-    }
-
-    /// Return the extension type or `UnsupportedExtension` if the extension is not implemented.
-    pub fn parsed_extension(&self) -> &ParsedExtension<'a> {
-        &self.parsed_extension
-    }
-}
-
 /// Attributes for Certification Request
 #[derive(Debug, PartialEq)]
 pub struct X509CriAttribute<'a> {
@@ -511,7 +406,7 @@ impl<'a> TbsCertificate<'a> {
             let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
             let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
             let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
-            let (i, extensions) = x509_parser::parse_extensions(i, BerTag(3))?;
+            let (i, extensions) = parse_extensions(i, BerTag(3))?;
             let len = start_i.offset(i);
             let tbs = TbsCertificate {
                 version,
@@ -762,7 +657,7 @@ impl<'a> TbsCertList<'a> {
             let (i, next_update) = ASN1Time::from_der_opt(i)?;
             let (i, revoked_certificates) =
                 opt(complete(x509_parser::parse_revoked_certificates))(i)?;
-            let (i, extensions) = x509_parser::parse_extensions(i, BerTag(0))?;
+            let (i, extensions) = parse_extensions(i, BerTag(0))?;
             let len = start_i.offset(i);
             let tbs = TbsCertList {
                 version,
@@ -833,8 +728,8 @@ impl<'a> RevokedCertificate<'a> {
             let (i, (raw_serial, user_certificate)) = x509_parser::parse_serial(i)?;
             let (i, revocation_date) = ASN1Time::from_der(i)?;
             let (i, extensions) = opt(complete(|i| {
-                let (rem, v) = x509_parser::parse_extension_sequence(i)?;
-                x509_parser::extensions_sequence_to_map(rem, v)
+                let (rem, v) = parse_extension_sequence(i)?;
+                extensions_sequence_to_map(rem, v)
             }))(i)?;
             let revoked = RevokedCertificate {
                 user_certificate,

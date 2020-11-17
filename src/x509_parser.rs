@@ -3,14 +3,6 @@
 //! Based on RFC5280
 //!
 
-use crate::error::{X509Error, X509Result};
-use crate::x509::*;
-use nom::branch::alt;
-use nom::bytes::complete::take;
-use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
-use nom::multi::{many0, many1};
-use nom::{exact, Err};
-use num_bigint::BigUint;
 use std::collections::HashMap;
 
 use der_parser::ber::*;
@@ -18,6 +10,15 @@ use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::oid::Oid;
 use der_parser::*;
+use nom::branch::alt;
+use nom::bytes::complete::take;
+use nom::combinator::{all_consuming, complete, map_opt, map_res};
+use nom::multi::many1;
+use nom::Err;
+use num_bigint::BigUint;
+
+use crate::error::{X509Error, X509Result};
+use crate::x509::*;
 
 fn parse_malformed_string(i: &[u8]) -> DerResult {
     let (rem, hdr) = ber_read_element_header(i)?;
@@ -48,57 +49,6 @@ pub(crate) fn parse_attribute_value(i: &[u8]) -> DerResult {
 
 pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
     map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
-}
-
-pub(crate) fn der_read_critical(i: &[u8]) -> BerResult<bool> {
-    // parse_der_optional!(i, parse_der_bool)
-    let (rem, obj) = opt(parse_der_bool)(i)?;
-    let value = obj
-        .map(|o| o.as_bool().unwrap_or_default()) // unwrap cannot fail, we just read a bool
-        .unwrap_or(false) // default critical value
-        ;
-    Ok((rem, value))
-}
-
-/// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
-pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
-    parse_ber_sequence_defined_g(|_, a| all_consuming(many0(complete(X509Extension::from_der)))(a))(
-        i,
-    )
-}
-
-pub(crate) fn extensions_sequence_to_map<'a>(
-    i: &'a [u8],
-    v: Vec<X509Extension<'a>>,
-) -> X509Result<'a, HashMap<Oid<'a>, X509Extension<'a>>> {
-    let mut extensions = HashMap::new();
-    for ext in v.into_iter() {
-        if extensions.insert(ext.oid.clone(), ext).is_some() {
-            // duplicate extensions are not allowed
-            return Err(Err::Failure(X509Error::DuplicateExtensions));
-        }
-    }
-    Ok((i, extensions))
-}
-
-pub(crate) fn parse_extensions(
-    i: &[u8],
-    explicit_tag: BerTag,
-) -> X509Result<HashMap<Oid, X509Extension>> {
-    if i.is_empty() {
-        return Ok((i, HashMap::new()));
-    }
-
-    match der_read_element_header(i) {
-        Ok((rem, hdr)) => {
-            if hdr.tag != explicit_tag {
-                return Err(Err::Error(X509Error::InvalidExtensions));
-            }
-            let (rem, list) = exact!(rem, parse_extension_sequence)?;
-            extensions_sequence_to_map(rem, list)
-        }
-        Err(_) => Err(X509Error::InvalidExtensions.into()),
-    }
 }
 
 fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {

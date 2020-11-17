@@ -128,6 +128,7 @@ pub mod x509;
 pub mod cri_attributes;
 pub mod error;
 pub mod extensions;
+pub use extensions::X509Extension;
 pub mod objects;
 pub mod pem;
 mod time;
