@@ -52,3 +52,21 @@ fn read_csr_with_san() {
         _ => unreachable!(),
     }
 }
+
+#[cfg(feature = "verify")]
+#[test]
+fn read_csr_verify() {
+    let der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
+    let (_, csr) = parse_x509_csr_der(&der.contents).expect("could not parse CSR");
+    csr.verify_signature(None).unwrap();
+
+    let mut der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
+    assert_eq!(&der.contents[28..37], b"rusticata");
+    for (i, b) in b"foobarbaz".iter().enumerate() {
+        der.contents[28 + i] = *b;
+    }
+    assert_eq!(&der.contents[28..37], b"foobarbaz");
+
+    let (_, csr) = parse_x509_csr_der(&der.contents).expect("could not parse CSR");
+    csr.verify_signature(None).unwrap_err();
+}
