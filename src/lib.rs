@@ -127,6 +127,8 @@ pub mod x509;
 
 pub mod certificate;
 pub use certificate::*;
+pub mod certification_request;
+pub use certification_request::*;
 pub mod cri_attributes;
 pub mod error;
 pub mod extensions;
