@@ -396,96 +396,7 @@ impl<'a> TbsCertificate<'a> {
             Ok((i, tbs))
         })(i)
     }
-}
 
-impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
-    fn as_ref(&self) -> &[u8] {
-        &self.raw
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Validity {
-    pub not_before: ASN1Time,
-    pub not_after: ASN1Time,
-}
-
-impl Validity {
-    fn from_der(i: &[u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
-            let (i, not_before) = ASN1Time::from_der(i)?;
-            let (i, not_after) = ASN1Time::from_der(i)?;
-            let v = Validity {
-                not_before,
-                not_after,
-            };
-            Ok((i, v))
-        })(i)
-    }
-
-    /// The time left before the certificate expires.
-    ///
-    /// If the certificate is not currently valid, then `None` is
-    /// returned.  Otherwise, the `Duration` until the certificate
-    /// expires is returned.
-    pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
-        let now = ASN1Time::now();
-        if !self.is_valid_at(now) {
-            return None;
-        }
-        // Note that the duration below is guaranteed to be positive,
-        // since we just checked that now < na
-        self.not_after - now
-    }
-
-    /// Check the certificate time validity for the provided date/time
-    #[inline]
-    pub fn is_valid_at(&self, time: ASN1Time) -> bool {
-        time >= self.not_before && time < self.not_after
-    }
-
-    /// Check the certificate time validity
-    #[inline]
-    pub fn is_valid(&self) -> bool {
-        self.is_valid_at(ASN1Time::now())
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
-
-impl<'a> UniqueIdentifier<'a> {
-    // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_issuer(i: &'a [u8]) -> X509Result<Option<Self>> {
-        Self::parse(i, 1).map_err(|_| X509Error::InvalidIssuerUID.into())
-    }
-
-    // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_subject(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
-        Self::parse(i, 2).map_err(|_| X509Error::InvalidSubjectUID.into())
-    }
-
-    // Parse a [tag] UniqueIdentifier OPTIONAL
-    //
-    // UniqueIdentifier  ::=  BIT STRING
-    fn parse(i: &[u8], tag: u32) -> BerResult<Option<UniqueIdentifier>> {
-        let (rem, obj) = parse_ber_optional(parse_ber_tagged_implicit(
-            tag,
-            parse_ber_content(BerTag::BitString),
-        ))(i)?;
-        let unique_id = match obj.content {
-            BerObjectContent::Optional(None) => Ok(None),
-            BerObjectContent::Optional(Some(o)) => match o.content {
-                BerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
-                _ => Err(BerError::BerTypeError),
-            },
-            _ => Err(BerError::BerTypeError),
-        }?;
-        Ok((rem, unique_id))
-    }
-}
-
-impl<'a> TbsCertificate<'a> {
     /// Get a reference to the map of extensions.
     pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
         &self.extensions
@@ -577,6 +488,93 @@ impl<'a> TbsCertificate<'a> {
             });
         s.pop();
         s
+    }
+}
+
+impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
+    fn as_ref(&self) -> &[u8] {
+        &self.raw
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Validity {
+    pub not_before: ASN1Time,
+    pub not_after: ASN1Time,
+}
+
+impl Validity {
+    fn from_der(i: &[u8]) -> X509Result<Self> {
+        parse_ber_sequence_defined_g(|_, i| {
+            let (i, not_before) = ASN1Time::from_der(i)?;
+            let (i, not_after) = ASN1Time::from_der(i)?;
+            let v = Validity {
+                not_before,
+                not_after,
+            };
+            Ok((i, v))
+        })(i)
+    }
+
+    /// The time left before the certificate expires.
+    ///
+    /// If the certificate is not currently valid, then `None` is
+    /// returned.  Otherwise, the `Duration` until the certificate
+    /// expires is returned.
+    pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
+        let now = ASN1Time::now();
+        if !self.is_valid_at(now) {
+            return None;
+        }
+        // Note that the duration below is guaranteed to be positive,
+        // since we just checked that now < na
+        self.not_after - now
+    }
+
+    /// Check the certificate time validity for the provided date/time
+    #[inline]
+    pub fn is_valid_at(&self, time: ASN1Time) -> bool {
+        time >= self.not_before && time < self.not_after
+    }
+
+    /// Check the certificate time validity
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.is_valid_at(ASN1Time::now())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
+
+impl<'a> UniqueIdentifier<'a> {
+    // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
+    fn from_der_issuer(i: &'a [u8]) -> X509Result<Option<Self>> {
+        Self::parse(i, 1).map_err(|_| X509Error::InvalidIssuerUID.into())
+    }
+
+    // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
+    fn from_der_subject(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
+        Self::parse(i, 2).map_err(|_| X509Error::InvalidSubjectUID.into())
+    }
+
+    // Parse a [tag] UniqueIdentifier OPTIONAL
+    //
+    // UniqueIdentifier  ::=  BIT STRING
+    fn parse(i: &[u8], tag: u32) -> BerResult<Option<UniqueIdentifier>> {
+        let (rem, obj) = parse_ber_optional(parse_ber_tagged_implicit(
+            tag,
+            parse_ber_content(BerTag::BitString),
+        ))(i)?;
+        let unique_id = match obj.content {
+            BerObjectContent::Optional(None) => Ok(None),
+            BerObjectContent::Optional(Some(o)) => match o.content {
+                BerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
+                _ => Err(BerError::BerTypeError),
+            },
+            _ => Err(BerError::BerTypeError),
+        }?;
+        Ok((rem, unique_id))
     }
 }
 
