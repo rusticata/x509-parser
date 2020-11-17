@@ -1,11 +1,11 @@
 use oid_registry::OID_PKCS1_SHA256WITHRSA;
 use x509_parser::{parse_x509_csr_der, X509Version};
 
-const CSR_DATA: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
+const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 
 #[test]
-fn read_csr() {
-    let (rem, csr) = parse_x509_csr_der(CSR_DATA).expect("could not parse CSR");
+fn read_csr_empty_attrib() {
+    let (rem, csr) = parse_x509_csr_der(CSR_DATA_EMPTY_ATTRIB).expect("could not parse CSR");
 
     assert!(rem.is_empty());
     let cri = &csr.certification_request_info;
