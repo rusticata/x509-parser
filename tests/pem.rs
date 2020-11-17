@@ -1,8 +1,3 @@
-extern crate der_parser;
-extern crate nom;
-extern crate rusticata_macros;
-extern crate x509_parser;
-
 use std::io::Cursor;
 use x509_parser::pem::{parse_x509_pem, Pem};
 use x509_parser::{parse_x509_der, X509Version};
