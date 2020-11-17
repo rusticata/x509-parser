@@ -618,6 +618,19 @@ pub fn parse_certification_request_info<'a>(
     })(i)
 }
 
+/// Parse a certification signing request (CSR)
+///
+/// <pre>
+/// CertificationRequest ::= SEQUENCE {
+///     certificationRequestInfo CertificationRequestInfo,
+///     signatureAlgorithm AlgorithmIdentifier{{ SignatureAlgorithms }},
+///     signature          BIT STRING
+/// }
+/// </pre>
+///
+/// certificateRequestInfo is the "Certification request information", it is the value being
+/// signed; signatureAlgorithm identifies the signature algorithm; and signature is the result
+/// of signing the certification request information with the subject's private key.
 pub fn parse_x509_csr_der<'a>(i: &'a [u8]) -> X509Result<X509CertificationRequest<'a>> {
     parse_ber_sequence_defined_g(|_, i| {
         let (i, certification_request_info) = parse_certification_request_info(i)?;
