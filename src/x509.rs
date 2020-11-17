@@ -120,13 +120,6 @@ pub struct X509Name<'a> {
     pub(crate) raw: &'a [u8],
 }
 
-impl<'a> X509Name<'a> {
-    // Not using the AsRef trait, as that would not give back the full 'a lifetime
-    pub fn as_raw(&self) -> &'a [u8] {
-        self.raw
-    }
-}
-
 impl<'a> fmt::Display for X509Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match x509name_to_string(&self.rdn_seq) {
@@ -137,6 +130,11 @@ impl<'a> fmt::Display for X509Name<'a> {
 }
 
 impl<'a> X509Name<'a> {
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw
+    }
+
     /// Return an iterator over the `RelativeDistinguishedName` components of the name
     pub fn iter_rdn(&self) -> impl Iterator<Item = &RelativeDistinguishedName<'a>> {
         self.rdn_seq.iter()
@@ -629,6 +627,47 @@ impl<'a> X509CertificationRequest<'a> {
                 }
             })
     }
+
+    /// Verify the cryptographic signature of this certificate
+    ///
+    /// `public_key` is the public key of the **signer**. For a self-signed certificate,
+    /// (for ex. a public root certificate authority), this is the key from the certificate,
+    /// so you can use `None`.
+    ///
+    /// For a leaf certificate, this is the public key of the certificate that signed it.
+    /// It is usually an intermediate authority.
+    #[cfg(feature = "verify")]
+    pub fn verify_signature(
+        &self,
+        public_key: Option<&SubjectPublicKeyInfo>,
+    ) -> Result<(), X509Error> {
+        use ring::signature;
+        let spki = public_key.unwrap_or(&self.certification_request_info.subject_pki);
+        let signature_alg = &self.signature_algorithm.algorithm;
+        // identify verification algorithm
+        let verification_alg: &dyn signature::VerificationAlgorithm =
+            if *signature_alg == OID_PKCS1_SHA1WITHRSA {
+                &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
+            } else if *signature_alg == OID_PKCS1_SHA256WITHRSA {
+                &signature::RSA_PKCS1_2048_8192_SHA256
+            } else if *signature_alg == OID_PKCS1_SHA384WITHRSA {
+                &signature::RSA_PKCS1_2048_8192_SHA384
+            } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
+                &signature::RSA_PKCS1_2048_8192_SHA512
+            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
+                &signature::ECDSA_P256_SHA256_ASN1
+            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
+                &signature::ECDSA_P384_SHA384_ASN1
+            } else {
+                return Err(X509Error::SignatureUnsupportedAlgorithm);
+            };
+        // get public key
+        let key = signature::UnparsedPublicKey::new(verification_alg, spki.subject_public_key.data);
+        // verify signature
+        let sig = self.signature_value.data;
+        key.verify(self.certification_request_info.raw, sig)
+            .or(Err(X509Error::SignatureVerificationError))
+    }
 }
 
 /// An X.509 v3 Certificate.
@@ -702,6 +741,47 @@ impl<'a> X509Certificate<'a> {
     #[inline]
     pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
         self.tbs_certificate.extensions()
+    }
+
+    /// Verify the cryptographic signature of this certificate
+    ///
+    /// `public_key` is the public key of the **signer**. For a self-signed certificate,
+    /// (for ex. a public root certificate authority), this is the key from the certificate,
+    /// so you can use `None`.
+    ///
+    /// For a leaf certificate, this is the public key of the certificate that signed it.
+    /// It is usually an intermediate authority.
+    #[cfg(feature = "verify")]
+    pub fn verify_signature(
+        &self,
+        public_key: Option<&SubjectPublicKeyInfo>,
+    ) -> Result<(), X509Error> {
+        use ring::signature;
+        let spki = public_key.unwrap_or(&self.tbs_certificate.subject_pki);
+        let signature_alg = &self.signature_algorithm.algorithm;
+        // identify verification algorithm
+        let verification_alg: &dyn signature::VerificationAlgorithm =
+            if *signature_alg == OID_PKCS1_SHA1WITHRSA {
+                &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
+            } else if *signature_alg == OID_PKCS1_SHA256WITHRSA {
+                &signature::RSA_PKCS1_2048_8192_SHA256
+            } else if *signature_alg == OID_PKCS1_SHA384WITHRSA {
+                &signature::RSA_PKCS1_2048_8192_SHA384
+            } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
+                &signature::RSA_PKCS1_2048_8192_SHA512
+            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
+                &signature::ECDSA_P256_SHA256_ASN1
+            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
+                &signature::ECDSA_P384_SHA384_ASN1
+            } else {
+                return Err(X509Error::SignatureUnsupportedAlgorithm);
+            };
+        // get public key
+        let key = signature::UnparsedPublicKey::new(verification_alg, spki.subject_public_key.data);
+        // verify signature
+        let sig = self.signature_value.data;
+        key.verify(self.tbs_certificate.raw, sig)
+            .or(Err(X509Error::SignatureVerificationError))
     }
 }
 

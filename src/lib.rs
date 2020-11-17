@@ -135,8 +135,6 @@ mod time;
 pub use time::*;
 mod x509_parser;
 pub use crate::x509_parser::*;
-mod verify;
-pub use verify::*;
 
 // reexports
 pub use der_parser;
