@@ -10,7 +10,7 @@ use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{all_consuming, complete, map, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
-use nom::{exact, Err, IResult, Offset};
+use nom::{exact, Err, Offset};
 use num_bigint::BigUint;
 use std::collections::HashMap;
 
@@ -683,9 +683,4 @@ fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
         }
     })(i)
     .or(Err(Err::Error(X509Error::InvalidSignatureValue)))
-}
-
-#[deprecated(since = "0.4.0", note = "please use `parse_x509_der` instead")]
-pub fn x509_parser(i: &[u8]) -> IResult<&[u8], X509Certificate<'_>, X509Error> {
-    parse_x509_der(i)
 }
