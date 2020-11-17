@@ -139,5 +139,6 @@ mod verify;
 pub use verify::*;
 
 // reexports
+pub extern crate der_parser;
 pub extern crate nom;
 pub extern crate num_bigint;
