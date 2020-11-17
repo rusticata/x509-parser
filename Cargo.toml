@@ -47,6 +47,3 @@ rustversion = "1.0"
 der-parser = { version = "5.0.0-beta1", features=["bigint"] }
 der-oid-macro = "0.3"
 thiserror = "1.0"
-
-[badges]
-travis-ci = { repository = "rusticata/x509-parser" }
