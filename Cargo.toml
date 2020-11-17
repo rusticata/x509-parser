@@ -39,7 +39,7 @@ chrono = { version="0.4", default-features=false, features=["std"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "6.0"
-oid-registry = { version="0.1.0", features=["crypto", "x509"] }
+oid-registry = { git = "https://github.com/rusticata/oid-registry", branch = "master", features=["crypto", "x509"] }
 rusticata-macros = "3.0"
 num-bigint = "0.3"
 ring = { version="0.16", optional=true }
@@ -50,6 +50,3 @@ thiserror = "1.0"
 
 [badges]
 travis-ci = { repository = "rusticata/x509-parser" }
-
-[patch.crates-io]
-oid-registry = { git = "https://github.com/rusticata/oid-registry", branch = "master" }
