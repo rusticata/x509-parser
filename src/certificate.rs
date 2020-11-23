@@ -1,3 +1,5 @@
+//! X.509 Certificate object definitions and operations
+
 use std::collections::HashMap;
 
 use der_parser::ber::*;
@@ -31,7 +33,7 @@ use crate::x509::{
 ///
 /// ```rust
 /// # use x509_parser::parse_x509_certificate;
-/// # use x509_parser::X509Certificate;
+/// # use x509_parser::certificate::X509Certificate;
 /// #
 /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 /// #

@@ -40,7 +40,7 @@ For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest
 Parsing a certificate in DER format:
 
 ```rust
-use x509_parser::{parse_x509_certificate, X509Version};
+use x509_parser::prelude::*;
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 

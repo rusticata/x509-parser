@@ -3,12 +3,7 @@ use chrono::Datelike;
 use der_parser::{oid, oid::Oid};
 use oid_registry::*;
 use std::collections::HashMap;
-use x509_parser::error::*;
-use x509_parser::extensions::*;
-use x509_parser::{
-    parse_x509_crl, parse_x509_certificate, ASN1Time, ReasonCode, SubjectPublicKeyInfo,
-    X509Extension, X509Version,
-};
+use x509_parser::prelude::*;
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &[u8] = include_bytes!("../assets/no_extensions.der");
@@ -46,7 +41,7 @@ fn test_x509_parser() {
             assert_eq!(cn_list, Ok(vec!["IGC/A"]));
             //
             let sig = &tbs_cert.signature;
-            assert_eq!(sig.algorithm, oid!(1.2.840.113549.1.1.5));
+            assert_eq!(sig.algorithm, oid!(1.2.840 .113549 .1 .1 .5));
             //
             let expected_issuer = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.issuer), expected_issuer);
@@ -66,12 +61,12 @@ fn test_x509_parser() {
             assert_eq!(na.year(), 2020);
             assert_eq!(na.month(), 10);
             assert_eq!(na.day(), 17);
-            let policies = vec![(oid!(1.2.250.1.121.1.1.1), [].as_ref())]
+            let policies = vec![(oid!(1.2.250 .1 .121 .1 .1 .1), [].as_ref())]
                 .into_iter()
                 .collect();
             let expected_extensions_list = vec![
                 X509Extension::new(
-                    oid!(2.5.29.19),
+                    oid!(2.5.29 .19),
                     true,
                     &[48, 3, 1, 1, 255],
                     ParsedExtension::BasicConstraints(BasicConstraints {
@@ -80,19 +75,19 @@ fn test_x509_parser() {
                     }),
                 ),
                 X509Extension::new(
-                    oid!(2.5.29.15),
+                    oid!(2.5.29 .15),
                     false,
                     &[3, 2, 1, 70],
                     ParsedExtension::KeyUsage(KeyUsage { flags: 98 }),
                 ),
                 X509Extension::new(
-                    oid!(2.5.29.32),
+                    oid!(2.5.29 .32),
                     false,
                     &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
                     ParsedExtension::CertificatePolicies(CertificatePolicies { policies }),
                 ),
                 X509Extension::new(
-                    oid!(2.5.29.14),
+                    oid!(2.5.29 .14),
                     false,
                     &[
                         4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
@@ -104,7 +99,7 @@ fn test_x509_parser() {
                     ])),
                 ),
                 X509Extension::new(
-                    oid!(2.5.29.35),
+                    oid!(2.5.29 .35),
                     false,
                     &[
                         48, 22, 128, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79,
@@ -214,18 +209,18 @@ fn test_crl_parse() {
             assert_eq!(revoked_cert_0.revocation_date, revocation_date);
             let mut extensions_map = HashMap::new();
             extensions_map.insert(
-                oid!(2.5.29.21),
+                oid!(2.5.29 .21),
                 X509Extension::new(
-                    oid!(2.5.29.21),
+                    oid!(2.5.29 .21),
                     false,
                     &[10, 1, 3],
                     ParsedExtension::ReasonCode(ReasonCode::AffiliationChanged),
                 ),
             );
             extensions_map.insert(
-                oid!(2.5.29.24),
+                oid!(2.5.29 .24),
                 X509Extension::new(
-                    oid!(2.5.29.24),
+                    oid!(2.5.29 .24),
                     false,
                     &[
                         24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90,
@@ -240,7 +235,7 @@ fn test_crl_parse() {
 
             let expected_extensions = vec![
                 X509Extension::new(
-                    oid!(2.5.29.35),
+                    oid!(2.5.29 .35),
                     false,
                     &[
                         48, 22, 128, 20, 190, 18, 1, 204, 170, 234, 17, 128, 218, 46, 173, 178,
@@ -256,7 +251,7 @@ fn test_crl_parse() {
                     }),
                 ),
                 X509Extension::new(
-                    oid!(2.5.29.20),
+                    oid!(2.5.29 .20),
                     false,
                     &[2, 1, 3],
                     ParsedExtension::CRLNumber(3u32.into()),
@@ -284,7 +279,7 @@ fn test_crl_parse_empty() {
 
             let expected_extensions = vec![
                 X509Extension::new(
-                    oid!(2.5.29.20),
+                    oid!(2.5.29 .20),
                     false,
                     &[2, 1, 2],
                     ParsedExtension::CRLNumber(2u32.into()),

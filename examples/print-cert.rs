@@ -3,11 +3,7 @@ use nom::HexDisplay;
 use std::cmp::min;
 use std::env;
 use std::io;
-use x509_parser::extensions::*;
-use x509_parser::objects::*;
-use x509_parser::pem::parse_x509_pem;
-use x509_parser::X509Certificate;
-use x509_parser::{parse_x509_certificate, X509Extension};
+use x509_parser::prelude::*;
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {
     let m = min(bytes.len(), max_len);
@@ -57,7 +53,7 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     }
 }
 
-fn print_x509_digest_algorithm(alg: &x509_parser::AlgorithmIdentifier, level: usize) {
+fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
     println!(
         "{:indent$}Oid: {}",
         "",

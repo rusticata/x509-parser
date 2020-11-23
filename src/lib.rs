@@ -38,7 +38,7 @@
 //! Parsing a certificate in DER format:
 //!
 //! ```rust
-//! use x509_parser::{parse_x509_certificate, X509Version};
+//! use x509_parser::prelude::*;
 //!
 //! static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 //!
@@ -87,7 +87,7 @@
 //!
 //! ```rust
 //! # #[cfg(feature = "verify")]
-//! # use x509_parser::X509Certificate;
+//! # use x509_parser::certificate::X509Certificate;
 //! /// Cryptographic signature verification: returns true if certificate was signed by issuer
 //! #[cfg(feature = "verify")]
 //! pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
@@ -122,28 +122,25 @@
 ))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-pub use x509::*;
-pub mod x509;
-
 pub mod certificate;
-pub use certificate::*;
 pub mod certification_request;
-pub use certification_request::*;
 pub mod cri_attributes;
 pub mod error;
 pub mod extensions;
-pub use extensions::X509Extension;
 pub mod objects;
 pub mod pem;
+pub mod prelude;
 pub mod revocation_list;
-pub use revocation_list::*;
-mod time;
-pub use time::*;
+pub mod time;
+pub mod x509;
 
 // reexports
 pub use der_parser;
 pub use nom;
 pub use num_bigint;
+
+use certificate::X509Certificate;
+use revocation_list::CertificateRevocationList;
 
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
 /// object.

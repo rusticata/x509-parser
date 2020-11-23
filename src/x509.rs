@@ -283,7 +283,7 @@ impl<'a> X509Name<'a> {
     /// A common operation is to extract the `CommonName` as a string.
     ///
     /// ```
-    /// use x509_parser::X509Name;
+    /// use x509_parser::x509::X509Name;
     ///
     /// fn get_first_cn_as_str<'a>(name: &'a X509Name<'_>) -> Option<&'a str> {
     ///     name.iter_common_name()

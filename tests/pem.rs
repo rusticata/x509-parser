@@ -1,6 +1,6 @@
 use std::io::Cursor;
 use x509_parser::pem::{parse_x509_pem, Pem};
-use x509_parser::{parse_x509_certificate, X509Version};
+use x509_parser::{parse_x509_certificate, x509::X509Version};
 
 static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 

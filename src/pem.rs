@@ -14,7 +14,7 @@
 //! ```rust,no_run
 //! use std::io::Cursor;
 //! use x509_parser::pem::Pem;
-//! use x509_parser::X509Version;
+//! use x509_parser::x509::X509Version;
 //!
 //! static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
 //!

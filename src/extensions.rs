@@ -16,8 +16,8 @@ use num_bigint::BigUint;
 use oid_registry::*;
 
 use crate::error::{X509Error, X509Result};
-use crate::time::der_to_utctime;
-use crate::{ASN1Time, ReasonCode, X509Name};
+use crate::time::{der_to_utctime, ASN1Time};
+use crate::x509::{ReasonCode, X509Name};
 
 #[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
@@ -62,7 +62,7 @@ impl<'a> X509Extension<'a> {
     /// # Example
     ///
     /// ```rust
-    /// # use x509_parser::{X509Extension, extensions::ParsedExtension};
+    /// # use x509_parser::extensions::{X509Extension, ParsedExtension};
     /// #
     /// static DER: &[u8] = &[
     ///    0x30, 0x1D, 0x06, 0x03, 0x55, 0x1D, 0x0E, 0x04, 0x16, 0x04, 0x14, 0xA3, 0x05, 0x2F, 0x18,
@@ -1017,7 +1017,7 @@ mod tests {
             assert!(!eku.email_protection);
             assert!(eku.time_stamping);
             assert!(!eku.ocscp_signing);
-            assert_eq!(eku.other, vec![oid!(1.2.3.4.0.42)]);
+            assert_eq!(eku.other, vec![oid!(1.2.3 .4 .0 .42)]);
         }
         assert_eq!(
             tbs.policy_constraints().unwrap().1,
@@ -1049,10 +1049,10 @@ mod tests {
                 "C=UK, O=My Organization, OU=My Unit, CN=My Name"
             );
             assert_eq!(alt_names[4], GeneralName::DNSName("localhost"));
-            assert_eq!(alt_names[5], GeneralName::RegisteredID(oid!(1.2.90.0)));
+            assert_eq!(alt_names[5], GeneralName::RegisteredID(oid!(1.2.90 .0)));
             assert_eq!(
                 alt_names[6],
-                GeneralName::OtherName(oid!(1.2.3.4), b"\xA0\x17\x0C\x15some other identifier")
+                GeneralName::OtherName(oid!(1.2.3 .4), b"\xA0\x17\x0C\x15some other identifier")
             );
         }
 

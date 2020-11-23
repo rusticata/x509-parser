@@ -1,6 +1,5 @@
 use oid_registry::{OID_PKCS1_SHA256WITHRSA, OID_SIG_ECDSA_WITH_SHA256, OID_X509_COMMON_NAME};
-use x509_parser::extensions::{GeneralName, ParsedExtension};
-use x509_parser::{pem, X509CertificationRequest, X509Version};
+use x509_parser::prelude::*;
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 const CSR_DATA: &[u8] = include_bytes!("../assets/test.csr");
