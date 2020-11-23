@@ -439,13 +439,13 @@ mod tests {
             rdn_seq: vec![
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: oid!(2.5.4.6), // countryName
+                        attr_type: oid!(2.5.4 .6), // countryName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: oid!(2.5.4.8), // stateOrProvinceName
+                        attr_type: oid!(2.5.4 .8), // stateOrProvinceName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                             "Some-State",
                         )),
@@ -453,7 +453,7 @@ mod tests {
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: oid!(2.5.4.10), // organizationName
+                        attr_type: oid!(2.5.4 .10), // organizationName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                             "Internet Widgits Pty Ltd",
                         )),
@@ -462,13 +462,13 @@ mod tests {
                 RelativeDistinguishedName {
                     set: vec![
                         AttributeTypeAndValue {
-                            attr_type: oid!(2.5.4.3), // CN
+                            attr_type: oid!(2.5.4 .3), // CN
                             attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                                 "Test1",
                             )),
                         },
                         AttributeTypeAndValue {
-                            attr_type: oid!(2.5.4.3), // CN
+                            attr_type: oid!(2.5.4 .3), // CN
                             attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
                                 "Test2",
                             )),

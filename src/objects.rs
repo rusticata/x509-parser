@@ -52,7 +52,7 @@ mod tests {
     // This test is meant to check syntax of pattern matching with OID objects
     #[test]
     fn test_oid_match() {
-        let oid = oid!(1.2.840.113549.1.1.5);
+        let oid = oid!(1.2.840 .113549 .1 .1 .5);
         if oid == OID_PKCS1_SHA1WITHRSA {
             // ok
         }
