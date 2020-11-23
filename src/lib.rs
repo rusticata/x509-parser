@@ -140,6 +140,7 @@ pub use nom;
 pub use num_bigint;
 
 use certificate::X509Certificate;
+use error::X509Result;
 use revocation_list::CertificateRevocationList;
 
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
@@ -151,7 +152,7 @@ use revocation_list::CertificateRevocationList;
 ///
 /// For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
 #[inline]
-pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> error::X509Result<X509Certificate<'a>> {
+pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
     X509Certificate::from_der(i)
 }
 
@@ -161,6 +162,27 @@ pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> error::X509Result<X509Certific
 /// This function is an alias to [CertificateRevocationList::from_der](x509/struct.CertificateRevocationList.html#method.from_der). See this function
 /// for more information.
 #[inline]
-pub fn parse_x509_crl(i: &[u8]) -> error::X509Result<CertificateRevocationList> {
+pub fn parse_x509_crl(i: &[u8]) -> X509Result<CertificateRevocationList> {
+    CertificateRevocationList::from_der(i)
+}
+
+/// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
+#[deprecated(
+    since = "0.9.0",
+    note = "please use `parse_x509_certificate` or `X509Certificate::from_der` instead"
+)]
+#[inline]
+pub fn parse_x509_der<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
+    X509Certificate::from_der(i)
+}
+
+/// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
+/// object.
+#[deprecated(
+    since = "0.9.0",
+    note = "please use `parse_x509_crl` or `CertificateRevocationList::from_der` instead"
+)]
+#[inline]
+pub fn parse_crl_der(i: &[u8]) -> X509Result<CertificateRevocationList> {
     CertificateRevocationList::from_der(i)
 }
