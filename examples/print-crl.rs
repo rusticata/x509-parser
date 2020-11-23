@@ -7,7 +7,7 @@ use x509_parser::extensions::*;
 use x509_parser::objects::*;
 use x509_parser::pem::parse_x509_pem;
 use x509_parser::CertificateRevocationList;
-use x509_parser::{parse_certificate_list, RevokedCertificate, X509Extension, X509Version};
+use x509_parser::{parse_x509_crl, RevokedCertificate, X509Extension, X509Version};
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {
     let m = min(bytes.len(), max_len);
@@ -168,7 +168,7 @@ pub fn main() -> io::Result<()> {
             tmpdata = data;
             &tmpdata.contents
         };
-        let (_, crl) = parse_certificate_list(&der_data).expect("Could not decode DER data");
+        let (_, crl) = parse_x509_crl(&der_data).expect("Could not decode DER data");
         print_crl_info(&crl);
     }
     Ok(())

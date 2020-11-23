@@ -29,6 +29,9 @@
 - CRL: add method to iterate revoked certificates
 - RevokedCertificate: convert extensions list to hashmap
 
+- Refactor crate modules and visibility
+- Rename top-level functions to `parse_x509_certificate` and parse_x509_crl`
+
 - Refactor error handling, return meaningful errors when possible
 - Make many more functions public (parse_tbs_certificate, etc.)
 

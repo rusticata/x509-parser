@@ -25,7 +25,7 @@ DER.  A PEM-encoded certificate is a container, storing a DER object. See the
 [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module for more documentation.
 
 To decode a DER-encoded certificate, the main parsing method is
-[`parse_x509_der`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_der.html), which builds a
+[`parse_x509_certificate`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_certificate.html), which builds a
 [`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html) object.
 
 The returned objects for parsers follow the definitions of the RFC. This means that accessing
@@ -40,11 +40,11 @@ For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest
 Parsing a certificate in DER format:
 
 ```rust
-use x509_parser::{parse_x509_der, X509Version};
+use x509_parser::{parse_x509_certificate, X509Version};
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 
-let res = parse_x509_der(IGCA_DER);
+let res = parse_x509_certificate(IGCA_DER);
 match res {
     Ok((rem, cert)) => {
         assert!(rem.is_empty());
@@ -60,7 +60,7 @@ To parse a CRL and print information about revoked certificates:
 ```rust
 #
 #
-let res = parse_crl_der(DER);
+let res = parse_x509_crl(DER);
 match res {
     Ok((_rem, crl)) => {
         for revoked in crl.iter_revoked_certificates() {

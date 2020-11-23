@@ -44,12 +44,12 @@ impl<'a> CertificateRevocationList<'a> {
     /// To parse a CRL and print information about revoked certificates:
     ///
     /// ```rust
-    /// # use x509_parser::parse_certificate_list;
+    /// # use x509_parser::parse_x509_crl;
     /// #
     /// # static DER: &'static [u8] = include_bytes!("../assets/example.crl");
     /// #
     /// # fn main() {
-    /// let res = parse_certificate_list(DER);
+    /// let res = parse_x509_crl(DER);
     /// match res {
     ///     Ok((_rem, crl)) => {
     ///         for revoked in crl.iter_revoked_certificates() {

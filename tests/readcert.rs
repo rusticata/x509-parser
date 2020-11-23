@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use x509_parser::error::*;
 use x509_parser::extensions::*;
 use x509_parser::{
-    parse_certificate_list, parse_x509_certificate, ASN1Time, ReasonCode, SubjectPublicKeyInfo,
+    parse_x509_crl, parse_x509_certificate, ASN1Time, ReasonCode, SubjectPublicKeyInfo,
     X509Extension, X509Version,
 };
 
@@ -175,7 +175,7 @@ fn test_version_v1() {
 
 #[test]
 fn test_crl_parse() {
-    match parse_certificate_list(CRL_DER) {
+    match parse_x509_crl(CRL_DER) {
         Ok((e, cert)) => {
             assert!(e.is_empty());
 
@@ -277,7 +277,7 @@ fn test_crl_parse() {
 
 #[test]
 fn test_crl_parse_empty() {
-    match parse_certificate_list(EMPTY_CRL_DER) {
+    match parse_x509_crl(EMPTY_CRL_DER) {
         Ok((e, cert)) => {
             assert!(e.is_empty());
             assert!(cert.tbs_cert_list.revoked_certificates.is_empty());
@@ -326,7 +326,7 @@ fn test_crl_parse_empty() {
 
 #[test]
 fn test_crl_parse_minimal() {
-    match parse_certificate_list(MINIMAL_CRL_DER) {
+    match parse_x509_crl(MINIMAL_CRL_DER) {
         Ok((e, crl)) => {
             assert!(e.is_empty());
             let revocation_date =

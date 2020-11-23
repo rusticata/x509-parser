@@ -58,12 +58,12 @@
 //! To parse a CRL and print information about revoked certificates:
 //!
 //! ```rust
-//! # use x509_parser::parse_certificate_list;
+//! # use x509_parser::parse_x509_crl;
 //! #
 //! # static DER: &[u8] = include_bytes!("../assets/example.crl");
 //! #
 //! # fn main() {
-//! let res = parse_certificate_list(DER);
+//! let res = parse_x509_crl(DER);
 //! match res {
 //!     Ok((_rem, crl)) => {
 //!         for revoked in crl.iter_revoked_certificates() {
@@ -164,6 +164,6 @@ pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> error::X509Result<X509Certific
 /// This function is an alias to [CertificateRevocationList::from_der](x509/struct.CertificateRevocationList.html#method.from_der). See this function
 /// for more information.
 #[inline]
-pub fn parse_certificate_list(i: &[u8]) -> error::X509Result<CertificateRevocationList> {
+pub fn parse_x509_crl(i: &[u8]) -> error::X509Result<CertificateRevocationList> {
     CertificateRevocationList::from_der(i)
 }
