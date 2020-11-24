@@ -23,7 +23,7 @@ pub struct X509CriAttribute<'a> {
 
 impl<'a> X509CriAttribute<'a> {
     pub fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let value_start = i;
             let (i, hdr) = der_read_element_header(i)?;

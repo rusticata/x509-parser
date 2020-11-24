@@ -70,7 +70,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     //     type    AttributeType,
     //     value   AttributeValue }
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
                 .or(Err(X509Error::InvalidX509Name))?;
             let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
@@ -133,7 +133,7 @@ pub struct RelativeDistinguishedName<'a> {
 
 impl<'a> RelativeDistinguishedName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_set_defined_g(|_, i| {
+        parse_ber_set_defined_g(|i, _| {
             let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
             let rdn = RelativeDistinguishedName { set };
             Ok((i, rdn))
@@ -150,7 +150,7 @@ pub struct SubjectPublicKeyInfo<'a> {
 impl<'a> SubjectPublicKeyInfo<'a> {
     /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
                 match x.content {
@@ -193,7 +193,7 @@ impl<'a> AlgorithmIdentifier<'a> {
     // DerObject has the same lifetime as the input
     #[allow(clippy::needless_lifetimes)]
     pub fn from_der(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, algorithm) = map_res(parse_der_oid, |x| x.as_oid_val())(i)
                 .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
             let (i, parameters) =
@@ -227,7 +227,7 @@ impl<'a> X509Name<'a> {
     /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
-        parse_ber_sequence_defined_g(move |_, i| {
+        parse_ber_sequence_defined_g(move |i, _| {
             let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;
             let len = start_i.offset(i);
             let name = X509Name {
