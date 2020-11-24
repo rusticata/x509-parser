@@ -88,7 +88,7 @@ impl<'a> X509Extension<'a> {
     /// # }
     /// ```
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let (i, critical) = der_read_critical(i)?;
             let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
@@ -525,7 +525,7 @@ pub(crate) mod parser {
 
     fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
         fn parse_subtree<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralSubtree, BerError> {
-            parse_ber_sequence_defined_g(|_, input| {
+            parse_ber_sequence_defined_g(|input, _| {
                 map(parse_generalname, |base| GeneralSubtree { base })(input)
             })(i)
         }
@@ -533,13 +533,13 @@ pub(crate) mod parser {
             all_consuming(many1(complete(parse_subtree)))(i)
         }
 
-        let (ret, named_constraints) = parse_ber_sequence_defined_g(|_, input| {
+        let (ret, named_constraints) = parse_ber_sequence_defined_g(|input, _| {
             let (rem, permitted_subtrees) =
-                opt(complete(parse_ber_tagged_explicit_g(0, |_, input| {
+                opt(complete(parse_ber_tagged_explicit_g(0, |input, _| {
                     parse_subtrees(input)
                 })))(input)?;
             let (rem, excluded_subtrees) =
-                opt(complete(parse_ber_tagged_explicit_g(1, |_, input| {
+                opt(complete(parse_ber_tagged_explicit_g(1, |input, _| {
                     parse_subtrees(input)
                 })))(rem)?;
             let named_constraints = NameConstraints {
@@ -619,7 +619,7 @@ pub(crate) mod parser {
     fn parse_subjectalternativename<'a>(
         i: &'a [u8],
     ) -> IResult<&'a [u8], ParsedExtension, BerError> {
-        parse_ber_sequence_defined_g(|_, input| {
+        parse_ber_sequence_defined_g(|input, _| {
             let (i, general_names) = all_consuming(many0(complete(parse_generalname)))(input)?;
             Ok((
                 i,
@@ -629,7 +629,7 @@ pub(crate) mod parser {
     }
 
     fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        parse_ber_sequence_defined_g(|_, input| {
+        parse_ber_sequence_defined_g(|input, _| {
             let (i, require_explicit_policy) = opt(complete(map_res(
                 parse_ber_tagged_implicit(0, parse_ber_content(BerTag::Integer)),
                 |x| x.as_u32(),
@@ -733,7 +733,7 @@ pub(crate) mod parser {
     //         accessLocation        GeneralName  }
     fn parse_authorityinfoaccess(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         fn parse_aia<'a>(i: &'a [u8]) -> IResult<&'a [u8], (Oid<'a>, GeneralName<'a>), BerError> {
-            parse_ber_sequence_defined_g(|_, content| {
+            parse_ber_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
                 let (gn, oid) = map_res(parse_der_oid, |x: BerObject<'a>| x.as_oid_val())(content)?;
                 // Parse second element
@@ -758,8 +758,8 @@ pub(crate) mod parser {
     }
 
     fn parse_aki_content<'a>(
-        _hdr: BerObjectHeader<'_>,
         i: &'a [u8],
+        _hdr: BerObjectHeader<'_>,
     ) -> IResult<&'a [u8], AuthorityKeyIdentifier<'a>, BerError> {
         let (i, key_identifier) = opt(complete(parse_ber_tagged_implicit_g(0, |d, _, _| {
             Ok((&[], KeyIdentifier(d)))
@@ -864,7 +864,7 @@ pub(crate) mod parser {
         fn parse_policy_information<'a>(
             i: &'a [u8],
         ) -> IResult<&'a [u8], (Oid<'a>, &'a [u8]), BerError> {
-            parse_ber_sequence_defined_g(|_, content| {
+            parse_ber_sequence_defined_g(|content, _| {
                 let (qualifier_set, oid) =
                     map_res(parse_der_oid, |x: BerObject<'a>| x.as_oid_val())(content)?;
                 Ok((&[], (oid, qualifier_set)))
@@ -915,7 +915,7 @@ pub(crate) mod parser {
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
-    parse_ber_sequence_defined_g(|_, a| all_consuming(many0(complete(X509Extension::from_der)))(a))(
+    parse_ber_sequence_defined_g(|a, _| all_consuming(many0(complete(X509Extension::from_der)))(a))(
         i,
     )
 }

@@ -62,7 +62,7 @@ impl<'a> CertificateRevocationList<'a> {
     /// # }
     /// ```
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
@@ -164,7 +164,7 @@ pub struct TbsCertList<'a> {
 impl<'a> TbsCertList<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
-        parse_ber_sequence_defined_g(move |_, i| {
+        parse_ber_sequence_defined_g(move |i, _| {
             let (i, version) =
                 opt(map(parse_ber_u32, X509Version))(i).or(Err(X509Error::InvalidVersion))?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
@@ -214,7 +214,7 @@ impl<'a> RevokedCertificate<'a> {
     //                                   -- if present, MUST be v2
     //                          }  OPTIONAL,
     pub(crate) fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|_, i| {
+        parse_ber_sequence_defined_g(|i, _| {
             let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
             let (i, revocation_date) = ASN1Time::from_der(i)?;
             let (i, extensions) = opt(complete(|i| {
@@ -282,7 +282,7 @@ impl<'a> RevokedCertificate<'a> {
 }
 
 fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
-    parse_ber_sequence_defined_g(|_, a| {
+    parse_ber_sequence_defined_g(|a, _| {
         all_consuming(many1(complete(RevokedCertificate::from_der)))(a)
     })(i)
 }
