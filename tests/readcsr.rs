@@ -59,7 +59,7 @@ fn read_csr_with_san() {
 fn read_csr_verify() {
     let der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
     let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
-    csr.verify_signature(None).unwrap();
+    csr.verify_signature().unwrap();
 
     let mut der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
     assert_eq!(&der.contents[28..37], b"rusticata");
@@ -69,5 +69,5 @@ fn read_csr_verify() {
     assert_eq!(&der.contents[28..37], b"foobarbaz");
 
     let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
-    csr.verify_signature(None).unwrap_err();
+    csr.verify_signature().unwrap_err();
 }
