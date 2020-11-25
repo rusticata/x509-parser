@@ -3,10 +3,11 @@
 //! Based on RFC5280
 //!
 
-use std::fmt;
+use crate::error::{X509Error, X509Result};
+use crate::objects::*;
 
 use data_encoding::HEXUPPER;
-use der_parser::ber::*;
+use der_parser::ber::{BitStringObject, MAX_OBJECT_SIZE};
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::oid::Oid;
@@ -19,9 +20,7 @@ use nom::{Err, Offset};
 use num_bigint::BigUint;
 use oid_registry::*;
 use rusticata_macros::newtype_enum;
-
-use crate::error::{X509Error, X509Result};
-use crate::objects::*;
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct X509Version(pub u32);
@@ -30,10 +29,10 @@ impl X509Version {
     // Parse [0] EXPLICIT Version DEFAULT v1
     pub(crate) fn from_der(i: &[u8]) -> X509Result<X509Version> {
         let (rem, hdr) =
-            ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag {
-            BerTag(0) => {
-                map(parse_ber_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+            der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+        match hdr.tag.0 {
+            0 => {
+                map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
             }
             _ => Ok((i, X509Version::V1)),
         }
@@ -41,10 +40,10 @@ impl X509Version {
 
     pub(crate) fn from_der_required(i: &[u8]) -> X509Result<X509Version> {
         let (rem, hdr) =
-            ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag {
-            BerTag(0) => {
-                map(parse_ber_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+            der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+        match hdr.tag.0 {
+            0 => {
+                map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
             }
             _ => Ok((&rem[1..], X509Version::V1)),
         }
@@ -70,7 +69,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     //     type    AttributeType,
     //     value   AttributeValue }
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
                 .or(Err(X509Error::InvalidX509Name))?;
             let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
@@ -106,19 +105,19 @@ fn parse_attribute_value(i: &[u8]) -> DerResult {
 }
 
 fn parse_malformed_string(i: &[u8]) -> DerResult {
-    let (rem, hdr) = ber_read_element_header(i)?;
+    let (rem, hdr) = der_read_element_header(i)?;
     let len = hdr.len.primitive()?;
     if len > MAX_OBJECT_SIZE {
         return Err(nom::Err::Error(BerError::InvalidLength));
     }
     match hdr.tag {
-        BerTag::PrintableString => {
+        DerTag::PrintableString => {
             // if we are in this function, the PrintableString could not be validated.
             // Accept it without validating charset, because some tools do not respect the charset
             // restrictions (for ex. they use '*' while explicingly disallowed)
             let (rem, data) = take(len as usize)(rem)?;
             let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
-            let content = BerObjectContent::PrintableString(s);
+            let content = DerObjectContent::PrintableString(s);
             let obj = DerObject::from_header_and_content(hdr, content);
             Ok((rem, obj))
         }
@@ -133,7 +132,7 @@ pub struct RelativeDistinguishedName<'a> {
 
 impl<'a> RelativeDistinguishedName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_set_defined_g(|i, _| {
+        parse_der_set_defined_g(|i, _| {
             let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
             let rdn = RelativeDistinguishedName { set };
             Ok((i, rdn))
@@ -150,11 +149,11 @@ pub struct SubjectPublicKeyInfo<'a> {
 impl<'a> SubjectPublicKeyInfo<'a> {
     /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
                 match x.content {
-                    BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+                    DerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
                     _ => Err(BerError::BerTypeError),
                 }
             })(i)
@@ -193,7 +192,7 @@ impl<'a> AlgorithmIdentifier<'a> {
     // DerObject has the same lifetime as the input
     #[allow(clippy::needless_lifetimes)]
     pub fn from_der(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, algorithm) = map_res(parse_der_oid, |x| x.as_oid_val())(i)
                 .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
             let (i, parameters) =
@@ -227,7 +226,7 @@ impl<'a> X509Name<'a> {
     /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
-        parse_ber_sequence_defined_g(move |i, _| {
+        parse_der_sequence_defined_g(move |i, _| {
             let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;
             let len = start_i.offset(i);
             let name = X509Name {
@@ -359,10 +358,10 @@ impl Default for ReasonCode {
 // encoding of the attribute value
 fn attribute_value_to_string(attr: &DerObject, _attr_type: &Oid) -> Result<String, X509Error> {
     match attr.content {
-        BerObjectContent::NumericString(s)
-        | BerObjectContent::PrintableString(s)
-        | BerObjectContent::UTF8String(s)
-        | BerObjectContent::IA5String(s) => Ok(s.to_owned()),
+        DerObjectContent::NumericString(s)
+        | DerObjectContent::PrintableString(s)
+        | DerObjectContent::UTF8String(s)
+        | DerObjectContent::IA5String(s) => Ok(s.to_owned()),
         _ => {
             // type is not a string, get slice and convert it to base64
             attr.as_slice()
@@ -409,7 +408,7 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
 pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
     map_res(parse_der_bitstring, |x: DerObject| {
         match x.content {
-            BerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
+            DerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
             _ => Err(BerError::BerTypeError),
         }
     })(i)

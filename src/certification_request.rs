@@ -1,12 +1,3 @@
-use std::collections::HashMap;
-
-use der_parser::ber::*;
-use der_parser::oid::Oid;
-use der_parser::*;
-use nom::Offset;
-#[cfg(feature = "verify")]
-use oid_registry::*;
-
 use crate::cri_attributes::*;
 #[cfg(feature = "verify")]
 use crate::error::X509Error;
@@ -15,6 +6,15 @@ use crate::extensions::*;
 use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };
+
+use der_parser::ber::BitStringObject;
+use der_parser::der::*;
+use der_parser::oid::Oid;
+use der_parser::*;
+use nom::Offset;
+#[cfg(feature = "verify")]
+use oid_registry::*;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct X509CertificationRequest<'a> {
@@ -38,7 +38,7 @@ impl<'a> X509CertificationRequest<'a> {
     /// signed; signatureAlgorithm identifies the signature algorithm; and signature is the result
     /// of signing the certification request information with the subject's private key.
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
@@ -133,7 +133,7 @@ impl<'a> X509CertificationRequestInfo<'a> {
     /// subject of the certificate.
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
-        parse_ber_sequence_defined_g(move |i, _| {
+        parse_der_sequence_defined_g(move |i, _| {
             let (i, version) = X509Version::from_der_required(i)?;
             let (i, subject) = X509Name::from_der(i)?;
             let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;

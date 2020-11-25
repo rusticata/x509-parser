@@ -1,15 +1,5 @@
 //! X.509 Certificate object definitions and operations
 
-use std::collections::HashMap;
-
-use der_parser::ber::*;
-use der_parser::error::*;
-use der_parser::oid::Oid;
-use der_parser::*;
-use nom::Offset;
-use num_bigint::BigUint;
-use oid_registry::*;
-
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
@@ -17,7 +7,16 @@ use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name,
     X509Version,
 };
-//use crate::x509_parser;
+
+use der_parser::ber::{parse_ber_optional, BerTag, BitStringObject};
+use der_parser::der::*;
+use der_parser::error::*;
+use der_parser::oid::Oid;
+use der_parser::*;
+use nom::Offset;
+use num_bigint::BigUint;
+use oid_registry::*;
+use std::collections::HashMap;
 
 /// An X.509 v3 Certificate.
 ///
@@ -100,7 +99,7 @@ impl<'a> X509Certificate<'a> {
     /// # }
     /// ```
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, tbs_certificate) = TbsCertificate::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
@@ -243,7 +242,7 @@ impl<'a> TbsCertificate<'a> {
     /// </pre>
     pub fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
         let start_i = i;
-        parse_ber_sequence_defined_g(move |i, _| {
+        parse_der_sequence_defined_g(move |i, _| {
             let (i, version) = X509Version::from_der(i)?;
             let (i, serial) = parse_serial(i)?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
@@ -382,7 +381,7 @@ pub struct Validity {
 
 impl Validity {
     fn from_der(i: &[u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, not_before) = ASN1Time::from_der(i)?;
             let (i, not_after) = ASN1Time::from_der(i)?;
             let v = Validity {
@@ -439,14 +438,14 @@ impl<'a> UniqueIdentifier<'a> {
     //
     // UniqueIdentifier  ::=  BIT STRING
     fn parse(i: &[u8], tag: u32) -> BerResult<Option<UniqueIdentifier>> {
-        let (rem, obj) = parse_ber_optional(parse_ber_tagged_implicit(
+        let (rem, obj) = parse_ber_optional(parse_der_tagged_implicit(
             tag,
-            parse_ber_content(BerTag::BitString),
+            parse_der_content(DerTag::BitString),
         ))(i)?;
         let unique_id = match obj.content {
-            BerObjectContent::Optional(None) => Ok(None),
-            BerObjectContent::Optional(Some(o)) => match o.content {
-                BerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
+            DerObjectContent::Optional(None) => Ok(None),
+            DerObjectContent::Optional(Some(o)) => match o.content {
+                DerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
                 _ => Err(BerError::BerTypeError),
             },
             _ => Err(BerError::BerTypeError),

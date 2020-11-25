@@ -1,12 +1,10 @@
 //! X.509 Extensions objects and types
 
-use std::collections::HashMap;
-use std::fmt;
+use crate::error::{X509Error, X509Result};
+use crate::time::{der_to_utctime, ASN1Time};
+use crate::x509::{ReasonCode, X509Name};
 
-use der_parser::ber::*;
-use der_parser::der::{
-    der_read_element_header, parse_der_bool, parse_der_octetstring, parse_der_oid,
-};
+use der_parser::der::*;
 use der_parser::error::BerResult;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
@@ -14,10 +12,8 @@ use nom::multi::{many0, many1};
 use nom::{exact, Err};
 use num_bigint::BigUint;
 use oid_registry::*;
-
-use crate::error::{X509Error, X509Result};
-use crate::time::{der_to_utctime, ASN1Time};
-use crate::x509::{ReasonCode, X509Name};
+use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct X509Extension<'a> {
@@ -88,7 +84,7 @@ impl<'a> X509Extension<'a> {
     /// # }
     /// ```
     pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let (i, critical) = der_read_critical(i)?;
             let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
@@ -393,8 +389,6 @@ pub struct GeneralSubtree<'a> {
 
 pub(crate) mod parser {
     use crate::extensions::*;
-    use der_parser::ber::{BerObject, BerObjectHeader};
-    use der_parser::der::*;
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
@@ -525,7 +519,7 @@ pub(crate) mod parser {
 
     fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
         fn parse_subtree<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralSubtree, BerError> {
-            parse_ber_sequence_defined_g(|input, _| {
+            parse_der_sequence_defined_g(|input, _| {
                 map(parse_generalname, |base| GeneralSubtree { base })(input)
             })(i)
         }
@@ -533,13 +527,13 @@ pub(crate) mod parser {
             all_consuming(many1(complete(parse_subtree)))(i)
         }
 
-        let (ret, named_constraints) = parse_ber_sequence_defined_g(|input, _| {
+        let (ret, named_constraints) = parse_der_sequence_defined_g(|input, _| {
             let (rem, permitted_subtrees) =
-                opt(complete(parse_ber_tagged_explicit_g(0, |input, _| {
+                opt(complete(parse_der_tagged_explicit_g(0, |input, _| {
                     parse_subtrees(input)
                 })))(input)?;
             let (rem, excluded_subtrees) =
-                opt(complete(parse_ber_tagged_explicit_g(1, |input, _| {
+                opt(complete(parse_der_tagged_explicit_g(1, |input, _| {
                     parse_subtrees(input)
                 })))(rem)?;
             let named_constraints = NameConstraints {
@@ -558,7 +552,7 @@ pub(crate) mod parser {
         if len > rest.len() {
             return Err(nom::Err::Failure(BerError::ObjectTooShort));
         }
-        fn ia5str<'a>(i: &'a [u8], hdr: BerObjectHeader) -> Result<&'a str, Err<BerError>> {
+        fn ia5str<'a>(i: &'a [u8], hdr: DerObjectHeader) -> Result<&'a str, Err<BerError>> {
             der_read_element_content_as(i, DerTag::Ia5String, hdr.len, hdr.is_constructed(), 0)?
                 .1
                 .as_slice()
@@ -619,7 +613,7 @@ pub(crate) mod parser {
     fn parse_subjectalternativename<'a>(
         i: &'a [u8],
     ) -> IResult<&'a [u8], ParsedExtension, BerError> {
-        parse_ber_sequence_defined_g(|input, _| {
+        parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) = all_consuming(many0(complete(parse_generalname)))(input)?;
             Ok((
                 i,
@@ -629,13 +623,13 @@ pub(crate) mod parser {
     }
 
     fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        parse_ber_sequence_defined_g(|input, _| {
+        parse_der_sequence_defined_g(|input, _| {
             let (i, require_explicit_policy) = opt(complete(map_res(
-                parse_ber_tagged_implicit(0, parse_ber_content(BerTag::Integer)),
+                parse_der_tagged_implicit(0, parse_der_content(DerTag::Integer)),
                 |x| x.as_u32(),
             )))(input)?;
             let (i, inhibit_policy_mapping) = all_consuming(opt(complete(map_res(
-                parse_ber_tagged_implicit(1, parse_ber_content(BerTag::Integer)),
+                parse_der_tagged_implicit(1, parse_der_content(DerTag::Integer)),
                 |x| x.as_u32(),
             ))))(i)?;
             let policy_constraint = PolicyConstraints {
@@ -652,9 +646,9 @@ pub(crate) mod parser {
     fn parse_policymappings(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         fn parse_oid_pair(i: &[u8]) -> IResult<&[u8], Vec<DerObject<'_>>, BerError> {
             // read 2 OID as a SEQUENCE OF OID - length will be checked later
-            parse_ber_sequence_of_v(parse_der_oid)(i)
+            parse_der_sequence_of_v(parse_der_oid)(i)
         }
-        let (ret, pairs) = parse_ber_sequence_of_v(parse_oid_pair)(i)?;
+        let (ret, pairs) = parse_der_sequence_of_v(parse_oid_pair)(i)?;
         let mut mappings: HashMap<Oid, Vec<Oid>> = HashMap::new();
         for pair in pairs.iter() {
             if pair.len() != 2 {
@@ -678,7 +672,7 @@ pub(crate) mod parser {
     }
 
     fn parse_inhibitanypolicy(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (ret, skip_certs) = map_res(parse_der_integer, |x: BerObject| x.as_u32())(i)?;
+        let (ret, skip_certs) = map_res(parse_der_integer, |x: DerObject| x.as_u32())(i)?;
         Ok((
             ret,
             ParsedExtension::InhibitAnyPolicy(InhibitAnyPolicy { skip_certs }),
@@ -686,7 +680,7 @@ pub(crate) mod parser {
     }
 
     fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (ret, seq) = parse_ber_sequence_of(parse_der_oid)(i)?;
+        let (ret, seq) = parse_der_sequence_of(parse_der_oid)(i)?;
         let mut seen = std::collections::HashSet::new();
         let mut eku = ExtendedKeyUsage {
             any: false,
@@ -733,15 +727,15 @@ pub(crate) mod parser {
     //         accessLocation        GeneralName  }
     fn parse_authorityinfoaccess(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         fn parse_aia<'a>(i: &'a [u8]) -> IResult<&'a [u8], (Oid<'a>, GeneralName<'a>), BerError> {
-            parse_ber_sequence_defined_g(|content, _| {
+            parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
-                let (gn, oid) = map_res(parse_der_oid, |x: BerObject<'a>| x.as_oid_val())(content)?;
+                let (gn, oid) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(content)?;
                 // Parse second element
                 let (rest, gn) = parse_generalname(gn)?;
                 Ok((rest, (oid, gn)))
             })(i)
         }
-        let (ret, mut aia_list) = parse_ber_sequence_of_v(parse_aia)(i)?;
+        let (ret, mut aia_list) = parse_der_sequence_of_v(parse_aia)(i)?;
         // create the hashmap and merge entries with same OID
         let mut accessdescs: HashMap<Oid, Vec<GeneralName>> = HashMap::new();
         for (oid, gn) in aia_list.drain(..) {
@@ -759,18 +753,18 @@ pub(crate) mod parser {
 
     fn parse_aki_content<'a>(
         i: &'a [u8],
-        _hdr: BerObjectHeader<'_>,
+        _hdr: DerObjectHeader<'_>,
     ) -> IResult<&'a [u8], AuthorityKeyIdentifier<'a>, BerError> {
-        let (i, key_identifier) = opt(complete(parse_ber_tagged_implicit_g(0, |d, _, _| {
+        let (i, key_identifier) = opt(complete(parse_der_tagged_implicit_g(0, |d, _, _| {
             Ok((&[], KeyIdentifier(d)))
         })))(i)?;
         let (i, authority_cert_issuer) =
-            opt(complete(parse_ber_tagged_implicit_g(1, |d, _, _| {
+            opt(complete(parse_der_tagged_implicit_g(1, |d, _, _| {
                 many0(complete(parse_generalname))(d)
             })))(i)?;
-        let (i, authority_cert_serial) = opt(complete(parse_ber_tagged_implicit(
+        let (i, authority_cert_serial) = opt(complete(parse_der_tagged_implicit(
             2,
-            parse_ber_content(BerTag::Integer),
+            parse_der_content(DerTag::Integer),
         )))(i)?;
         let authority_cert_serial = authority_cert_serial.and_then(|o| o.as_slice().ok());
         let aki = AuthorityKeyIdentifier {
@@ -783,7 +777,7 @@ pub(crate) mod parser {
 
     // RFC 5280 section 4.2.1.1: Authority Key Identifier
     fn parse_authoritykeyidentifier(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (rem, aki) = parse_ber_sequence_defined_g(parse_aki_content)(i)?;
+        let (rem, aki) = parse_der_sequence_defined_g(parse_aki_content)(i)?;
         Ok((rem, ParsedExtension::AuthorityKeyIdentifier(aki)))
     }
 
@@ -864,13 +858,13 @@ pub(crate) mod parser {
         fn parse_policy_information<'a>(
             i: &'a [u8],
         ) -> IResult<&'a [u8], (Oid<'a>, &'a [u8]), BerError> {
-            parse_ber_sequence_defined_g(|content, _| {
+            parse_der_sequence_defined_g(|content, _| {
                 let (qualifier_set, oid) =
-                    map_res(parse_der_oid, |x: BerObject<'a>| x.as_oid_val())(content)?;
+                    map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(content)?;
                 Ok((&[], (oid, qualifier_set)))
             })(i)
         }
-        let (ret, mut policy_list) = parse_ber_sequence_of_v(parse_policy_information)(i)?;
+        let (ret, mut policy_list) = parse_der_sequence_of_v(parse_policy_information)(i)?;
         // create the policy hashmap
         let mut policies = HashMap::new();
         for (oid, qualifier_set) in policy_list.drain(..) {
@@ -915,7 +909,7 @@ pub(crate) mod parser {
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
-    parse_ber_sequence_defined_g(|a, _| all_consuming(many0(complete(X509Extension::from_der)))(a))(
+    parse_der_sequence_defined_g(|a, _| all_consuming(many0(complete(X509Extension::from_der)))(a))(
         i,
     )
 }
@@ -936,7 +930,7 @@ pub(crate) fn extensions_sequence_to_map<'a>(
 
 pub(crate) fn parse_extensions(
     i: &[u8],
-    explicit_tag: BerTag,
+    explicit_tag: DerTag,
 ) -> X509Result<HashMap<Oid, X509Extension>> {
     if i.is_empty() {
         return Ok((i, HashMap::new()));

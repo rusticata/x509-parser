@@ -1,17 +1,17 @@
-use std::collections::HashMap;
+use crate::{
+    error::{X509Error, X509Result},
+    extensions::X509Extension,
+};
 
-use der_parser::ber::{ber_read_element_header, parse_ber_sequence_defined_g, BerTag};
-use der_parser::der::{der_read_element_header, parse_der_oid};
+use der_parser::der::{
+    der_read_element_header, parse_der_oid, parse_der_sequence_defined_g, DerTag,
+};
 use der_parser::error::BerError;
 use der_parser::oid::Oid;
 use nom::combinator::map_res;
 use nom::Err;
 use oid_registry::*;
-
-use crate::{
-    error::{X509Error, X509Result},
-    extensions::X509Extension,
-};
+use std::collections::HashMap;
 
 /// Attributes for Certification Request
 #[derive(Debug, PartialEq)]
@@ -23,11 +23,11 @@ pub struct X509CriAttribute<'a> {
 
 impl<'a> X509CriAttribute<'a> {
     pub fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
-        parse_ber_sequence_defined_g(|i, _| {
+        parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let value_start = i;
             let (i, hdr) = der_read_element_header(i)?;
-            if hdr.tag != BerTag::Set {
+            if hdr.tag != DerTag::Set {
                 return Err(Err::Error(BerError::BerTypeError));
             };
 
@@ -124,7 +124,7 @@ fn attributes_sequence_to_map<'a>(
 }
 
 pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<HashMap<Oid, X509CriAttribute>> {
-    let (i, hdr) = ber_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
+    let (i, hdr) = der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
     if i.is_empty() {
         return Ok((i, HashMap::new()));
     }
