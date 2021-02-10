@@ -315,7 +315,7 @@ impl<'a> X509Name<'a> {
 
     /// Return an iterator over the `StateOrProvinceName` attributes of the X.509 Name.
     pub fn iter_state_or_province(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
-        self.iter_by_oid(&OID_X509_STREET_ADDRESS)
+        self.iter_by_oid(&OID_X509_STATE_OR_PROVINCE_NAME)
     }
 
     /// Return an iterator over the `Locality` attributes of the X.509 Name.
