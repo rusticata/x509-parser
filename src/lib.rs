@@ -138,6 +138,7 @@ pub mod x509;
 pub use der_parser;
 pub use nom;
 pub use num_bigint;
+pub use oid_registry;
 
 use certificate::X509Certificate;
 use error::X509Result;

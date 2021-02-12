@@ -1,6 +1,22 @@
 //! X.509 helper objects definitions and registry
 //!
-//! Most definitions taken from OpenSSL: /usr/include/openssl/objects.h
+//! All OID objects and definitions are now stored in the [oid-registry](https://crates.io/crates/oid-registry) crate.
+//!
+//! This crate is re-exporting `oid-registry`, so to access the OID constants the
+//! `x509_parser::oid_oid_registry` namespace can be used (see example below).
+//!
+//! ## Example
+//!
+//! To get the short name for a given OID:
+//!
+//! ```rust
+//! use x509_parser::objects::oid2sn;
+//! use x509_parser::oid_registry::*;
+//!
+//! let oid = &OID_X509_COMMON_NAME;
+//! let sn = oid2sn(oid);
+//! assert_eq!(sn, Ok("commonName"));
+//! ```
 
 use crate::error::NidError;
 use der_parser::oid::Oid;
