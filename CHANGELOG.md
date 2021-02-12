@@ -6,6 +6,17 @@
 
 ### Thanks
 
+## 0.9.1
+
+### Added/Changed/Fixed
+
+- Fix: X509Name::iter_state_or_province OID value
+- Re-export oid-registry, and add doc to show how to access OID
+
+### Thanks
+
+- @0xazure for fixing X509Name::iter_state_or_province
+
 ## 0.9.0
 
 ### Added/Changed/Fixed
