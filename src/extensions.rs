@@ -726,10 +726,10 @@ pub(crate) mod parser {
     //         accessMethod          OBJECT IDENTIFIER,
     //         accessLocation        GeneralName  }
     fn parse_authorityinfoaccess(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        fn parse_aia<'a>(i: &'a [u8]) -> IResult<&'a [u8], (Oid<'a>, GeneralName<'a>), BerError> {
+        fn parse_aia(i: &[u8]) -> IResult<&[u8], (Oid, GeneralName), BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
-                let (gn, oid) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(content)?;
+                let (gn, oid) = map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
                 // Parse second element
                 let (rest, gn) = parse_generalname(gn)?;
                 Ok((rest, (oid, gn)))
@@ -855,12 +855,10 @@ pub(crate) mod parser {
     //
     // PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice )
     fn parse_certificatepolicies(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        fn parse_policy_information<'a>(
-            i: &'a [u8],
-        ) -> IResult<&'a [u8], (Oid<'a>, &'a [u8]), BerError> {
+        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], (Oid, &[u8]), BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 let (qualifier_set, oid) =
-                    map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(content)?;
+                    map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
                 Ok((&[], (oid, qualifier_set)))
             })(i)
         }

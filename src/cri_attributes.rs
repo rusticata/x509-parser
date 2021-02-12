@@ -92,9 +92,7 @@ pub(crate) mod parser {
         }
     }
 
-    fn parse_extension_request<'a>(
-        i: &'a [u8],
-    ) -> IResult<&'a [u8], ParsedCriAttribute<'a>, BerError> {
+    fn parse_extension_request(i: &[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError> {
         crate::extensions::parse_extension_sequence(i)
             .and_then(|(i, extensions)| {
                 crate::extensions::extensions_sequence_to_map(i, extensions)
