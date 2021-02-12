@@ -34,15 +34,13 @@ fn read_csr_with_san() {
     assert_eq!(first.attr_type, OID_X509_COMMON_NAME);
     assert_eq!(first.as_str().unwrap(), "test.rusticata.fr");
 
-    assert_eq!(
-        cri.subject_pki.subject_public_key.data,
-        &[
-            4, 195, 245, 126, 177, 113, 192, 146, 215, 136, 181, 58, 82, 138, 142, 61, 253, 245,
-            185, 192, 166, 216, 218, 145, 219, 42, 169, 112, 122, 58, 91, 184, 150, 37, 237, 245,
-            59, 54, 44, 210, 44, 207, 218, 167, 148, 189, 210, 159, 207, 103, 233, 1, 187, 134,
-            137, 24, 240, 188, 223, 135, 215, 71, 80, 64, 65
-        ]
-    );
+    let expected: &[u8] = &[
+        4, 195, 245, 126, 177, 113, 192, 146, 215, 136, 181, 58, 82, 138, 142, 61, 253, 245, 185,
+        192, 166, 216, 218, 145, 219, 42, 169, 112, 122, 58, 91, 184, 150, 37, 237, 245, 59, 54,
+        44, 210, 44, 207, 218, 167, 148, 189, 210, 159, 207, 103, 233, 1, 187, 134, 137, 24, 240,
+        188, 223, 135, 215, 71, 80, 64, 65,
+    ];
+    assert_eq!(cri.subject_pki.subject_public_key.data, expected);
 
     let mut extensions = csr.requested_extensions().unwrap();
     match extensions.next().unwrap() {
