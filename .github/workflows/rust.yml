@@ -25,8 +25,32 @@ jobs:
         with:
           command: check
 
+  check-all-features:
+    name: Check All Features
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - 1.44.0
+          - nightly
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: Cargo update
+        run: cargo update
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all-targets --all-features
+
   test:
     name: Test Suite
+    needs: check-all-features
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -58,6 +82,7 @@ jobs:
 
   clippy:
     name: Clippy
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -70,10 +95,11 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --all-features -- -D warnings
 
   doc:
     name: Build documentation
+    needs: check
     runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: --cfg docsrs
