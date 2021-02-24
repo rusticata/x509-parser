@@ -74,7 +74,7 @@ impl<'a> CertificateRevocationList<'a> {
         })(i)
     }
 
-    /// Get the version of the encoded certificateu
+    /// Get the version of the encoded certificate
     pub fn version(&self) -> Option<X509Version> {
         self.tbs_cert_list.version
     }
