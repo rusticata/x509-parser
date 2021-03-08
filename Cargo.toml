@@ -41,7 +41,7 @@ lazy_static = "1.4"
 nom = "6.0"
 oid-registry = { version="0.1.1", features=["crypto", "x509"] }
 rusticata-macros = "3.0"
-num-bigint = "0.3"
+num-bigint = "0.4"
 ring = { version="0.16", optional=true }
 rustversion = "1.0"
 der-parser = { version = "5.0", features=["bigint"] }
