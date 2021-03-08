@@ -6,11 +6,11 @@ use crate::x509::{ReasonCode, X509Name};
 
 use der_parser::der::*;
 use der_parser::error::BerResult;
+use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{exact, Err};
-use num_bigint::BigUint;
 use oid_registry::*;
 use std::collections::HashMap;
 use std::fmt;

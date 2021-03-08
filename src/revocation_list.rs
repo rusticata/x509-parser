@@ -7,11 +7,11 @@ use crate::x509::{
 
 use der_parser::ber::{BerTag, BitStringObject};
 use der_parser::der::*;
+use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many1;
 use nom::Offset;
-use num_bigint::BigUint;
 use oid_registry::*;
 use std::collections::HashMap;
 

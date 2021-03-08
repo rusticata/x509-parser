@@ -11,10 +11,10 @@ use crate::x509::{
 use der_parser::ber::{parse_ber_optional, BerTag, BitStringObject};
 use der_parser::der::*;
 use der_parser::error::*;
+use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use der_parser::*;
 use nom::Offset;
-use num_bigint::BigUint;
 use oid_registry::*;
 use std::collections::HashMap;
 

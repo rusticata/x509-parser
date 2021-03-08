@@ -136,8 +136,8 @@ pub mod x509;
 
 // reexports
 pub use der_parser;
+pub use der_parser::num_bigint;
 pub use nom;
-pub use num_bigint;
 pub use oid_registry;
 
 use certificate::X509Certificate;
