@@ -44,5 +44,4 @@ rusticata-macros = "3.0"
 ring = { version="0.16", optional=true }
 rustversion = "1.0"
 der-parser = { version = "5.0", features=["bigint"] }
-der-oid-macro = "0.3"
 thiserror = "1.0"
