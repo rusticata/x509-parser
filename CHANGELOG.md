@@ -12,6 +12,7 @@
 
 - Fix: X509Name::iter_state_or_province OID value
 - Re-export oid-registry, and add doc to show how to access OID
+- Add methods to iterate all blocks from a PEM file (#75)
 
 ### Thanks
 

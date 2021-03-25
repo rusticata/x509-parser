@@ -94,22 +94,22 @@ fn print_x509_info(x509: &X509Certificate) {
 
 pub fn main() -> io::Result<()> {
     for file_name in env::args().skip(1) {
-        // placeholder to store decoded PEM data, if needed
-        let tmpdata;
-
         println!("File: {}", file_name);
         let data = std::fs::read(file_name.clone()).expect("Unable to read file");
-        let der_data: &[u8] = if (data[0], data[1]) == (0x30, 0x82) {
+        if (data[0], data[1]) == (0x30, 0x82) {
             // probably DER
-            &data
+            let (_, x509) = parse_x509_certificate(&data).expect("Could not decode DER data");
+            print_x509_info(&x509);
         } else {
             // try as PEM
-            let (_, data) = parse_x509_pem(&data).expect("Could not decode the PEM file");
-            tmpdata = data;
-            &tmpdata.contents
-        };
-        let (_, x509) = parse_x509_certificate(&der_data).expect("Could not decode DER data");
-        print_x509_info(&x509);
+            for (n, pem) in Pem::iter_from_buffer(&data).enumerate() {
+                let pem = pem.expect("Could not decode the PEM file");
+                let data = &pem.contents;
+                let (_, x509) = parse_x509_certificate(&data).expect("Could not decode DER data");
+                println!("Certificate [{}]", n);
+                print_x509_info(&x509);
+            }
+        }
     }
     Ok(())
 }

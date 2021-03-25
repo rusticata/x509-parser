@@ -12,17 +12,18 @@
 //! contents:
 //!
 //! ```rust,no_run
-//! use std::io::Cursor;
 //! use x509_parser::pem::Pem;
 //! use x509_parser::x509::X509Version;
 //!
-//! static IGCA_PEM: &[u8] = include_bytes!("../assets/IGC_A.pem");
+//! static IGCA_PEM: &str = "../assets/IGC_A.pem";
 //!
 //! # fn main() {
-//! let reader = Cursor::new(IGCA_PEM);
-//! let (pem,bytes_read) = Pem::read(reader).expect("Reading PEM failed");
-//! let x509 = pem.parse_x509().expect("X.509: decoding DER failed");
-//! assert_eq!(x509.tbs_certificate.version, X509Version::V3);
+//! let data = std::fs::read(IGCA_PEM).expect("Could not read file");
+//! for pem in Pem::iter_from_buffer(&data) {
+//!     let pem = pem.expect("Reading next PEM block failed");
+//!     let x509 = pem.parse_x509().expect("X.509: decoding DER failed");
+//!     assert_eq!(x509.tbs_certificate.version, X509Version::V3);
+//! }
 //! # }
 //! ```
 //!
@@ -60,7 +61,7 @@ use crate::certificate::X509Certificate;
 use crate::error::{PEMError, X509Error};
 use crate::parse_x509_certificate;
 use nom::{Err, IResult};
-use std::io::{BufRead, Cursor, Seek};
+use std::io::{BufRead, Cursor, Seek, SeekFrom};
 
 /// Representation of PEM data
 #[derive(PartialEq, Debug)]
@@ -81,6 +82,9 @@ pub fn pem_to_der(i: &[u8]) -> IResult<&[u8], Pem, PEMError> {
 /// Return a structure describing the PEM object: the enclosing tag, and the data.
 /// Allocates a new buffer for the decoded data.
 ///
+/// Note that only the *first* PEM block is decoded. To iterate all blocks from PEM data,
+/// use [`Pem::iter_from_buffer`].
+///
 /// For X.509 (`CERTIFICATE` tag), the data is a certificate, encoded in DER. To parse the
 /// certificate content, use `Pem::parse_x509` or `parse_x509_certificate`.
 pub fn parse_x509_pem(i: &[u8]) -> IResult<&'_ [u8], Pem, PEMError> {
@@ -93,10 +97,15 @@ pub fn parse_x509_pem(i: &[u8]) -> IResult<&'_ [u8], Pem, PEMError> {
 }
 
 impl Pem {
-    /// Read a PEM-encoded structure, and decode the base64 data
+    /// Read the next PEM-encoded structure, and decode the base64 data
     ///
     /// Returns the certificate (encoded in DER) and the number of bytes read.
     /// Allocates a new buffer for the decoded data.
+    ///
+    /// Note that a PEM file can contain multiple PEM blocks. This function returns the
+    /// *first* decoded object, starting from the current reader position.
+    /// To get all objects, call this function repeatedly until `PEMError::MissingHeader`
+    /// is returned.
     ///
     /// # Examples
     /// ```
@@ -107,11 +116,10 @@ impl Pem {
     ///     .tbs_certificate.subject.to_string();
     /// assert_eq!(subject, "CN=lists.for-our.info");
     /// ```
-
     pub fn read(mut r: impl BufRead + Seek) -> Result<(Pem, usize), PEMError> {
         let mut line = String::new();
         let label = loop {
-            let num_bytes = r.read_line(&mut line).or(Err(PEMError::MissingHeader))?;
+            let num_bytes = r.read_line(&mut line)?;
             if num_bytes == 0 {
                 // EOF
                 return Err(PEMError::MissingHeader);
@@ -144,12 +152,73 @@ impl Pem {
             label: label.to_string(),
             contents,
         };
-        Ok((pem, r.seek(std::io::SeekFrom::Current(0))? as usize))
+        Ok((pem, r.seek(SeekFrom::Current(0))? as usize))
     }
 
     /// Decode the PEM contents into a X.509 object
     pub fn parse_x509(&self) -> Result<X509Certificate, ::nom::Err<X509Error>> {
         parse_x509_certificate(&self.contents).map(|(_, x509)| x509)
+    }
+
+    /// Returns an iterator over the PEM-encapsulated parts of a buffer
+    ///
+    /// Only the sections enclosed in blocks starting with `-----BEGIN xxx-----`
+    /// and ending with `-----END xxx-----` will be considered.
+    /// Lines before, between or after such blocks will be ignored.
+    ///
+    /// The iterator is fallible: `next()` returns a `Result<Pem, PEMError>` object.
+    /// An error indicates a block is present but invalid.
+    ///
+    /// If the buffer does not contain any block, iterator will be empty.
+    pub fn iter_from_buffer(i: &[u8]) -> PemIterator<Cursor<&[u8]>> {
+        let reader = Cursor::new(i);
+        PemIterator { reader }
+    }
+
+    /// Returns an iterator over the PEM-encapsulated parts of a reader
+    ///
+    /// Only the sections enclosed in blocks starting with `-----BEGIN xxx-----`
+    /// and ending with `-----END xxx-----` will be considered.
+    /// Lines before, between or after such blocks will be ignored.
+    ///
+    /// The iterator is fallible: `next()` returns a `Result<Pem, PEMError>` object.
+    /// An error indicates a block is present but invalid.
+    ///
+    /// If the reader does not contain any block, iterator will be empty.
+    pub fn iter_from_reader<R: BufRead + Seek>(reader: R) -> PemIterator<R> {
+        PemIterator { reader }
+    }
+}
+
+/// Iterator over PEM-encapsulated blocks
+///
+/// Only the sections enclosed in blocks starting with `-----BEGIN xxx-----`
+/// and ending with `-----END xxx-----` will be considered.
+/// Lines before, between or after such blocks will be ignored.
+///
+/// The iterator is fallible: `next()` returns a `Result<Pem, PEMError>` object.
+/// An error indicates a block is present but invalid.
+///
+/// If the buffer does not contain any block, iterator will be empty.
+#[allow(missing_debug_implementations)]
+pub struct PemIterator<Reader: BufRead + Seek> {
+    reader: Reader,
+}
+
+impl<R: BufRead + Seek> Iterator for PemIterator<R> {
+    type Item = Result<Pem, PEMError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Ok(&[]) = self.reader.fill_buf() {
+            return None;
+        }
+        let reader = self.reader.by_ref();
+        let r = Pem::read(reader).map(|(pem, _)| pem);
+        if let Err(PEMError::MissingHeader) = r {
+            None
+        } else {
+            Some(r)
+        }
     }
 }
 
