@@ -6,14 +6,21 @@
 
 ### Thanks
 
+## 0.9.2
+
+### Added/Changed/Fixed
+
+- Remove der-oid-macro from dependencies, not used directly
+- Use der_parser::num_bigint, remove it from direct dependencies
+- Add methods to iterate all blocks from a PEM file (#75)
+- Update MSRV to 1.45.0
+
 ## 0.9.1
 
 ### Added/Changed/Fixed
 
 - Fix: X509Name::iter_state_or_province OID value
 - Re-export oid-registry, and add doc to show how to access OID
-- Add methods to iterate all blocks from a PEM file (#75)
-- Update MSRV to 1.45.0
 
 ### Thanks
 
