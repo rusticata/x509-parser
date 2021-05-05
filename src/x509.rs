@@ -82,19 +82,29 @@ impl<'a> AttributeTypeAndValue<'a> {
     }
 
     /// Attempt to get the content as `str`.
+    ///
     /// This can fail if the object does not contain a string type.
     ///
     /// Only NumericString, PrintableString, UTF8String and IA5String
     /// are considered here. Other string types can be read using `as_slice`.
-    pub fn as_str(&self) -> Result<&'a str, X509Error> {
+    pub fn as_str(&'a self) -> Result<&'a str, X509Error> {
         self.attr_value.as_str().map_err(|e| e.into())
     }
 
-    /// Attempt to get the content as a slice.
+    /// Attempt to get the content as a slice `&[u8]`.
+    ///
     /// This can fail if the object does not contain a type directly equivalent to a slice (e.g a
     /// sequence).
-    pub fn as_slice(&self) -> Result<&'a [u8], X509Error> {
-        self.attr_value.as_slice().map_err(|e| e.into())
+    pub fn as_slice(&'a self) -> Result<&'a [u8], X509Error> {
+        self.attr_value.as_bytes().map_err(|e| e.into())
+    }
+
+    /// Attempt to get the content as a slice `&[u8]`.
+    ///
+    /// This can fail if the object does not contain a type directly equivalent to a slice (e.g a
+    /// sequence).
+    pub fn as_bytes(&'a self) -> Result<&'a [u8], X509Error> {
+        self.attr_value.as_bytes().map_err(|e| e.into())
     }
 }
 
@@ -117,7 +127,7 @@ fn parse_malformed_string(i: &[u8]) -> DerResult {
             // restrictions (for ex. they use '*' while explicingly disallowed)
             let (rem, data) = take(len as usize)(rem)?;
             let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
-            let content = DerObjectContent::PrintableString(s);
+            let content = DerObjectContent::PrintableString(s.into());
             let obj = DerObject::from_header_and_content(hdr, content);
             Ok((rem, obj))
         }
@@ -357,14 +367,14 @@ impl Default for ReasonCode {
 // Attempt to convert attribute to string. If type is not a string, return value is the hex
 // encoding of the attribute value
 fn attribute_value_to_string(attr: &DerObject, _attr_type: &Oid) -> Result<String, X509Error> {
-    match attr.content {
+    match &attr.content {
         DerObjectContent::NumericString(s)
         | DerObjectContent::PrintableString(s)
         | DerObjectContent::UTF8String(s)
-        | DerObjectContent::IA5String(s) => Ok(s.to_owned()),
+        | DerObjectContent::IA5String(s) => Ok(s.to_string()),
         _ => {
             // type is not a string, get slice and convert it to base64
-            attr.as_slice()
+            attr.as_bytes()
                 .map(|s| HEXUPPER.encode(s))
                 .or(Err(X509Error::InvalidX509Name))
         }
@@ -421,7 +431,7 @@ pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
 
 fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
     let big = o.as_biguint()?;
-    let slice = o.as_slice().ok()?;
+    let slice = o.into_bytes().ok()?;
 
     Some((slice, big))
 }
@@ -439,14 +449,16 @@ mod tests {
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
                         attr_type: oid!(2.5.4 .6), // countryName
-                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
+                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
+                            "FR".into(),
+                        )),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
                         attr_type: oid!(2.5.4 .8), // stateOrProvinceName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                            "Some-State",
+                            "Some-State".into(),
                         )),
                     }],
                 },
@@ -454,7 +466,7 @@ mod tests {
                     set: vec![AttributeTypeAndValue {
                         attr_type: oid!(2.5.4 .10), // organizationName
                         attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                            "Internet Widgits Pty Ltd",
+                            "Internet Widgits Pty Ltd".into(),
                         )),
                     }],
                 },
@@ -463,13 +475,13 @@ mod tests {
                         AttributeTypeAndValue {
                             attr_type: oid!(2.5.4 .3), // CN
                             attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                                "Test1",
+                                "Test1".into(),
                             )),
                         },
                         AttributeTypeAndValue {
                             attr_type: oid!(2.5.4 .3), // CN
                             attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                                "Test2",
+                                "Test2".into(),
                             )),
                         },
                     ],

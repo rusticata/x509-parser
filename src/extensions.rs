@@ -87,7 +87,7 @@ impl<'a> X509Extension<'a> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let (i, critical) = der_read_critical(i)?;
-            let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
+            let (i, value) = map_res(parse_der_octetstring, |x| x.into_bytes())(i)?;
             let (i, parsed_extension) = crate::extensions::parser::parse_extension(i, value, &oid)?;
             let ext = X509Extension {
                 oid,
@@ -555,7 +555,7 @@ pub(crate) mod parser {
         fn ia5str<'a>(i: &'a [u8], hdr: DerObjectHeader) -> Result<&'a str, Err<BerError>> {
             der_read_element_content_as(i, DerTag::Ia5String, hdr.len, hdr.is_constructed(), 0)?
                 .1
-                .as_slice()
+                .into_bytes()
                 .and_then(|s| std::str::from_utf8(s).map_err(|_| BerError::BerValueError))
                 .map_err(nom::Err::Failure)
         }
@@ -588,7 +588,7 @@ pub(crate) mod parser {
                     0,
                 )?
                 .1
-                .as_slice()
+                .into_bytes()
                 .map_err(nom::Err::Failure)?;
                 GeneralName::IPAddress(ip)
             }
@@ -766,7 +766,7 @@ pub(crate) mod parser {
             2,
             parse_der_content(DerTag::Integer),
         )))(i)?;
-        let authority_cert_serial = authority_cert_serial.and_then(|o| o.as_slice().ok());
+        let authority_cert_serial = authority_cert_serial.and_then(|o| o.into_bytes().ok());
         let aki = AuthorityKeyIdentifier {
             key_identifier,
             authority_cert_issuer,
@@ -802,7 +802,7 @@ pub(crate) mod parser {
         let (rest, obj) = parse_der_octetstring(i)?;
         let id = obj
             .content
-            .as_slice()
+            .into_bytes()
             .or(Err(Err::Error(BerError::BerTypeError)))?;
         let ki = KeyIdentifier(id);
         let ret = ParsedExtension::SubjectKeyIdentifier(ki);

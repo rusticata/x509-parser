@@ -85,7 +85,7 @@ fn parse_malformed_date(i: &[u8]) -> DerResult {
                 return Err(nom::Err::Error(BerError::BerValueError));
             }
             let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
-            let content = BerObjectContent::UTCTime(s);
+            let content = BerObjectContent::UTCTime(s.into());
             let obj = DerObject::from_header_and_content(hdr, content);
             Ok((rem, obj))
         }
@@ -100,12 +100,12 @@ pub(crate) fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
             if s.len() == 11 {
                 // some implementations do not encode the number of seconds
                 // accept certificate even if date is not correct
-                Utc.datetime_from_str(s, "%y%m%d%H%MZ")
+                Utc.datetime_from_str(&s, "%y%m%d%H%MZ")
             } else {
-                Utc.datetime_from_str(s, "%y%m%d%H%M%SZ")
+                Utc.datetime_from_str(&s, "%y%m%d%H%M%SZ")
             }
         } else {
-            DateTime::parse_from_str(s, "%y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
+            DateTime::parse_from_str(&s, "%y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
         match dt {
             Ok(mut tm) => {
@@ -126,12 +126,12 @@ pub(crate) fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
             if s.len() == 11 {
                 // some implementations do not encode the number of seconds
                 // accept certificate even if date is not correct
-                Utc.datetime_from_str(s, "%Y%m%d%H%MZ")
+                Utc.datetime_from_str(&s, "%Y%m%d%H%MZ")
             } else {
-                Utc.datetime_from_str(s, "%Y%m%d%H%M%SZ")
+                Utc.datetime_from_str(&s, "%Y%m%d%H%M%SZ")
             }
         } else {
-            DateTime::parse_from_str(s, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
+            DateTime::parse_from_str(&s, "%Y%m%d%H%M%S%z").map(|dt| dt.with_timezone(&Utc))
         };
         dt.map(ASN1Time::from_datetime_utc)
             .or(Err(X509Error::InvalidDate))

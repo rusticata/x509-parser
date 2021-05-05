@@ -175,10 +175,11 @@ impl<'a> X509Certificate<'a> {
                 return Err(X509Error::SignatureUnsupportedAlgorithm);
             };
         // get public key
-        let key = signature::UnparsedPublicKey::new(verification_alg, spki.subject_public_key.data);
+        let key =
+            signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
         // verify signature
-        let sig = self.signature_value.data;
-        key.verify(self.tbs_certificate.raw, sig)
+        let sig = &self.signature_value.data;
+        key.verify(self.tbs_certificate.raw, &sig)
             .or(Err(X509Error::SignatureVerificationError))
     }
 }
