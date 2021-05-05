@@ -115,6 +115,7 @@
     unreachable_pub
 )]
 #![forbid(unsafe_code)]
+#![allow(clippy::upper_case_acronyms)]
 #![deny(broken_intra_doc_links)]
 #![doc(test(
     no_crate_inject,
