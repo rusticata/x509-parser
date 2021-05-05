@@ -13,6 +13,7 @@ use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many1;
 use nom::Offset;
 use oid_registry::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// An X.509 v2 Certificate Revocation List (CRL).
@@ -157,7 +158,7 @@ pub struct TbsCertList<'a> {
     pub next_update: Option<ASN1Time>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
     pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
-    pub(crate) raw: &'a [u8],
+    pub(crate) raw: Cow<'a, [u8]>,
 }
 
 impl<'a> TbsCertList<'a> {
@@ -181,7 +182,7 @@ impl<'a> TbsCertList<'a> {
                 next_update,
                 revoked_certificates: revoked_certificates.unwrap_or_default(),
                 extensions,
-                raw: &start_i[..len],
+                raw: Cow::Borrowed(&start_i[..len]),
             };
             Ok((i, tbs))
         })(i)
@@ -202,7 +203,7 @@ pub struct RevokedCertificate<'a> {
     pub revocation_date: ASN1Time,
     /// Additional information about revocation
     pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
-    pub(crate) raw_serial: &'a [u8],
+    pub(crate) raw_serial: Cow<'a, [u8]>,
 }
 
 impl<'a> RevokedCertificate<'a> {
@@ -224,7 +225,7 @@ impl<'a> RevokedCertificate<'a> {
                 user_certificate,
                 revocation_date,
                 extensions: extensions.unwrap_or_default(),
-                raw_serial,
+                raw_serial: Cow::Borrowed(raw_serial),
             };
             Ok((i, revoked))
         })(i)
@@ -237,7 +238,7 @@ impl<'a> RevokedCertificate<'a> {
 
     /// Get the raw bytes of the certificate serial number
     pub fn raw_serial(&self) -> &[u8] {
-        self.raw_serial
+        &self.raw_serial
     }
 
     /// Get a formatted string of the certificate serial number, separated by ':'

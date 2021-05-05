@@ -16,6 +16,7 @@ use der_parser::oid::Oid;
 use der_parser::*;
 use nom::Offset;
 use oid_registry::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// An X.509 v3 Certificate.
@@ -179,7 +180,7 @@ impl<'a> X509Certificate<'a> {
             signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
         // verify signature
         let sig = &self.signature_value.data;
-        key.verify(self.tbs_certificate.raw, &sig)
+        key.verify(&self.tbs_certificate.raw, &sig)
             .or(Err(X509Error::SignatureVerificationError))
     }
 }
@@ -218,8 +219,8 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
     pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
-    pub(crate) raw: &'a [u8],
-    pub(crate) raw_serial: &'a [u8],
+    pub(crate) raw: Cow<'a, [u8]>,
+    pub(crate) raw_serial: Cow<'a, [u8]>,
 }
 
 impl<'a> TbsCertificate<'a> {
@@ -267,8 +268,8 @@ impl<'a> TbsCertificate<'a> {
                 subject_uid,
                 extensions,
 
-                raw: &start_i[..len],
-                raw_serial: serial.0,
+                raw: Cow::Borrowed(&start_i[..len]),
+                raw_serial: Cow::Borrowed(serial.0),
             };
             Ok((i, tbs))
         })(i)
@@ -352,7 +353,7 @@ impl<'a> TbsCertificate<'a> {
 
     /// Get the raw bytes of the certificate serial number
     pub fn raw_serial(&self) -> &[u8] {
-        self.raw_serial
+        &self.raw_serial
     }
 
     /// Get a formatted string of the certificate serial number, separated by ':'

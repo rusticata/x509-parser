@@ -14,6 +14,7 @@ use der_parser::*;
 use nom::Offset;
 #[cfg(feature = "verify")]
 use oid_registry::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -100,7 +101,7 @@ impl<'a> X509CertificationRequest<'a> {
             signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
         // verify signature
         let sig = &self.signature_value.data;
-        key.verify(self.certification_request_info.raw, &sig)
+        key.verify(&self.certification_request_info.raw, &sig)
             .or(Err(X509Error::SignatureVerificationError))
     }
 }
@@ -111,7 +112,7 @@ pub struct X509CertificationRequestInfo<'a> {
     pub subject: X509Name<'a>,
     pub subject_pki: SubjectPublicKeyInfo<'a>,
     pub attributes: HashMap<Oid<'a>, X509CriAttribute<'a>>,
-    pub raw: &'a [u8],
+    pub raw: Cow<'a, [u8]>,
 }
 
 impl<'a> X509CertificationRequestInfo<'a> {
@@ -145,7 +146,7 @@ impl<'a> X509CertificationRequestInfo<'a> {
                 subject,
                 subject_pki,
                 attributes,
-                raw: &start_i[..len],
+                raw: Cow::Borrowed(&start_i[..len]),
             };
             Ok((i, tbs))
         })(i)

@@ -1,4 +1,5 @@
 use oid_registry::{OID_PKCS1_SHA256WITHRSA, OID_SIG_ECDSA_WITH_SHA256, OID_X509_COMMON_NAME};
+use std::borrow::Cow;
 use x509_parser::prelude::*;
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
@@ -46,7 +47,10 @@ fn read_csr_with_san() {
     match extensions.next().unwrap() {
         ParsedExtension::SubjectAlternativeName(san) => {
             let name = san.general_names.first().unwrap();
-            assert!(matches!(name, GeneralName::DNSName("test.rusticata.fr")));
+            assert!(matches!(
+                name,
+                GeneralName::DNSName(Cow::Borrowed("test.rusticata.fr"))
+            ));
         }
         _ => unreachable!(),
     }

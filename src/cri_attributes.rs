@@ -11,13 +11,14 @@ use der_parser::oid::Oid;
 use nom::combinator::map_res;
 use nom::Err;
 use oid_registry::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// Attributes for Certification Request
 #[derive(Debug, PartialEq)]
 pub struct X509CriAttribute<'a> {
     pub oid: Oid<'a>,
-    pub value: &'a [u8],
+    pub(crate) value: Cow<'a, [u8]>,
     pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
 }
 
@@ -34,12 +35,16 @@ impl<'a> X509CriAttribute<'a> {
             let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)?;
             let ext = X509CriAttribute {
                 oid,
-                value: &value_start[..value_start.len() - i.len()],
+                value: Cow::Borrowed(&value_start[..value_start.len() - i.len()]),
                 parsed_attribute,
             };
             Ok((i, ext))
         })(i)
         .map_err(|_| X509Error::InvalidAttributes.into())
+    }
+
+    pub fn value(&'a self) -> &'a [u8] {
+        &self.value
     }
 }
 

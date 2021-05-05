@@ -12,6 +12,7 @@ use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{exact, Err};
 use oid_registry::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -24,7 +25,7 @@ pub struct X509Extension<'a> {
     /// An extension includes the boolean critical, with a default value of FALSE.
     pub critical: bool,
     /// Raw content of the extension
-    pub value: &'a [u8],
+    pub(crate) value: Cow<'a, [u8]>,
     pub(crate) parsed_extension: ParsedExtension<'a>,
 }
 
@@ -92,7 +93,7 @@ impl<'a> X509Extension<'a> {
             let ext = X509Extension {
                 oid,
                 critical,
-                value,
+                value: Cow::Borrowed(value),
                 parsed_extension,
             };
             Ok((i, ext))
@@ -109,9 +110,14 @@ impl<'a> X509Extension<'a> {
         X509Extension {
             oid,
             critical,
-            value,
+            value: Cow::Borrowed(value),
             parsed_extension,
         }
+    }
+
+    /// Return the value bytes
+    pub fn value(&'a self) -> &'a [u8] {
+        &self.value
     }
 
     /// Return the extension type or `UnsupportedExtension` if the extension is not implemented.
@@ -163,12 +169,12 @@ pub enum ParsedExtension<'a> {
 pub struct AuthorityKeyIdentifier<'a> {
     pub key_identifier: Option<KeyIdentifier<'a>>,
     pub authority_cert_issuer: Option<Vec<GeneralName<'a>>>,
-    pub authority_cert_serial: Option<&'a [u8]>,
+    pub authority_cert_serial: Option<Cow<'a, [u8]>>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CertificatePolicies<'a> {
-    pub policies: HashMap<Oid<'a>, &'a [u8]>,
+    pub policies: HashMap<Oid<'a>, Cow<'a, [u8]>>,
 }
 
 /// Identifies whether the subject of the certificate is a CA, and the max validation depth.
@@ -179,7 +185,7 @@ pub struct BasicConstraints {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct KeyIdentifier<'a>(pub &'a [u8]);
+pub struct KeyIdentifier<'a>(pub Cow<'a, [u8]>);
 
 #[derive(Debug, PartialEq)]
 pub struct KeyUsage {
@@ -355,20 +361,20 @@ pub struct SubjectAlternativeName<'a> {
 ///
 /// String formats are not validated.
 pub enum GeneralName<'a> {
-    OtherName(Oid<'a>, &'a [u8]),
+    OtherName(Oid<'a>, Cow<'a, [u8]>),
     /// More or less an e-mail, the format is not checked.
-    RFC822Name(&'a str),
+    RFC822Name(Cow<'a, str>),
     /// A hostname, format is not checked.
-    DNSName(&'a str),
+    DNSName(Cow<'a, str>),
     // X400Address,
     /// RFC5280 defines several string types, we always try to parse as utf-8
     /// which is more or less a superset of the string types.
     DirectoryName(X509Name<'a>),
     // EDIPartyName { name_assigner: Option<&'a str>, party_name: &'a str },
     /// An uniform resource identifier. The format is not checked.
-    URI(&'a str),
+    URI(Cow<'a, str>),
     /// An ip address, provided as encoded.
-    IPAddress(&'a [u8]),
+    IPAddress(Cow<'a, [u8]>),
     RegisteredID(Oid<'a>),
 }
 
@@ -552,11 +558,12 @@ pub(crate) mod parser {
         if len > rest.len() {
             return Err(nom::Err::Failure(BerError::ObjectTooShort));
         }
-        fn ia5str<'a>(i: &'a [u8], hdr: DerObjectHeader) -> Result<&'a str, Err<BerError>> {
+        fn ia5str<'a>(i: &'a [u8], hdr: DerObjectHeader) -> Result<Cow<'a, str>, Err<BerError>> {
             der_read_element_content_as(i, DerTag::Ia5String, hdr.len, hdr.is_constructed(), 0)?
                 .1
                 .into_bytes()
                 .and_then(|s| std::str::from_utf8(s).map_err(|_| BerError::BerValueError))
+                .map(Cow::Borrowed)
                 .map_err(nom::Err::Failure)
         }
         let name = match hdr.tag.0 {
@@ -564,7 +571,7 @@ pub(crate) mod parser {
                 // otherName SEQUENCE { OID, [0] explicit any defined by oid }
                 let (any, oid) = parse_der_oid(rest)?;
                 let oid = oid.as_oid_val().map_err(nom::Err::Failure)?;
-                GeneralName::OtherName(oid, any)
+                GeneralName::OtherName(oid, Cow::Borrowed(any))
             }
             1 => GeneralName::RFC822Name(ia5str(rest, hdr)?),
             2 => GeneralName::DNSName(ia5str(rest, hdr)?),
@@ -590,7 +597,7 @@ pub(crate) mod parser {
                 .1
                 .into_bytes()
                 .map_err(nom::Err::Failure)?;
-                GeneralName::IPAddress(ip)
+                GeneralName::IPAddress(Cow::Borrowed(ip))
             }
             8 => {
                 let oid = der_read_element_content_as(
@@ -756,7 +763,7 @@ pub(crate) mod parser {
         _hdr: DerObjectHeader<'_>,
     ) -> IResult<&'a [u8], AuthorityKeyIdentifier<'a>, BerError> {
         let (i, key_identifier) = opt(complete(parse_der_tagged_implicit_g(0, |d, _, _| {
-            Ok((&[], KeyIdentifier(d)))
+            Ok((&[], KeyIdentifier(Cow::Borrowed(d))))
         })))(i)?;
         let (i, authority_cert_issuer) =
             opt(complete(parse_der_tagged_implicit_g(1, |d, _, _| {
@@ -766,7 +773,8 @@ pub(crate) mod parser {
             2,
             parse_der_content(DerTag::Integer),
         )))(i)?;
-        let authority_cert_serial = authority_cert_serial.and_then(|o| o.into_bytes().ok());
+        let authority_cert_serial =
+            authority_cert_serial.and_then(|o| o.into_bytes().map(Cow::Borrowed).ok());
         let aki = AuthorityKeyIdentifier {
             key_identifier,
             authority_cert_issuer,
@@ -804,7 +812,7 @@ pub(crate) mod parser {
             .content
             .into_bytes()
             .or(Err(Err::Error(BerError::BerTypeError)))?;
-        let ki = KeyIdentifier(id);
+        let ki = KeyIdentifier(Cow::Borrowed(id));
         let ret = ParsedExtension::SubjectKeyIdentifier(ki);
         Ok((rest, ret))
     }
@@ -855,11 +863,12 @@ pub(crate) mod parser {
     //
     // PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice )
     fn parse_certificatepolicies(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], (Oid, &[u8]), BerError> {
+        type LocalPolicyInfo<'a> = (Oid<'a>, Cow<'a, [u8]>);
+        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], LocalPolicyInfo, BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 let (qualifier_set, oid) =
                     map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
-                Ok((&[], (oid, qualifier_set)))
+                Ok((&[], (oid, Cow::Borrowed(qualifier_set))))
             })(i)
         }
         let (ret, mut policy_list) = parse_der_sequence_of_v(parse_policy_information)(i)?;
@@ -1024,11 +1033,14 @@ mod tests {
         );
         {
             let alt_names = &tbs.subject_alternative_name().unwrap().1.general_names;
-            assert_eq!(alt_names[0], GeneralName::RFC822Name("foo@example.com"));
-            assert_eq!(alt_names[1], GeneralName::URI("http://my.url.here/"));
+            assert_eq!(
+                alt_names[0],
+                GeneralName::RFC822Name("foo@example.com".into())
+            );
+            assert_eq!(alt_names[1], GeneralName::URI("http://my.url.here/".into()));
             assert_eq!(
                 alt_names[2],
-                GeneralName::IPAddress([192, 168, 7, 1].as_ref())
+                GeneralName::IPAddress(Cow::Borrowed(&[192, 168, 7, 1]))
             );
             assert_eq!(
                 format!(
@@ -1040,11 +1052,14 @@ mod tests {
                 ),
                 "C=UK, O=My Organization, OU=My Unit, CN=My Name"
             );
-            assert_eq!(alt_names[4], GeneralName::DNSName("localhost"));
+            assert_eq!(alt_names[4], GeneralName::DNSName("localhost".into()));
             assert_eq!(alt_names[5], GeneralName::RegisteredID(oid!(1.2.90 .0)));
             assert_eq!(
                 alt_names[6],
-                GeneralName::OtherName(oid!(1.2.3 .4), b"\xA0\x17\x0C\x15some other identifier")
+                GeneralName::OtherName(
+                    oid!(1.2.3 .4),
+                    Cow::Borrowed(b"\xA0\x17\x0C\x15some other identifier")
+                )
             );
         }
 
@@ -1055,10 +1070,12 @@ mod tests {
                 name_constraints.excluded_subtrees,
                 Some(vec![
                     GeneralSubtree {
-                        base: GeneralName::IPAddress([192, 168, 0, 0, 255, 255, 0, 0].as_ref())
+                        base: GeneralName::IPAddress(Cow::Borrowed(&[
+                            192, 168, 0, 0, 255, 255, 0, 0
+                        ]))
                     },
                     GeneralSubtree {
-                        base: GeneralName::RFC822Name("foo.com")
+                        base: GeneralName::RFC822Name("foo.com".into())
                     },
                 ])
             );

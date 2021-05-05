@@ -2,6 +2,7 @@ use chrono::offset::{TimeZone, Utc};
 use chrono::Datelike;
 use der_parser::{oid, oid::Oid};
 use oid_registry::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use x509_parser::prelude::*;
 
@@ -61,7 +62,7 @@ fn test_x509_parser() {
             assert_eq!(na.year(), 2020);
             assert_eq!(na.month(), 10);
             assert_eq!(na.day(), 17);
-            let policies = vec![(oid!(1.2.250 .1 .121 .1 .1 .1), [].as_ref())]
+            let policies = vec![(oid!(1.2.250 .1 .121 .1 .1 .1), Cow::Borrowed(&[] as &[u8]))]
                 .into_iter()
                 .collect();
             let expected_extensions_list = vec![
@@ -93,10 +94,10 @@ fn test_x509_parser() {
                         4, 20, 163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
                         168, 48, 49, 54,
                     ],
-                    ParsedExtension::SubjectKeyIdentifier(KeyIdentifier(&[
+                    ParsedExtension::SubjectKeyIdentifier(KeyIdentifier(Cow::Borrowed(&[
                         163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78, 168,
                         48, 49, 54,
-                    ])),
+                    ]))),
                 ),
                 X509Extension::new(
                     oid!(2.5.29 .35),
@@ -106,10 +107,10 @@ fn test_x509_parser() {
                         255, 142, 78, 168, 48, 49, 54,
                     ],
                     ParsedExtension::AuthorityKeyIdentifier(AuthorityKeyIdentifier {
-                        key_identifier: Some(KeyIdentifier(&[
+                        key_identifier: Some(KeyIdentifier(Cow::Borrowed(&[
                             163, 5, 47, 24, 96, 80, 194, 137, 10, 221, 43, 33, 79, 255, 142, 78,
                             168, 48, 49, 54,
-                        ])),
+                        ]))),
                         authority_cert_issuer: None,
                         authority_cert_serial: None,
                     }),
@@ -242,10 +243,10 @@ fn test_crl_parse() {
                         234, 199, 181, 251, 159, 249, 173, 52,
                     ],
                     ParsedExtension::AuthorityKeyIdentifier(AuthorityKeyIdentifier {
-                        key_identifier: Some(KeyIdentifier(&[
+                        key_identifier: Some(KeyIdentifier(Cow::Borrowed(&[
                             190, 18, 1, 204, 170, 234, 17, 128, 218, 46, 173, 178, 234, 199, 181,
                             251, 159, 249, 173, 52,
-                        ])),
+                        ]))),
                         authority_cert_issuer: None,
                         authority_cert_serial: None,
                     }),
@@ -292,10 +293,10 @@ fn test_crl_parse_empty() {
                         82, 191, 80, 27, 57, 39, 6, 172,
                     ],
                     ParsedExtension::AuthorityKeyIdentifier(AuthorityKeyIdentifier {
-                        key_identifier: Some(KeyIdentifier(&[
+                        key_identifier: Some(KeyIdentifier(Cow::Borrowed(&[
                             34, 101, 12, 214, 90, 157, 52, 137, 243, 131, 180, 149, 82, 191, 80,
                             27, 57, 39, 6, 172,
-                        ])),
+                        ]))),
                         authority_cert_issuer: None,
                         authority_cert_serial: None,
                     }),
@@ -350,10 +351,16 @@ fn test_duplicate_authority_info_access() {
                 .unwrap();
             let mut accessdescs = HashMap::new();
             let ca_issuers = vec![
-                GeneralName::URI("http://cdp1.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
-                GeneralName::URI("http://cdp2.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
+                GeneralName::URI(
+                    "http://cdp1.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt".into(),
+                ),
+                GeneralName::URI(
+                    "http://cdp2.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt".into(),
+                ),
             ];
-            let ocsp = vec![GeneralName::URI("http://ocsp.pca.dfn.de/OCSP-Server/OCSP")];
+            let ocsp = vec![GeneralName::URI(
+                "http://ocsp.pca.dfn.de/OCSP-Server/OCSP".into(),
+            )];
             accessdescs.insert(OID_PKIX_ACCESS_DESCRIPTOR_CA_ISSUERS, ca_issuers);
             accessdescs.insert(OID_PKIX_ACCESS_DESCRIPTOR_OCSP, ocsp);
             let expected_aia =

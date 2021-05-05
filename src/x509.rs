@@ -20,6 +20,7 @@ use nom::multi::{many0, many1};
 use nom::{Err, Offset};
 use oid_registry::*;
 use rusticata_macros::newtype_enum;
+use std::borrow::Cow;
 use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -86,7 +87,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// This can fail if the object does not contain a string type.
     ///
     /// Only NumericString, PrintableString, UTF8String and IA5String
-    /// are considered here. Other string types can be read using `as_slice`.
+    /// are considered here. Other string types can be read using `as_bytes`.
     pub fn as_str(&'a self) -> Result<&'a str, X509Error> {
         self.attr_value.as_str().map_err(|e| e.into())
     }
@@ -95,6 +96,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     ///
     /// This can fail if the object does not contain a type directly equivalent to a slice (e.g a
     /// sequence).
+    #[deprecated(since = "0.10.0", note = "Please use `as_bytes` instead")]
     pub fn as_slice(&'a self) -> Result<&'a [u8], X509Error> {
         self.attr_value.as_bytes().map_err(|e| e.into())
     }
@@ -220,7 +222,7 @@ impl<'a> AlgorithmIdentifier<'a> {
 #[derive(Debug, PartialEq)]
 pub struct X509Name<'a> {
     pub rdn_seq: Vec<RelativeDistinguishedName<'a>>,
-    pub(crate) raw: &'a [u8],
+    pub(crate) raw: Cow<'a, [u8]>,
 }
 
 impl<'a> fmt::Display for X509Name<'a> {
@@ -241,15 +243,15 @@ impl<'a> X509Name<'a> {
             let len = start_i.offset(i);
             let name = X509Name {
                 rdn_seq,
-                raw: &start_i[..len],
+                raw: Cow::Borrowed(&start_i[..len]),
             };
             Ok((i, name))
         })(i)
     }
 
     // Not using the AsRef trait, as that would not give back the full 'a lifetime
-    pub fn as_raw(&self) -> &'a [u8] {
-        self.raw
+    pub fn as_raw(&'a self) -> &'a [u8] {
+        &self.raw
     }
 
     /// Return an iterator over the `RelativeDistinguishedName` components of the name
@@ -487,7 +489,7 @@ mod tests {
                     ],
                 },
             ],
-            raw: &[], // incorrect, but enough for testing
+            raw: Cow::Borrowed(&[]), // incorrect, but enough for testing
         };
         assert_eq!(
             name.to_string(),

@@ -23,7 +23,7 @@ fn format_oid(oid: &Oid) -> String {
 fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     print!("    {}: ", format_oid(oid));
     print!(" Critical={}", ext.critical);
-    print!(" len={}", ext.value.len());
+    print!(" len={}", ext.value().len());
     println!();
     match ext.parsed_extension() {
         ParsedExtension::BasicConstraints(bc) => {
