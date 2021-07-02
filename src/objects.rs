@@ -60,6 +60,19 @@ pub fn oid2sn<'a>(oid: &'a Oid) -> Result<&'a str, NidError> {
     OID_REGISTRY.get(oid).map(|ref o| o.sn()).ok_or(NidError)
 }
 
+/// Returns the description corresponding to the OID
+pub fn oid2description<'a>(oid: &'a Oid) -> Result<&'a str, NidError> {
+    OID_REGISTRY
+        .get(oid)
+        .map(|ref o| o.description())
+        .ok_or(NidError)
+}
+
+/// Return a reference to the registry of known OIDs
+pub fn oid_registry() -> &'static OidRegistry<'static> {
+    &OID_REGISTRY
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
