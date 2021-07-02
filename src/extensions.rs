@@ -255,7 +255,7 @@ pub struct ExtendedKeyUsage<'a> {
     pub code_signing: bool,
     pub email_protection: bool,
     pub time_stamping: bool,
-    pub ocscp_signing: bool,
+    pub ocsp_signing: bool,
     pub other: Vec<Oid<'a>>,
 }
 
@@ -689,7 +689,7 @@ pub(crate) mod parser {
             code_signing: false,
             email_protection: false,
             time_stamping: false,
-            ocscp_signing: false,
+            ocsp_signing: false,
             other: Vec::new(),
         };
         for oid in seq.as_sequence().map_err(nom::Err::Failure)?.iter() {
@@ -711,7 +711,7 @@ pub(crate) mod parser {
             } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.8) {
                 eku.time_stamping = true;
             } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.9) {
-                eku.ocscp_signing = true;
+                eku.ocsp_signing = true;
             } else {
                 eku.other.push(oid);
             }
@@ -1008,7 +1008,7 @@ mod tests {
             assert!(eku.code_signing);
             assert!(!eku.email_protection);
             assert!(eku.time_stamping);
-            assert!(!eku.ocscp_signing);
+            assert!(!eku.ocsp_signing);
             assert_eq!(eku.other, vec![oid!(1.2.3 .4 .0 .42)]);
         }
         assert_eq!(
