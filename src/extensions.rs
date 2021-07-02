@@ -5,7 +5,7 @@ use crate::time::{der_to_utctime, ASN1Time};
 use crate::x509::{ReasonCode, X509Name};
 
 use der_parser::der::*;
-use der_parser::error::BerResult;
+use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
@@ -72,7 +72,8 @@ impl<'a> X509Extension<'a> {
     ///         println!("Extension OID: {}", ext.oid);
     ///         println!("  Critical: {}", ext.critical);
     ///         let parsed_ext = ext.parsed_extension();
-    ///         assert!(*parsed_ext != ParsedExtension::UnsupportedExtension);
+    ///         assert!(!parsed_ext.unsupported());
+    ///         assert!(parsed_ext.error().is_none());
     ///         if let ParsedExtension::SubjectKeyIdentifier(key_id) = parsed_ext {
     ///             assert!(key_id.0.len() > 0);
     ///         } else {
@@ -123,8 +124,12 @@ impl<'a> X509Extension<'a> {
 #[derive(Debug, PartialEq)]
 pub enum ParsedExtension<'a> {
     /// Crate parser does not support this extension (yet)
-    UnsupportedExtension,
-    ParseError,
+    UnsupportedExtension {
+        oid: Oid<'a>,
+    },
+    ParseError {
+        error: Err<BerError>,
+    },
     /// Section 4.2.1.1 of rfc 5280
     AuthorityKeyIdentifier(AuthorityKeyIdentifier<'a>),
     /// Section 4.2.1.2 of rfc 5280
@@ -157,6 +162,21 @@ pub enum ParsedExtension<'a> {
     ReasonCode(ReasonCode),
     /// Section 5.3.3 of rfc 5280
     InvalidityDate(ASN1Time),
+}
+
+impl<'a> ParsedExtension<'a> {
+    /// Return `true` if the extension is unsupported
+    pub fn unsupported(&self) -> bool {
+        matches!(self, &ParsedExtension::UnsupportedExtension { .. })
+    }
+
+    /// Return a reference on the parsing error if the extension parsing failed
+    pub fn error(&self) -> Option<&Err<BerError>> {
+        match self {
+            ParsedExtension::ParseError { error } => Some(error),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -450,10 +470,17 @@ pub(crate) mod parser {
         oid: &Oid,
     ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
         if let Some(parser) = EXTENSION_PARSERS.get(oid) {
-            let (_, ext) = parser(i)?;
-            Ok((orig_i, ext))
+            match parser(i) {
+                Ok((_, ext)) => Ok((orig_i, ext)),
+                Err(error) => Ok((orig_i, ParsedExtension::ParseError { error })),
+            }
         } else {
-            Ok((orig_i, ParsedExtension::UnsupportedExtension))
+            Ok((
+                orig_i,
+                ParsedExtension::UnsupportedExtension {
+                    oid: oid.to_owned(),
+                },
+            ))
         }
     }
 
@@ -462,11 +489,7 @@ pub(crate) mod parser {
         i: &'a [u8],
         oid: &Oid,
     ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
-        let r = parse_extension0(orig_i, i, oid);
-        if let Err(nom::Err::Incomplete(_)) = r {
-            return Ok((orig_i, ParsedExtension::UnsupportedExtension));
-        }
-        r
+        parse_extension0(orig_i, i, oid)
     }
 
     /// Parse a "Basic Constraints" extension
