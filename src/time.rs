@@ -51,7 +51,7 @@ impl ASN1Time {
 
     /// Returns an RFC 2822 date and time string such as `Tue, 1 Jul 2003 10:52:37 +0200`.
     #[inline]
-    pub fn to_rfc2822(&self) -> String {
+    pub fn to_rfc2822(self) -> String {
         self.0.to_rfc2822()
     }
 }
