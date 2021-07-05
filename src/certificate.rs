@@ -217,8 +217,10 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
     pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
-    pub(crate) raw: &'a [u8],
-    pub(crate) raw_serial: &'a [u8],
+    /// The raw bytes from which this certificate was parsed.
+    pub raw: &'a [u8],
+    /// The raw bytes for `serial`.
+    pub raw_serial: &'a [u8],
 }
 
 impl<'a> TbsCertificate<'a> {
