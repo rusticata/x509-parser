@@ -545,7 +545,7 @@ impl Validity {
     /// Check the certificate time validity for the provided date/time
     #[inline]
     pub fn is_valid_at(&self, time: ASN1Time) -> bool {
-        time >= self.not_before && time < self.not_after
+        time >= self.not_before && time <= self.not_after
     }
 
     /// Check the certificate time validity
