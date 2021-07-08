@@ -293,37 +293,37 @@ impl<'a> X509Name<'a> {
     /// Note that there are multiple reasons for failure or incorrect behavior, for ex. if
     /// the attribute is present multiple times, or is not a UTF-8 encoded string (it can be
     /// UTF-16, or even an OCTETSTRING according to the standard).
-    pub fn iter_common_name(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_common_name(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_X509_COMMON_NAME)
     }
 
     /// Return an iterator over the `Country` attributes of the X.509 Name.
-    pub fn iter_country(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_country(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_X509_COUNTRY_NAME)
     }
 
     /// Return an iterator over the `Organization` attributes of the X.509 Name.
-    pub fn iter_organization(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_organization(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_X509_ORGANIZATION_NAME)
     }
 
     /// Return an iterator over the `OrganizationalUnit` attributes of the X.509 Name.
-    pub fn iter_organizational_unit(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_organizational_unit(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_X509_ORGANIZATIONAL_UNIT)
     }
 
     /// Return an iterator over the `StateOrProvinceName` attributes of the X.509 Name.
-    pub fn iter_state_or_province(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_state_or_province(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_X509_STATE_OR_PROVINCE_NAME)
     }
 
     /// Return an iterator over the `Locality` attributes of the X.509 Name.
-    pub fn iter_locality(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_locality(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_X509_LOCALITY_NAME)
     }
 
     /// Return an iterator over the `EmailAddress` attributes of the X.509 Name.
-    pub fn iter_email(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
+    pub fn iter_email(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_PKCS9_EMAIL_ADDRESS)
     }
 }
