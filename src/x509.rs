@@ -420,8 +420,11 @@ pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
 }
 
 fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
-    let big = o.as_biguint()?;
+    // RFC 5280 4.1.2.2: "The serial number MUST be a positive integer"
+    // however, many CAs do not respect this and send integers with MSB set,
+    // so we do not use `as_biguint()`
     let slice = o.as_slice().ok()?;
+    let big = BigUint::from_bytes_be(slice);
 
     Some((slice, big))
 }
