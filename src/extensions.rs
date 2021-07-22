@@ -576,7 +576,9 @@ pub(crate) mod parser {
             return Err(nom::Err::Failure(BerError::ObjectTooShort));
         }
         fn ia5str<'a>(i: &'a [u8], hdr: DerObjectHeader) -> Result<&'a str, Err<BerError>> {
-            der_read_element_content_as(i, DerTag::Ia5String, hdr.len, hdr.is_constructed(), 0)?
+            // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
+            // are using unicode characters
+            der_read_element_content_as(i, DerTag::Utf8String, hdr.len, hdr.is_constructed(), 0)?
                 .1
                 .as_slice()
                 .and_then(|s| std::str::from_utf8(s).map_err(|_| BerError::BerValueError))
