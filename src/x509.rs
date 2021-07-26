@@ -215,7 +215,7 @@ pub struct X509Name<'a> {
 
 impl<'a> fmt::Display for X509Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match x509name_to_string(&self.rdn_seq) {
+        match x509name_to_string(&self.rdn_seq, oid_registry()) {
             Ok(o) => write!(f, "{}", o),
             Err(_) => write!(f, "<X509Error: Invalid X.509 name>"),
         }
@@ -235,6 +235,14 @@ impl<'a> X509Name<'a> {
             };
             Ok((i, name))
         })(i)
+    }
+
+    /// Attempt to format the current name, using the given registry to convert OIDs to strings.
+    ///
+    /// Note: a default registry is provided with this crate, and is returned by the
+    /// [`oid_registry()`] method.
+    pub fn to_string_with_registry(&self, oid_registry: &OidRegistry) -> Result<String, X509Error> {
+        x509name_to_string(&self.rdn_seq, oid_registry)
     }
 
     // Not using the AsRef trait, as that would not give back the full 'a lifetime
@@ -377,7 +385,10 @@ fn attribute_value_to_string(attr: &DerObject, _attr_type: &Oid) -> Result<Strin
 /// Multiple RDNs are separated with "+"
 ///
 /// Attributes that cannot be represented by a string are hex-encoded
-fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X509Error> {
+fn x509name_to_string(
+    rdn_seq: &[RelativeDistinguishedName],
+    oid_registry: &OidRegistry,
+) -> Result<String, X509Error> {
     rdn_seq.iter().fold(Ok(String::new()), |acc, rdn| {
         acc.and_then(|mut _vec| {
             rdn.set
@@ -386,7 +397,7 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                     acc2.and_then(|mut _vec2| {
                         let val_str = attribute_value_to_string(&attr.attr_value, &attr.attr_type)?;
                         // look ABBREV, and if not found, use shortname
-                        let abbrev = match oid2abbrev(&attr.attr_type, oid_registry()) {
+                        let abbrev = match oid2abbrev(&attr.attr_type, oid_registry) {
                             Ok(s) => String::from(s),
                             _ => format!("{:?}", attr.attr_type),
                         };
