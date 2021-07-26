@@ -7,7 +7,7 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 
 use data_encoding::HEXUPPER;
-use der_parser::ber::{BitStringObject, MAX_OBJECT_SIZE};
+use der_parser::ber::{parse_ber_integer, BitStringObject, MAX_OBJECT_SIZE};
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
@@ -427,7 +427,8 @@ pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
 }
 
 pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
-    map_opt(parse_der_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
+    // This should be parse_der_integer, but some certificates encode leading zeroes
+    map_opt(parse_ber_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
 }
 
 fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
