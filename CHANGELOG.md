@@ -6,6 +6,19 @@
 
 ### Thanks
 
+## 0.9.3
+
+### Added/Changed/Fixed
+
+- Add functions oid2description() and oid_registry() (closes #79)
+- Fix typo 'ocsp_signing' (closes #84)
+- Extension: use specific variant if unsupported or failed to parse (closes #83)
+- Relax constrains on parsing to accept certificates that do not strictly respect
+  DER encoding, but are widely accepted by other X.509 libraries:
+  - SubjectAltName: accept non-ia5string characters
+  - Extensions: accept boolean values not enoded as `00` or `ff`
+  - Serial: build BigUint from raw bytes (do not check sign)
+
 ## 0.9.2
 
 ### Added/Changed/Fixed
