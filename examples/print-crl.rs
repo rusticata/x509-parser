@@ -138,8 +138,8 @@ fn print_crl_info(crl: &CertificateRevocationList) {
             .map_or("NONE".to_owned(), |d| d.to_rfc2822())
     );
     println!("{:indent$}CRL Extensions:", "", indent = 2);
-    for (oid, ext) in crl.extensions() {
-        print_x509_extension(oid, ext, 4);
+    for ext in crl.extensions() {
+        print_x509_extension(&ext.oid, ext, 4);
     }
     println!("  Revoked certificates:");
     for revoked in crl.iter_revoked_certificates() {

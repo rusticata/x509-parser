@@ -11,7 +11,7 @@ use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
-use nom::{exact, Err};
+use nom::Err;
 use oid_registry::*;
 use std::collections::HashMap;
 use std::fmt;
@@ -117,6 +117,7 @@ impl<'a> X509Extension<'a> {
     }
 
     /// Return the extension type or `UnsupportedExtension` if the extension is not implemented.
+    #[inline]
     pub fn parsed_extension(&self) -> &ParsedExtension<'a> {
         &self.parsed_extension
     }
@@ -952,12 +953,9 @@ pub(crate) fn extensions_sequence_to_map<'a>(
     Ok((i, extensions))
 }
 
-pub(crate) fn parse_extensions(
-    i: &[u8],
-    explicit_tag: DerTag,
-) -> X509Result<HashMap<Oid, X509Extension>> {
+pub(crate) fn parse_extensions(i: &[u8], explicit_tag: DerTag) -> X509Result<Vec<X509Extension>> {
     if i.is_empty() {
-        return Ok((i, HashMap::new()));
+        return Ok((i, Vec::new()));
     }
 
     match der_read_element_header(i) {
@@ -965,8 +963,7 @@ pub(crate) fn parse_extensions(
             if hdr.tag != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
-            let (rem, list) = exact!(rem, parse_extension_sequence)?;
-            extensions_sequence_to_map(rem, list)
+            all_consuming(parse_extension_sequence)(rem)
         }
         Err(_) => Err(X509Error::InvalidExtensions.into()),
     }

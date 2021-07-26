@@ -137,8 +137,8 @@ impl<'a> X509Certificate<'a> {
 
     /// Get the certificate extensions.
     #[inline]
-    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
-        self.tbs_certificate.extensions()
+    pub fn extensions(&self) -> &[X509Extension] {
+        &self.tbs_certificate.extensions
     }
 
     /// Verify the cryptographic signature of this certificate
@@ -216,7 +216,7 @@ pub struct TbsCertificate<'a> {
     pub subject_pki: SubjectPublicKeyInfo<'a>,
     pub issuer_uid: Option<UniqueIdentifier<'a>>,
     pub subject_uid: Option<UniqueIdentifier<'a>>,
-    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
+    extensions: Vec<X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
     pub(crate) raw_serial: &'a [u8],
 }
@@ -273,73 +273,102 @@ impl<'a> TbsCertificate<'a> {
         })(i)
     }
 
-    /// Get a reference to the map of extensions.
-    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+    /// Returns the certificate extensions
+    #[inline]
+    pub fn extensions(&self) -> &[X509Extension] {
         &self.extensions
     }
 
+    /// Returns an iterator over the certificate extensions
+    #[inline]
+    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension> {
+        self.extensions.iter()
+    }
+
+    /// Searches for an extension with the given `Oid`.
+    ///
+    /// Note: if there are several extensions with the same `Oid`, the first one is returned.
+    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension> {
+        self.extensions.iter().find(|&ext| ext.oid == *oid)
+    }
+
+    /// Builds and returns a map of extensions.
+    ///
+    /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
+    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension>, X509Error> {
+        self.extensions
+            .iter()
+            .try_fold(HashMap::new(), |mut m, ext| {
+                if m.contains_key(&ext.oid) {
+                    return Err(X509Error::DuplicateExtensions);
+                }
+                m.insert(ext.oid.clone(), ext);
+                Ok(m)
+            })
+    }
+
     pub fn basic_constraints(&self) -> Option<(bool, &BasicConstraints)> {
-        let ext = self.extensions.get(&OID_X509_EXT_BASIC_CONSTRAINTS)?;
-        match ext.parsed_extension {
-            ParsedExtension::BasicConstraints(ref bc) => Some((ext.critical, bc)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_BASIC_CONSTRAINTS)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::BasicConstraints(ref bc) => Some((ext.critical, bc)),
+                _ => None,
+            })
     }
 
     pub fn key_usage(&self) -> Option<(bool, &KeyUsage)> {
-        let ext = self.extensions.get(&OID_X509_EXT_KEY_USAGE)?;
-        match ext.parsed_extension {
-            ParsedExtension::KeyUsage(ref ku) => Some((ext.critical, ku)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_KEY_USAGE)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::KeyUsage(ref ku) => Some((ext.critical, ku)),
+                _ => None,
+            })
     }
 
     pub fn extended_key_usage(&self) -> Option<(bool, &ExtendedKeyUsage)> {
-        let ext = self.extensions.get(&OID_X509_EXT_EXTENDED_KEY_USAGE)?;
-        match ext.parsed_extension {
-            ParsedExtension::ExtendedKeyUsage(ref eku) => Some((ext.critical, eku)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_EXTENDED_KEY_USAGE)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::ExtendedKeyUsage(ref eku) => Some((ext.critical, eku)),
+                _ => None,
+            })
     }
 
     pub fn policy_constraints(&self) -> Option<(bool, &PolicyConstraints)> {
-        let ext = self.extensions.get(&OID_X509_EXT_POLICY_CONSTRAINTS)?;
-        match ext.parsed_extension {
-            ParsedExtension::PolicyConstraints(ref pc) => Some((ext.critical, pc)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_POLICY_CONSTRAINTS)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::PolicyConstraints(ref pc) => Some((ext.critical, pc)),
+                _ => None,
+            })
     }
 
     pub fn inhibit_anypolicy(&self) -> Option<(bool, &InhibitAnyPolicy)> {
-        let ext = self.extensions.get(&OID_X509_EXT_INHIBITANT_ANY_POLICY)?;
-        match ext.parsed_extension {
-            ParsedExtension::InhibitAnyPolicy(ref iap) => Some((ext.critical, iap)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_INHIBITANT_ANY_POLICY)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::InhibitAnyPolicy(ref iap) => Some((ext.critical, iap)),
+                _ => None,
+            })
     }
 
     pub fn policy_mappings(&self) -> Option<(bool, &PolicyMappings)> {
-        let ext = self.extensions.get(&OID_X509_EXT_POLICY_MAPPINGS)?;
-        match ext.parsed_extension {
-            ParsedExtension::PolicyMappings(ref pm) => Some((ext.critical, pm)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_POLICY_MAPPINGS)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::PolicyMappings(ref pm) => Some((ext.critical, pm)),
+                _ => None,
+            })
     }
 
     pub fn subject_alternative_name(&self) -> Option<(bool, &SubjectAlternativeName)> {
-        let ext = self.extensions.get(&OID_X509_EXT_SUBJECT_ALT_NAME)?;
-        match ext.parsed_extension {
-            ParsedExtension::SubjectAlternativeName(ref san) => Some((ext.critical, san)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_SUBJECT_ALT_NAME)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::SubjectAlternativeName(ref san) => Some((ext.critical, san)),
+                _ => None,
+            })
     }
 
     pub fn name_constraints(&self) -> Option<(bool, &NameConstraints)> {
-        let ext = self.extensions.get(&OID_X509_EXT_NAME_CONSTRAINTS)?;
-        match ext.parsed_extension {
-            ParsedExtension::NameConstraints(ref nc) => Some((ext.critical, nc)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_NAME_CONSTRAINTS)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::NameConstraints(ref nc) => Some((ext.critical, nc)),
+                _ => None,
+            })
     }
 
     /// Returns true if certificate has `basicConstraints CA:true`

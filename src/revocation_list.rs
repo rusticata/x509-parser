@@ -102,9 +102,9 @@ impl<'a> CertificateRevocationList<'a> {
         self.tbs_cert_list.revoked_certificates.iter()
     }
 
-    /// Get the certificate extensions.
+    /// Get the CRL extensions.
     #[inline]
-    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
+    pub fn extensions(&self) -> &[X509Extension] {
         &self.tbs_cert_list.extensions
     }
 
@@ -117,11 +117,13 @@ impl<'a> CertificateRevocationList<'a> {
     /// MUST NOT use CRLNumber values longer than 20 octets.
     /// </pre>
     pub fn crl_number(&self) -> Option<&BigUint> {
-        let ext = self.extensions().get(&OID_X509_EXT_CRL_NUMBER)?;
-        match ext.parsed_extension {
-            ParsedExtension::CRLNumber(ref num) => Some(num),
-            _ => None,
-        }
+        self.extensions()
+            .iter()
+            .find(|&ext| ext.oid == OID_X509_EXT_BASIC_CONSTRAINTS)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::CRLNumber(ref num) => Some(num),
+                _ => None,
+            })
     }
 }
 
@@ -156,7 +158,7 @@ pub struct TbsCertList<'a> {
     pub this_update: ASN1Time,
     pub next_update: Option<ASN1Time>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
-    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
+    extensions: Vec<X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
 }
 
@@ -185,6 +187,40 @@ impl<'a> TbsCertList<'a> {
             };
             Ok((i, tbs))
         })(i)
+    }
+
+    /// Returns the certificate extensions
+    #[inline]
+    pub fn extensions(&self) -> &[X509Extension] {
+        &self.extensions
+    }
+
+    /// Returns an iterator over the certificate extensions
+    #[inline]
+    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension> {
+        self.extensions.iter()
+    }
+
+    /// Searches for an extension with the given `Oid`.
+    ///
+    /// Note: if there are several extensions with the same `Oid`, the first one is returned.
+    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension> {
+        self.extensions.iter().find(|&ext| ext.oid == *oid)
+    }
+
+    /// Builds and returns a map of extensions.
+    ///
+    /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
+    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension>, X509Error> {
+        self.extensions
+            .iter()
+            .try_fold(HashMap::new(), |mut m, ext| {
+                if m.contains_key(&ext.oid) {
+                    return Err(X509Error::DuplicateExtensions);
+                }
+                m.insert(ext.oid.clone(), ext);
+                Ok(m)
+            })
     }
 }
 

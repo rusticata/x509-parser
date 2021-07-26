@@ -1,6 +1,6 @@
 use chrono::offset::{TimeZone, Utc};
 use chrono::Datelike;
-use der_parser::{oid, oid::Oid};
+use der_parser::oid;
 use oid_registry::*;
 use std::collections::HashMap;
 use x509_parser::prelude::*;
@@ -64,7 +64,7 @@ fn test_x509_parser() {
             let policies = vec![(oid!(1.2.250 .1 .121 .1 .1 .1), [].as_ref())]
                 .into_iter()
                 .collect();
-            let expected_extensions_list = vec![
+            let expected_extensions = vec![
                 X509Extension::new(
                     oid!(2.5.29 .19),
                     true,
@@ -115,10 +115,6 @@ fn test_x509_parser() {
                     }),
                 ),
             ];
-            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions_list
-                .into_iter()
-                .map(|e| (e.oid.clone(), e))
-                .collect();
             assert_eq!(tbs_cert.extensions(), &expected_extensions);
             //
             assert!(tbs_cert.is_ca());
@@ -139,7 +135,7 @@ fn test_x509_no_extensions() {
 
             let tbs_cert = cert.tbs_certificate;
             assert_eq!(tbs_cert.version, X509Version::V3);
-            assert_eq!(tbs_cert.extensions.len(), 0);
+            assert_eq!(tbs_cert.extensions().len(), 0);
         }
         _ => panic!("x509 parsing failed: {:?}", res),
     }
@@ -257,12 +253,7 @@ fn test_crl_parse() {
                     ParsedExtension::CRLNumber(3u32.into()),
                 ),
             ];
-
-            let expected_extensions: HashMap<Oid, X509Extension> = expected_extensions
-                .into_iter()
-                .map(|e| (e.oid.clone(), e))
-                .collect();
-            assert_eq!(tbs_cert_list.extensions, expected_extensions);
+            assert_eq!(tbs_cert_list.extensions(), expected_extensions);
 
             assert_eq!(tbs_cert_list.as_ref(), &CRL_DER[4..(4 + 4 + 508)]);
         }
@@ -301,15 +292,7 @@ fn test_crl_parse_empty() {
                     }),
                 ),
             ];
-            // do not compare iterators because of random order in hashmap
-            assert_eq!(
-                cert.tbs_cert_list.extensions.len(),
-                expected_extensions.len()
-            );
-            let parsed_extension_values: Vec<_> = cert.tbs_cert_list.extensions.values().collect();
-            for extension in &expected_extensions {
-                assert!(parsed_extension_values.contains(&extension));
-            }
+            assert_eq!(cert.extensions(), expected_extensions);
             assert_eq!(
                 cert.tbs_cert_list.as_ref(),
                 &EMPTY_CRL_DER[4..(4 + 3 + 200)]
@@ -332,7 +315,7 @@ fn test_crl_parse_minimal() {
             assert_eq!(*revoked_cert_0.serial(), 42u32.into());
             assert_eq!(revoked_cert_0.revocation_date, revocation_date);
             assert_eq!(revoked_cert_0.extensions, HashMap::new());
-            assert!(crl.tbs_cert_list.extensions.is_empty());
+            assert!(crl.tbs_cert_list.extensions().is_empty());
             assert_eq!(crl.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
         }
         err => panic!("x509 parsing failed: {:?}", err),
@@ -345,8 +328,7 @@ fn test_duplicate_authority_info_access() {
         Ok((_, cert)) => {
             let extension = cert
                 .tbs_certificate
-                .extensions
-                .get(&OID_PKIX_AUTHORITY_INFO_ACCESS)
+                .find_extension(&OID_PKIX_AUTHORITY_INFO_ACCESS)
                 .unwrap();
             let mut accessdescs = HashMap::new();
             let ca_issuers = vec![
