@@ -4,6 +4,7 @@ use crate::error::{X509Error, X509Result};
 use crate::time::{der_to_utctime, ASN1Time};
 use crate::x509::{ReasonCode, X509Name};
 
+use der_parser::ber::parse_ber_bool;
 use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
@@ -972,8 +973,9 @@ pub(crate) fn parse_extensions(
 }
 
 fn der_read_critical(i: &[u8]) -> BerResult<bool> {
-    // parse_der_optional!(i, parse_der_bool)
-    let (rem, obj) = opt(parse_der_bool)(i)?;
+    // Some certificates do not respect the DER BOOLEAN constraint (true must be encoded as 0xff)
+    // so we attempt to parse as BER
+    let (rem, obj) = opt(parse_ber_bool)(i)?;
     let value = obj
         .map(|o| o.as_bool().unwrap_or_default()) // unwrap cannot fail, we just read a bool
         .unwrap_or(false) // default critical value
