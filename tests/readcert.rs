@@ -61,9 +61,10 @@ fn test_x509_parser() {
             assert_eq!(na.year(), 2020);
             assert_eq!(na.month(), 10);
             assert_eq!(na.day(), 17);
-            let policies = vec![(oid!(1.2.250 .1 .121 .1 .1 .1), [].as_ref())]
-                .into_iter()
-                .collect();
+            let policies = vec![PolicyInformation {
+                policy_id: oid!(1.2.250 .1 .121 .1 .1 .1),
+                policy_qualifiers: None,
+            }];
             let expected_extensions = vec![
                 X509Extension::new(
                     oid!(2.5.29 .19),
@@ -84,7 +85,7 @@ fn test_x509_parser() {
                     oid!(2.5.29 .32),
                     false,
                     &[48, 12, 48, 10, 6, 8, 42, 129, 122, 1, 121, 1, 1, 1],
-                    ParsedExtension::CertificatePolicies(CertificatePolicies { policies }),
+                    ParsedExtension::CertificatePolicies(policies),
                 ),
                 X509Extension::new(
                     oid!(2.5.29 .14),

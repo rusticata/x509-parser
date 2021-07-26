@@ -190,9 +190,18 @@ pub struct AuthorityKeyIdentifier<'a> {
     pub authority_cert_serial: Option<&'a [u8]>,
 }
 
+pub type CertificatePolicies<'a> = Vec<PolicyInformation<'a>>;
+
 #[derive(Debug, PartialEq)]
-pub struct CertificatePolicies<'a> {
-    pub policies: HashMap<Oid<'a>, &'a [u8]>,
+pub struct PolicyInformation<'a> {
+    pub policy_id: Oid<'a>,
+    pub policy_qualifiers: Option<Vec<PolicyQualifierInfo<'a>>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PolicyQualifierInfo<'a> {
+    pub policy_qualifier_id: Oid<'a>,
+    pub qualifier: &'a [u8],
 }
 
 /// Identifies whether the subject of the certificate is a CA, and the max validation depth.
@@ -884,26 +893,34 @@ pub(crate) mod parser {
     //
     // PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice )
     fn parse_certificatepolicies(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], (Oid, &[u8]), BerError> {
+        fn parse_policy_qualifier_info(i: &[u8]) -> IResult<&[u8], PolicyQualifierInfo, BerError> {
             parse_der_sequence_defined_g(|content, _| {
-                let (qualifier_set, oid) =
+                let (rem, policy_qualifier_id) =
                     map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
-                Ok((&[], (oid, qualifier_set)))
+                let info = PolicyQualifierInfo {
+                    policy_qualifier_id,
+                    qualifier: rem,
+                };
+                Ok((&[], info))
             })(i)
         }
-        let (ret, mut policy_list) = parse_der_sequence_of_v(parse_policy_information)(i)?;
-        // create the policy hashmap
-        let mut policies = HashMap::new();
-        for (oid, qualifier_set) in policy_list.drain(..) {
-            if policies.insert(oid, qualifier_set).is_some() {
-                // duplicate policies are not allowed
-                return Err(Err::Failure(BerError::InvalidTag));
-            }
+        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], PolicyInformation, BerError> {
+            parse_der_sequence_defined_g(|content, _| {
+                let (rem, policy_id) =
+                    map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
+                let (rem, policy_qualifiers) =
+                    opt(complete(parse_der_sequence_defined_g(|content, _| {
+                        many1(complete(parse_policy_qualifier_info))(content)
+                    })))(rem)?;
+                let info = PolicyInformation {
+                    policy_id,
+                    policy_qualifiers,
+                };
+                Ok((rem, info))
+            })(i)
         }
-        Ok((
-            ret,
-            ParsedExtension::CertificatePolicies(CertificatePolicies { policies }),
-        ))
+        let (ret, policies) = parse_der_sequence_of_v(parse_policy_information)(i)?;
+        Ok((ret, ParsedExtension::CertificatePolicies(policies)))
     }
 
     // CRLReason ::= ENUMERATED { ...
