@@ -12,7 +12,7 @@ fn read_csr_empty_attrib() {
     assert!(rem.is_empty());
     let cri = &csr.certification_request_info;
     assert_eq!(cri.version, X509Version(0));
-    assert_eq!(cri.attributes.len(), 0);
+    assert_eq!(cri.attributes().len(), 0);
     assert_eq!(csr.signature_algorithm.algorithm, OID_PKCS1_SHA256WITHRSA);
 }
 
@@ -25,7 +25,7 @@ fn read_csr_with_san() {
     assert!(rem.is_empty());
     let cri = &csr.certification_request_info;
     assert_eq!(cri.version, X509Version(0));
-    assert_eq!(cri.attributes.len(), 1);
+    assert_eq!(cri.attributes().len(), 1);
     assert_eq!(csr.signature_algorithm.algorithm, OID_SIG_ECDSA_WITH_SHA256);
 
     let mut rdns = cri.subject.rdn_seq.iter();

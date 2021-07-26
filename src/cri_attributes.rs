@@ -46,7 +46,7 @@ impl<'a> X509CriAttribute<'a> {
 /// Section 3.1 of rfc 5272
 #[derive(Debug, PartialEq)]
 pub struct ExtensionRequest<'a> {
-    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
+    pub extensions: Vec<X509Extension<'a>>,
 }
 
 /// Attributes for Certification Request
@@ -94,9 +94,6 @@ pub(crate) mod parser {
 
     fn parse_extension_request(i: &[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError> {
         crate::extensions::parse_extension_sequence(i)
-            .and_then(|(i, extensions)| {
-                crate::extensions::extensions_sequence_to_map(i, extensions)
-            })
             .map(|(i, extensions)| {
                 (
                     i,
@@ -107,24 +104,10 @@ pub(crate) mod parser {
     }
 }
 
-fn attributes_sequence_to_map<'a>(
-    i: &'a [u8],
-    v: Vec<X509CriAttribute<'a>>,
-) -> X509Result<'a, HashMap<Oid<'a>, X509CriAttribute<'a>>> {
-    let mut attributes = HashMap::new();
-    for attr in v.into_iter() {
-        if attributes.insert(attr.oid.clone(), attr).is_some() {
-            // duplicate attributes are not allowed
-            return Err(Err::Failure(X509Error::DuplicateAttributes));
-        }
-    }
-    Ok((i, attributes))
-}
-
-pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<HashMap<Oid, X509CriAttribute>> {
+pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<Vec<X509CriAttribute>> {
     let (i, hdr) = der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
     if i.is_empty() {
-        return Ok((i, HashMap::new()));
+        return Ok((i, Vec::new()));
     }
     (0..hdr.structured)
         .into_iter()
@@ -133,5 +116,4 @@ pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<HashMap<Oid, X509CriA
             attrs.push(attr);
             Ok((rem, attrs))
         })
-        .and_then(|(i, attrs)| attributes_sequence_to_map(i, attrs))
 }

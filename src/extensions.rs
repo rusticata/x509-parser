@@ -941,20 +941,6 @@ pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension
     )
 }
 
-pub(crate) fn extensions_sequence_to_map<'a>(
-    i: &'a [u8],
-    v: Vec<X509Extension<'a>>,
-) -> X509Result<'a, HashMap<Oid<'a>, X509Extension<'a>>> {
-    let mut extensions = HashMap::new();
-    for ext in v.into_iter() {
-        if extensions.insert(ext.oid.clone(), ext).is_some() {
-            // duplicate extensions are not allowed
-            return Err(Err::Failure(X509Error::DuplicateExtensions));
-        }
-    }
-    Ok((i, extensions))
-}
-
 pub(crate) fn parse_extensions(i: &[u8], explicit_tag: DerTag) -> X509Result<Vec<X509Extension>> {
     if i.is_empty() {
         return Ok((i, Vec::new()));
