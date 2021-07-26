@@ -115,7 +115,7 @@ fn test_x509_parser() {
                     }),
                 ),
             ];
-            assert_eq!(tbs_cert.extensions(), &expected_extensions);
+            assert_eq!(tbs_cert.extensions(), &expected_extensions as &[_]);
             //
             assert!(tbs_cert.is_ca());
             //
@@ -253,7 +253,7 @@ fn test_crl_parse() {
                     ParsedExtension::CRLNumber(3u32.into()),
                 ),
             ];
-            assert_eq!(tbs_cert_list.extensions(), expected_extensions);
+            assert_eq!(tbs_cert_list.extensions(), &expected_extensions as &[_]);
 
             assert_eq!(tbs_cert_list.as_ref(), &CRL_DER[4..(4 + 4 + 508)]);
         }
@@ -292,7 +292,7 @@ fn test_crl_parse_empty() {
                     }),
                 ),
             ];
-            assert_eq!(cert.extensions(), expected_extensions);
+            assert_eq!(cert.extensions(), &expected_extensions as &[_]);
             assert_eq!(
                 cert.tbs_cert_list.as_ref(),
                 &EMPTY_CRL_DER[4..(4 + 3 + 200)]
