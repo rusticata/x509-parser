@@ -14,7 +14,7 @@ fn print_hex_dump(bytes: &[u8], max_len: usize) {
 }
 
 fn format_oid(oid: &Oid) -> String {
-    match oid2sn(oid) {
+    match oid2sn(oid, oid_registry()) {
         Ok(s) => s.to_owned(),
         _ => format!("{}", oid),
     }

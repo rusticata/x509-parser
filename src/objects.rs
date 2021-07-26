@@ -10,11 +10,11 @@
 //! To get the short name for a given OID:
 //!
 //! ```rust
-//! use x509_parser::objects::oid2sn;
+//! use x509_parser::objects::*;
 //! use x509_parser::oid_registry::*;
 //!
 //! let oid = &OID_X509_COMMON_NAME;
-//! let sn = oid2sn(oid);
+//! let sn = oid2sn(oid, oid_registry());
 //! assert_eq!(sn, Ok("commonName"));
 //! ```
 
@@ -45,30 +45,27 @@ lazy_static! {
 }
 
 /// Return the abbreviation (for ex. CN for Common Name), or if not found, the OID short name
-pub fn oid2abbrev<'a>(oid: &'a Oid) -> Result<&'a str, NidError> {
+pub fn oid2abbrev<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str, NidError> {
     if let Some(abbrev) = ABBREV_MAP.get(oid) {
         return Ok(abbrev);
     }
-    OID_REGISTRY
-        .get(oid)
-        .map(|entry| entry.sn())
-        .ok_or(NidError)
+    registry.get(oid).map(|entry| entry.sn()).ok_or(NidError)
 }
 
 /// Returns the short name corresponding to the OID
-pub fn oid2sn<'a>(oid: &'a Oid) -> Result<&'a str, NidError> {
-    OID_REGISTRY.get(oid).map(|ref o| o.sn()).ok_or(NidError)
+pub fn oid2sn<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str, NidError> {
+    registry.get(oid).map(|ref o| o.sn()).ok_or(NidError)
 }
 
 /// Returns the description corresponding to the OID
-pub fn oid2description<'a>(oid: &'a Oid) -> Result<&'a str, NidError> {
-    OID_REGISTRY
+pub fn oid2description<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str, NidError> {
+    registry
         .get(oid)
         .map(|ref o| o.description())
         .ok_or(NidError)
 }
 
-/// Return a reference to the registry of known OIDs
+/// Return a reference to the default registry of known OIDs
 pub fn oid_registry() -> &'static OidRegistry<'static> {
     &OID_REGISTRY
 }

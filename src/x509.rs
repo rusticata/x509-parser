@@ -386,7 +386,7 @@ fn x509name_to_string(rdn_seq: &[RelativeDistinguishedName]) -> Result<String, X
                     acc2.and_then(|mut _vec2| {
                         let val_str = attribute_value_to_string(&attr.attr_value, &attr.attr_type)?;
                         // look ABBREV, and if not found, use shortname
-                        let abbrev = match oid2abbrev(&attr.attr_type) {
+                        let abbrev = match oid2abbrev(&attr.attr_type, oid_registry()) {
                             Ok(s) => String::from(s),
                             _ => format!("{:?}", attr.attr_type),
                         };
