@@ -237,7 +237,7 @@ pub struct RevokedCertificate<'a> {
     /// The date on which the revocation occurred is specified.
     pub revocation_date: ASN1Time,
     /// Additional information about revocation
-    pub extensions: HashMap<Oid<'a>, X509Extension<'a>>,
+    extensions: Vec<X509Extension<'a>>,
     pub(crate) raw_serial: &'a [u8],
 }
 
@@ -252,10 +252,7 @@ impl<'a> RevokedCertificate<'a> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
             let (i, revocation_date) = ASN1Time::from_der(i)?;
-            let (i, extensions) = opt(complete(|i| {
-                let (rem, v) = parse_extension_sequence(i)?;
-                extensions_sequence_to_map(rem, v)
-            }))(i)?;
+            let (i, extensions) = opt(complete(parse_extension_sequence))(i)?;
             let revoked = RevokedCertificate {
                 user_certificate,
                 revocation_date,
@@ -269,6 +266,40 @@ impl<'a> RevokedCertificate<'a> {
     /// Return the serial number of the revoked certificate
     pub fn serial(&self) -> &BigUint {
         &self.user_certificate
+    }
+
+    /// Get the CRL entry extensions.
+    #[inline]
+    pub fn extensions(&self) -> &[X509Extension] {
+        &self.extensions
+    }
+
+    /// Returns an iterator over the CRL entry extensions
+    #[inline]
+    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension> {
+        self.extensions.iter()
+    }
+
+    /// Searches for a CRL entry extension with the given `Oid`.
+    ///
+    /// Note: if there are several extensions with the same `Oid`, the first one is returned.
+    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension> {
+        self.extensions.iter().find(|&ext| ext.oid == *oid)
+    }
+
+    /// Builds and returns a map of CRL entry extensions.
+    ///
+    /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
+    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension>, X509Error> {
+        self.extensions
+            .iter()
+            .try_fold(HashMap::new(), |mut m, ext| {
+                if m.contains_key(&ext.oid) {
+                    return Err(X509Error::DuplicateExtensions);
+                }
+                m.insert(ext.oid.clone(), ext);
+                Ok(m)
+            })
     }
 
     /// Get the raw bytes of the certificate serial number
@@ -290,11 +321,11 @@ impl<'a> RevokedCertificate<'a> {
 
     /// Get the code identifying the reason for the revocation, if present
     pub fn reason_code(&self) -> Option<(bool, ReasonCode)> {
-        let ext = self.extensions.get(&OID_X509_EXT_REASON_CODE)?;
-        match ext.parsed_extension {
-            ParsedExtension::ReasonCode(code) => Some((ext.critical, code)),
-            _ => None,
-        }
+        self.find_extension(&OID_X509_EXT_REASON_CODE)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::ReasonCode(code) => Some((ext.critical, code)),
+                _ => None,
+            })
     }
 
     /// Get the invalidity date, if present
@@ -302,17 +333,11 @@ impl<'a> RevokedCertificate<'a> {
     /// The invalidity date is the date on which it is known or suspected that the private
     ///  key was compromised or that the certificate otherwise became invalid.
     pub fn invalidity_date(&self) -> Option<(bool, ASN1Time)> {
-        let ext = self.extensions.get(&OID_X509_EXT_INVALIDITY_DATE)?;
-        match ext.parsed_extension {
-            ParsedExtension::InvalidityDate(date) => Some((ext.critical, date)),
-            _ => None,
-        }
-    }
-
-    /// Get the certificate extensions.
-    #[inline]
-    pub fn extensions(&self) -> &HashMap<Oid, X509Extension> {
-        &self.extensions
+        self.find_extension(&OID_X509_EXT_INVALIDITY_DATE)
+            .and_then(|ext| match ext.parsed_extension {
+                ParsedExtension::InvalidityDate(date) => Some((ext.critical, date)),
+                _ => None,
+            })
     }
 }
 

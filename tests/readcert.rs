@@ -203,18 +203,13 @@ fn test_crl_parse() {
             let revoked_cert_0 = &revoked_certs[0];
             assert_eq!(*revoked_cert_0.serial(), 0x147947u32.into());
             assert_eq!(revoked_cert_0.revocation_date, revocation_date);
-            let mut extensions_map = HashMap::new();
-            extensions_map.insert(
-                oid!(2.5.29 .21),
+            let expected_extensions = vec![
                 X509Extension::new(
                     oid!(2.5.29 .21),
                     false,
                     &[10, 1, 3],
                     ParsedExtension::ReasonCode(ReasonCode::AffiliationChanged),
                 ),
-            );
-            extensions_map.insert(
-                oid!(2.5.29 .24),
                 X509Extension::new(
                     oid!(2.5.29 .24),
                     false,
@@ -223,8 +218,8 @@ fn test_crl_parse() {
                     ],
                     ParsedExtension::InvalidityDate(invalidity_date),
                 ),
-            );
-            assert_eq!(revoked_cert_0.extensions, extensions_map);
+            ];
+            assert_eq!(revoked_cert_0.extensions(), &expected_extensions as &[_]);
 
             assert_eq!(revoked_certs.len(), 5);
             assert_eq!(revoked_certs[4].user_certificate, 1_341_771_u32.into());
@@ -314,7 +309,7 @@ fn test_crl_parse_minimal() {
             let revoked_cert_0 = &revoked_certificates[0];
             assert_eq!(*revoked_cert_0.serial(), 42u32.into());
             assert_eq!(revoked_cert_0.revocation_date, revocation_date);
-            assert_eq!(revoked_cert_0.extensions, HashMap::new());
+            assert!(revoked_cert_0.extensions().is_empty());
             assert!(crl.tbs_cert_list.extensions().is_empty());
             assert_eq!(crl.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
         }

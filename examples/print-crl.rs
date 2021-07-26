@@ -119,8 +119,8 @@ fn print_revoked_certificate(revoked: &RevokedCertificate, level: usize) {
         indent = level + 2
     );
     println!("{:indent$}CRL Extensions:", "", indent = level + 2);
-    for (oid, ext) in revoked.extensions() {
-        print_x509_extension(oid, ext, level + 4);
+    for ext in revoked.extensions() {
+        print_x509_extension(&ext.oid, ext, level + 4);
     }
 }
 
