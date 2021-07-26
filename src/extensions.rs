@@ -102,7 +102,9 @@ impl<'a> X509Extension<'a> {
         .map_err(|_| X509Error::InvalidExtensions.into())
     }
 
-    pub fn new(
+    /// Creates a new extension with the provided values.
+    #[inline]
+    pub const fn new(
         oid: Oid<'a>,
         critical: bool,
         value: &'a [u8],
