@@ -139,6 +139,12 @@ impl<'a> X509Certificate<'a> {
         &self.tbs_certificate.validity
     }
 
+    /// Get the certificate public key information.
+    #[inline]
+    pub fn public_key(&self) -> &SubjectPublicKeyInfo {
+        &self.tbs_certificate.subject_pki
+    }
+
     /// Get the certificate extensions.
     #[inline]
     pub fn extensions(&self) -> &[X509Extension] {
@@ -160,7 +166,7 @@ impl<'a> X509Certificate<'a> {
         public_key: Option<&SubjectPublicKeyInfo>,
     ) -> Result<(), X509Error> {
         use ring::signature;
-        let spki = public_key.unwrap_or(&self.tbs_certificate.subject_pki);
+        let spki = public_key.unwrap_or(&self.public_key());
         let signature_alg = &self.signature_algorithm.algorithm;
         // identify verification algorithm
         let verification_alg: &dyn signature::VerificationAlgorithm =

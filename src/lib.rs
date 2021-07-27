@@ -91,7 +91,7 @@
 //! /// Cryptographic signature verification: returns true if certificate was signed by issuer
 //! #[cfg(feature = "verify")]
 //! pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
-//!     let issuer_public_key = &issuer.tbs_certificate.subject_pki;
+//!     let issuer_public_key = issuer.public_key();
 //!     cert
 //!         .verify_signature(Some(issuer_public_key))
 //!         .is_ok()
