@@ -58,7 +58,7 @@ newtype_enum! {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
     pub attr_type: Oid<'a>,
     pub attr_value: DerObject<'a>, // ANY -- DEFINED BY AttributeType
@@ -125,7 +125,7 @@ fn parse_malformed_string(i: &[u8]) -> DerResult {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RelativeDistinguishedName<'a> {
     pub set: Vec<AttributeTypeAndValue<'a>>,
 }
@@ -140,7 +140,7 @@ impl<'a> RelativeDistinguishedName<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
     pub subject_public_key: BitStringObject<'a>,
@@ -167,7 +167,7 @@ impl<'a> SubjectPublicKeyInfo<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AlgorithmIdentifier<'a> {
     pub algorithm: Oid<'a>,
     pub parameters: Option<DerObject<'a>>,
@@ -207,7 +207,7 @@ impl<'a> AlgorithmIdentifier<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct X509Name<'a> {
     pub rdn_seq: Vec<RelativeDistinguishedName<'a>>,
     pub(crate) raw: &'a [u8],

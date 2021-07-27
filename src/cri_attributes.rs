@@ -14,7 +14,7 @@ use oid_registry::*;
 use std::collections::HashMap;
 
 /// Attributes for Certification Request
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct X509CriAttribute<'a> {
     pub oid: Oid<'a>,
     pub value: &'a [u8],
@@ -44,13 +44,13 @@ impl<'a> X509CriAttribute<'a> {
 }
 
 /// Section 3.1 of rfc 5272
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ExtensionRequest<'a> {
     pub extensions: Vec<X509Extension<'a>>,
 }
 
 /// Attributes for Certification Request
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ParsedCriAttribute<'a> {
     ExtensionRequest(ExtensionRequest<'a>),
     UnsupportedAttribute,

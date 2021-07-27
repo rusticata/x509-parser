@@ -44,5 +44,9 @@ oid-registry = { version="0.1.1", features=["crypto", "x509"] }
 rusticata-macros = "3.0"
 ring = { version="0.16", optional=true }
 rustversion = "1.0"
-der-parser = { version = "5.0", features=["bigint"] }
+der-parser = { version = "5.1", features=["bigint"] }
 thiserror = "1.0"
+
+[patch.crates-io]
+der-parser = { git="https://github.com/rusticata/der-parser", branch="der-parser-5.x" }
+# der-parser = { path="../der-parser" }

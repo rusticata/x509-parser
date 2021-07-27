@@ -58,7 +58,7 @@ use std::collections::HashSet;
 /// # }
 /// # }
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
@@ -230,7 +230,7 @@ impl Validate for X509Certificate<'_> {
 ///                             -- If present, version MUST be v3
 ///        }
 /// </pre>
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TbsCertificate<'a> {
     pub version: X509Version,
     pub serial: BigUint,
@@ -515,7 +515,7 @@ impl Validate for TbsCertificate<'_> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Validity {
     pub not_before: ASN1Time,
     pub not_after: ASN1Time,
@@ -562,7 +562,7 @@ impl Validity {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
 
 impl<'a> UniqueIdentifier<'a> {

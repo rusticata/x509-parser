@@ -16,7 +16,7 @@ use oid_registry::*;
 use std::collections::HashMap;
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct X509Extension<'a> {
     /// OID describing the extension content
     pub oid: Oid<'a>,
@@ -125,7 +125,7 @@ impl<'a> X509Extension<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ParsedExtension<'a> {
     /// Crate parser does not support this extension (yet)
     UnsupportedExtension {
@@ -183,7 +183,7 @@ impl<'a> ParsedExtension<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AuthorityKeyIdentifier<'a> {
     pub key_identifier: Option<KeyIdentifier<'a>>,
     pub authority_cert_issuer: Option<Vec<GeneralName<'a>>>,
@@ -192,29 +192,29 @@ pub struct AuthorityKeyIdentifier<'a> {
 
 pub type CertificatePolicies<'a> = Vec<PolicyInformation<'a>>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolicyInformation<'a> {
     pub policy_id: Oid<'a>,
     pub policy_qualifiers: Option<Vec<PolicyQualifierInfo<'a>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolicyQualifierInfo<'a> {
     pub policy_qualifier_id: Oid<'a>,
     pub qualifier: &'a [u8],
 }
 
 /// Identifies whether the subject of the certificate is a CA, and the max validation depth.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BasicConstraints {
     pub ca: bool,
     pub path_len_constraint: Option<u32>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct KeyIdentifier<'a>(pub &'a [u8]);
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct KeyUsage {
     pub flags: u16,
 }
@@ -280,7 +280,7 @@ impl fmt::Display for KeyUsage {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ExtendedKeyUsage<'a> {
     pub any: bool,
     pub server_auth: bool,
@@ -292,7 +292,7 @@ pub struct ExtendedKeyUsage<'a> {
     pub other: Vec<Oid<'a>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NSCertType(u8);
 
 // The value is a bit-string, where the individual bit positions are defined as:
@@ -356,33 +356,33 @@ impl fmt::Display for NSCertType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AuthorityInfoAccess<'a> {
     pub accessdescs: HashMap<Oid<'a>, Vec<GeneralName<'a>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InhibitAnyPolicy {
     pub skip_certs: u32,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolicyMappings<'a> {
     pub mappings: HashMap<Oid<'a>, Vec<Oid<'a>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolicyConstraints {
     pub require_explicit_policy: Option<u32>,
     pub inhibit_policy_mapping: Option<u32>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SubjectAlternativeName<'a> {
     pub general_names: Vec<GeneralName<'a>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// Represents a GeneralName as defined in RFC5280. There
 /// is no support X.400 addresses and EDIPartyName.
 ///
@@ -405,13 +405,13 @@ pub enum GeneralName<'a> {
     RegisteredID(Oid<'a>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NameConstraints<'a> {
     pub permitted_subtrees: Option<Vec<GeneralSubtree<'a>>>,
     pub excluded_subtrees: Option<Vec<GeneralSubtree<'a>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// Represents the structure used in the name constraints extensions.
 /// The fields minimum and maximum are not supported (openssl also has no support).
 pub struct GeneralSubtree<'a> {

@@ -18,7 +18,7 @@ use std::collections::HashMap;
 /// An X.509 v2 Certificate Revocation List (CRL).
 ///
 /// X.509 v2 CRLs are defined in [RFC5280](https://tools.ietf.org/html/rfc5280).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
@@ -150,7 +150,7 @@ impl<'a> CertificateRevocationList<'a> {
 ///                                      -- if present, version MUST be v2
 ///                             }
 /// </pre>
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TbsCertList<'a> {
     pub version: Option<X509Version>,
     pub signature: AlgorithmIdentifier<'a>,
@@ -230,7 +230,7 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
     /// The Serial number of the revoked certificate
     pub user_certificate: BigUint,
