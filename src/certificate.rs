@@ -166,7 +166,7 @@ impl<'a> X509Certificate<'a> {
         public_key: Option<&SubjectPublicKeyInfo>,
     ) -> Result<(), X509Error> {
         use ring::signature;
-        let spki = public_key.unwrap_or(&self.public_key());
+        let spki = public_key.unwrap_or_else(|| self.public_key());
         let signature_alg = &self.signature_algorithm.algorithm;
         // identify verification algorithm
         let verification_alg: &dyn signature::VerificationAlgorithm =
