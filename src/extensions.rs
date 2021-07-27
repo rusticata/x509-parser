@@ -472,11 +472,13 @@ pub enum GeneralName<'a> {
     RFC822Name(&'a str),
     /// A hostname, format is not checked.
     DNSName(&'a str),
-    // X400Address,
+    /// X400Address,
+    X400Address(UnparsedObject<'a>),
     /// RFC5280 defines several string types, we always try to parse as utf-8
     /// which is more or less a superset of the string types.
     DirectoryName(X509Name<'a>),
-    // EDIPartyName { name_assigner: Option<&'a str>, party_name: &'a str },
+    /// EDIPartyName
+    EDIPartyName(UnparsedObject<'a>),
     /// An uniform resource identifier. The format is not checked.
     URI(&'a str),
     /// An ip address, provided as encoded.
@@ -488,6 +490,12 @@ impl<'a> FromDer<'a> for GeneralName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_generalname(i).map_err(Err::convert)
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnparsedObject<'a> {
+    pub header: DerObjectHeader<'a>,
+    pub data: &'a [u8],
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -517,6 +525,7 @@ pub(crate) mod parser {
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
+    use nom::bytes::streaming::take;
     use nom::combinator::{map, verify};
     use nom::{Err, IResult};
 
@@ -728,7 +737,12 @@ pub(crate) mod parser {
             }
             1 => GeneralName::RFC822Name(ia5str(rest, hdr)?),
             2 => GeneralName::DNSName(ia5str(rest, hdr)?),
-            3 => return Err(Err::Failure(BerError::Unsupported)), // x400Address
+            3 => {
+                // XXX Not yet implemented
+                let (_, data) = take(len)(rest)?;
+                let obj = UnparsedObject { header: hdr, data };
+                GeneralName::X400Address(obj)
+            }
             4 => {
                 // directoryName, name
                 let (_, name) = all_consuming(X509Name::from_der)(&rest[..len])
@@ -736,7 +750,12 @@ pub(crate) mod parser {
                     ?;
                 GeneralName::DirectoryName(name)
             }
-            5 => return Err(Err::Failure(BerError::Unsupported)), // ediPartyName
+            5 => {
+                // XXX Not yet implemented
+                let (_, data) = take(len)(rest)?;
+                let obj = UnparsedObject { header: hdr, data };
+                GeneralName::EDIPartyName(obj)
+            }
             6 => GeneralName::URI(ia5str(rest, hdr)?),
             7 => {
                 // IPAddress, OctetString
