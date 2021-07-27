@@ -819,23 +819,6 @@ pub(crate) mod parser {
         Ok((rem, ParsedExtension::AuthorityKeyIdentifier(aki)))
     }
 
-    #[rustversion::not(since(1.37))]
-    fn reverse_bits(n: u8) -> u8 {
-        let mut out = 0;
-        for i in 0..=7 {
-            if n & (1 << i) != 0 {
-                out |= 1 << (7 - i);
-            }
-        }
-        out
-    }
-
-    #[rustversion::since(1.37)]
-    #[inline]
-    fn reverse_bits(n: u8) -> u8 {
-        n.reverse_bits()
-    }
-
     fn parse_keyidentifier<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
         let (rest, obj) = parse_der_octetstring(i)?;
         let id = obj
@@ -857,7 +840,7 @@ pub(crate) mod parser {
             .data
             .iter()
             .rev()
-            .fold(0, |acc, x| acc << 8 | (reverse_bits(*x) as u16));
+            .fold(0, |acc, x| acc << 8 | (x.reverse_bits() as u16));
         Ok((rest, ParsedExtension::KeyUsage(KeyUsage { flags })))
     }
 
@@ -871,7 +854,7 @@ pub(crate) mod parser {
         if bitstring.data.len() != 1 {
             return Err(Err::Error(BerError::BerValueError));
         }
-        let flags = reverse_bits(bitstring.data[0]);
+        let flags = bitstring.data[0].reverse_bits();
         Ok((rest, ParsedExtension::NSCertType(NSCertType(flags))))
     }
 
