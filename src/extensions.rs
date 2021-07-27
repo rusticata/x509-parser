@@ -404,12 +404,70 @@ impl<'a> FromDer<'a> for NSCertType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AuthorityInfoAccess<'a> {
-    pub accessdescs: HashMap<Oid<'a>, Vec<GeneralName<'a>>>,
+    pub accessdescs: Vec<AccessDescription<'a>>,
+}
+
+impl<'a> AuthorityInfoAccess<'a> {
+    /// Returns a `HashMap` mapping `Oid` to the list of references to `GeneralNames`
+    ///
+    /// If several names match the same `Oid`, they are merged in the same entry.
+    pub fn as_hashmap(&self) -> HashMap<Oid<'a>, Vec<&GeneralName<'a>>> {
+        // create the hashmap and merge entries with same OID
+        let mut m: HashMap<Oid, Vec<&GeneralName>> = HashMap::new();
+        for desc in &self.accessdescs {
+            let AccessDescription {
+                access_method: oid,
+                access_location: gn,
+            } = desc;
+            if let Some(general_names) = m.get_mut(&oid) {
+                general_names.push(gn);
+            } else {
+                m.insert(oid.clone(), vec![gn]);
+            }
+        }
+        m
+    }
+
+    /// Returns a `HashMap` mapping `Oid` to the list of `GeneralNames` (consuming the input)
+    ///
+    /// If several names match the same `Oid`, they are merged in the same entry.
+    pub fn into_hashmap(self) -> HashMap<Oid<'a>, Vec<GeneralName<'a>>> {
+        let mut aia_list = self.accessdescs;
+        // create the hashmap and merge entries with same OID
+        let mut m: HashMap<Oid, Vec<GeneralName>> = HashMap::new();
+        for desc in aia_list.drain(..) {
+            let AccessDescription {
+                access_method: oid,
+                access_location: gn,
+            } = desc;
+            if let Some(general_names) = m.get_mut(&oid) {
+                general_names.push(gn);
+            } else {
+                m.insert(oid, vec![gn]);
+            }
+        }
+        m
+    }
 }
 
 impl<'a> FromDer<'a> for AuthorityInfoAccess<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_authorityinfoaccess(i).map_err(Err::convert)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AccessDescription<'a> {
+    pub access_method: Oid<'a>,
+    pub access_location: GeneralName<'a>,
+}
+
+impl<'a> AccessDescription<'a> {
+    pub const fn new(access_method: Oid<'a>, access_location: GeneralName<'a>) -> Self {
+        AccessDescription {
+            access_method,
+            access_location,
+        }
     }
 }
 
@@ -916,25 +974,16 @@ pub(crate) mod parser {
     pub(super) fn parse_authorityinfoaccess(
         i: &[u8],
     ) -> IResult<&[u8], AuthorityInfoAccess, BerError> {
-        fn parse_aia(i: &[u8]) -> IResult<&[u8], (Oid, GeneralName), BerError> {
+        fn parse_aia(i: &[u8]) -> IResult<&[u8], AccessDescription, BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
                 let (gn, oid) = map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
                 // Parse second element
                 let (rest, gn) = parse_generalname(gn)?;
-                Ok((rest, (oid, gn)))
+                Ok((rest, AccessDescription::new(oid, gn)))
             })(i)
         }
-        let (ret, mut aia_list) = parse_der_sequence_of_v(parse_aia)(i)?;
-        // create the hashmap and merge entries with same OID
-        let mut accessdescs: HashMap<Oid, Vec<GeneralName>> = HashMap::new();
-        for (oid, gn) in aia_list.drain(..) {
-            if let Some(general_names) = accessdescs.get_mut(&oid) {
-                general_names.push(gn);
-            } else {
-                accessdescs.insert(oid, vec![gn]);
-            }
-        }
+        let (ret, accessdescs) = parse_der_sequence_of_v(parse_aia)(i)?;
         Ok((ret, AuthorityInfoAccess { accessdescs }))
     }
 

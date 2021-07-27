@@ -328,15 +328,18 @@ fn test_duplicate_authority_info_access() {
                 .unwrap();
             let mut accessdescs = HashMap::new();
             let ca_issuers = vec![
-                GeneralName::URI("http://cdp1.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
-                GeneralName::URI("http://cdp2.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
+                &GeneralName::URI("http://cdp1.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
+                &GeneralName::URI("http://cdp2.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
             ];
-            let ocsp = vec![GeneralName::URI("http://ocsp.pca.dfn.de/OCSP-Server/OCSP")];
+            let ocsp = vec![&GeneralName::URI("http://ocsp.pca.dfn.de/OCSP-Server/OCSP")];
             accessdescs.insert(OID_PKIX_ACCESS_DESCRIPTOR_CA_ISSUERS, ca_issuers);
             accessdescs.insert(OID_PKIX_ACCESS_DESCRIPTOR_OCSP, ocsp);
-            let expected_aia =
-                ParsedExtension::AuthorityInfoAccess(AuthorityInfoAccess { accessdescs });
-            assert_eq!(*extension.parsed_extension(), expected_aia);
+            if let ParsedExtension::AuthorityInfoAccess(aia) = extension.parsed_extension() {
+                let h = aia.as_hashmap();
+                assert_eq!(h, accessdescs);
+            } else {
+                panic!("Wrong extension type parsed");
+            }
         }
         err => panic!("x509 parsing failed: {:?}", err),
     }
