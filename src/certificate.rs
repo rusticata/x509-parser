@@ -3,6 +3,7 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
+use crate::traits::FromDer;
 #[cfg(feature = "validate")]
 use crate::validate::Validate;
 use crate::x509::{
@@ -35,21 +36,21 @@ use std::collections::HashSet;
 /// buffer containing the binary representation.
 ///
 /// ```rust
-/// # use x509_parser::parse_x509_certificate;
 /// # use x509_parser::certificate::X509Certificate;
+/// # use x509_parser::traits::FromDer;
 /// #
 /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 /// #
 /// fn display_x509_info(x509: &X509Certificate<'_>) {
-///      let subject = &x509.tbs_certificate.subject;
-///      let issuer = &x509.tbs_certificate.issuer;
+///      let subject = x509.subject();
+///      let issuer = x509.issuer();
 ///      println!("X.509 Subject: {}", subject);
 ///      println!("X.509 Issuer: {}", issuer);
 ///      println!("X.509 serial: {}", x509.tbs_certificate.raw_serial_as_string());
 /// }
 /// #
 /// # fn main() {
-/// # let res = parse_x509_certificate(DER);
+/// # let res = X509Certificate::from_der(DER);
 /// # match res {
 /// #     Ok((_rem, x509)) => {
 /// #         display_x509_info(&x509);
@@ -66,56 +67,6 @@ pub struct X509Certificate<'a> {
 }
 
 impl<'a> X509Certificate<'a> {
-    /// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
-    /// object.
-    ///
-    /// The returned object uses zero-copy, and so has the same lifetime as the input.
-    ///
-    /// Note that only parsing is done, not validation.
-    ///
-    /// <pre>
-    /// Certificate  ::=  SEQUENCE  {
-    ///         tbsCertificate       TBSCertificate,
-    ///         signatureAlgorithm   AlgorithmIdentifier,
-    ///         signatureValue       BIT STRING  }
-    /// </pre>
-    ///
-    /// # Example
-    ///
-    /// To parse a certificate and print the subject and issuer:
-    ///
-    /// ```rust
-    /// # use x509_parser::parse_x509_certificate;
-    /// #
-    /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
-    /// #
-    /// # fn main() {
-    /// let res = parse_x509_certificate(DER);
-    /// match res {
-    ///     Ok((_rem, x509)) => {
-    ///         let subject = x509.subject();
-    ///         let issuer = x509.issuer();
-    ///         println!("X.509 Subject: {}", subject);
-    ///         println!("X.509 Issuer: {}", issuer);
-    ///     },
-    ///     _ => panic!("x509 parsing failed: {:?}", res),
-    /// }
-    /// # }
-    /// ```
-    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, tbs_certificate) = TbsCertificate::from_der(i)?;
-            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = parse_signature_value(i)?;
-            let cert = X509Certificate {
-                tbs_certificate,
-                signature_algorithm,
-                signature_value,
-            };
-            Ok((i, cert))
-        })(i)
-    }
-
     /// Get the version of the encoded certificate
     pub fn version(&self) -> X509Version {
         self.tbs_certificate.version
@@ -194,6 +145,58 @@ impl<'a> X509Certificate<'a> {
     }
 }
 
+impl<'a> FromDer<'a> for X509Certificate<'a> {
+    /// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
+    /// object.
+    ///
+    /// The returned object uses zero-copy, and so has the same lifetime as the input.
+    ///
+    /// Note that only parsing is done, not validation.
+    ///
+    /// <pre>
+    /// Certificate  ::=  SEQUENCE  {
+    ///         tbsCertificate       TBSCertificate,
+    ///         signatureAlgorithm   AlgorithmIdentifier,
+    ///         signatureValue       BIT STRING  }
+    /// </pre>
+    ///
+    /// # Example
+    ///
+    /// To parse a certificate and print the subject and issuer:
+    ///
+    /// ```rust
+    /// # use x509_parser::parse_x509_certificate;
+    /// #
+    /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+    /// #
+    /// # fn main() {
+    /// let res = parse_x509_certificate(DER);
+    /// match res {
+    ///     Ok((_rem, x509)) => {
+    ///         let subject = x509.subject();
+    ///         let issuer = x509.issuer();
+    ///         println!("X.509 Subject: {}", subject);
+    ///         println!("X.509 Issuer: {}", issuer);
+    ///     },
+    ///     _ => panic!("x509 parsing failed: {:?}", res),
+    /// }
+    /// # }
+    /// ```
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        parse_der_sequence_defined_g(|i, _| {
+            let (i, tbs_certificate) = TbsCertificate::from_der(i)?;
+            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, signature_value) = parse_signature_value(i)?;
+            let cert = X509Certificate {
+                tbs_certificate,
+                signature_algorithm,
+                signature_value,
+            };
+            Ok((i, cert))
+        })(i)
+    }
+}
+
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 impl Validate for X509Certificate<'_> {
@@ -247,57 +250,6 @@ pub struct TbsCertificate<'a> {
 }
 
 impl<'a> TbsCertificate<'a> {
-    /// Parse a DER-encoded TbsCertificate object
-    ///
-    /// <pre>
-    /// TBSCertificate  ::=  SEQUENCE  {
-    ///      version         [0]  Version DEFAULT v1,
-    ///      serialNumber         CertificateSerialNumber,
-    ///      signature            AlgorithmIdentifier,
-    ///      issuer               Name,
-    ///      validity             Validity,
-    ///      subject              Name,
-    ///      subjectPublicKeyInfo SubjectPublicKeyInfo,
-    ///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
-    ///                           -- If present, version MUST be v2 or v3
-    ///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
-    ///                           -- If present, version MUST be v2 or v3
-    ///      extensions      [3]  Extensions OPTIONAL
-    ///                           -- If present, version MUST be v3 --  }
-    /// </pre>
-    pub fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der(i)?;
-            let (i, serial) = parse_serial(i)?;
-            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
-            let (i, issuer) = X509Name::from_der(i)?;
-            let (i, validity) = Validity::from_der(i)?;
-            let (i, subject) = X509Name::from_der(i)?;
-            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
-            let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
-            let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
-            let (i, extensions) = parse_extensions(i, BerTag(3))?;
-            let len = start_i.offset(i);
-            let tbs = TbsCertificate {
-                version,
-                serial: serial.1,
-                signature,
-                issuer,
-                validity,
-                subject,
-                subject_pki,
-                issuer_uid,
-                subject_uid,
-                extensions,
-
-                raw: &start_i[..len],
-                raw_serial: serial.0,
-            };
-            Ok((i, tbs))
-        })(i)
-    }
-
     /// Returns the certificate extensions
     #[inline]
     pub fn extensions(&self) -> &[X509Extension] {
@@ -427,6 +379,59 @@ impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
     }
 }
 
+impl<'a> FromDer<'a> for TbsCertificate<'a> {
+    /// Parse a DER-encoded TbsCertificate object
+    ///
+    /// <pre>
+    /// TBSCertificate  ::=  SEQUENCE  {
+    ///      version         [0]  Version DEFAULT v1,
+    ///      serialNumber         CertificateSerialNumber,
+    ///      signature            AlgorithmIdentifier,
+    ///      issuer               Name,
+    ///      validity             Validity,
+    ///      subject              Name,
+    ///      subjectPublicKeyInfo SubjectPublicKeyInfo,
+    ///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+    ///                           -- If present, version MUST be v2 or v3
+    ///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+    ///                           -- If present, version MUST be v2 or v3
+    ///      extensions      [3]  Extensions OPTIONAL
+    ///                           -- If present, version MUST be v3 --  }
+    /// </pre>
+    fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
+        let start_i = i;
+        parse_der_sequence_defined_g(move |i, _| {
+            let (i, version) = X509Version::from_der(i)?;
+            let (i, serial) = parse_serial(i)?;
+            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
+            let (i, issuer) = X509Name::from_der(i)?;
+            let (i, validity) = Validity::from_der(i)?;
+            let (i, subject) = X509Name::from_der(i)?;
+            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
+            let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
+            let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
+            let (i, extensions) = parse_extensions(i, BerTag(3))?;
+            let len = start_i.offset(i);
+            let tbs = TbsCertificate {
+                version,
+                serial: serial.1,
+                signature,
+                issuer,
+                validity,
+                subject,
+                subject_pki,
+                issuer_uid,
+                subject_uid,
+                extensions,
+
+                raw: &start_i[..len],
+                raw_serial: serial.0,
+            };
+            Ok((i, tbs))
+        })(i)
+    }
+}
+
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 impl Validate for TbsCertificate<'_> {
@@ -522,18 +527,6 @@ pub struct Validity {
 }
 
 impl Validity {
-    fn from_der(i: &[u8]) -> X509Result<Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, not_before) = ASN1Time::from_der(i)?;
-            let (i, not_after) = ASN1Time::from_der(i)?;
-            let v = Validity {
-                not_before,
-                not_after,
-            };
-            Ok((i, v))
-        })(i)
-    }
-
     /// The time left before the certificate expires.
     ///
     /// If the certificate is not currently valid, then `None` is
@@ -559,6 +552,20 @@ impl Validity {
     #[inline]
     pub fn is_valid(&self) -> bool {
         self.is_valid_at(ASN1Time::now())
+    }
+}
+
+impl<'a> FromDer<'a> for Validity {
+    fn from_der(i: &[u8]) -> X509Result<Self> {
+        parse_der_sequence_defined_g(|i, _| {
+            let (i, not_before) = ASN1Time::from_der(i)?;
+            let (i, not_after) = ASN1Time::from_der(i)?;
+            let v = Validity {
+                not_before,
+                not_after,
+            };
+            Ok((i, v))
+        })(i)
     }
 }
 

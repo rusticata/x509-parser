@@ -44,7 +44,7 @@ use x509_parser::prelude::*;
 
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 
-let res = parse_x509_certificate(IGCA_DER);
+let res = X509Certificate::from_der(IGCA_DER);
 match res {
     Ok((rem, cert)) => {
         assert!(rem.is_empty());
@@ -60,7 +60,7 @@ To parse a CRL and print information about revoked certificates:
 ```rust
 #
 #
-let res = parse_x509_crl(DER);
+let res = CertificateRevocationList::from_der(DER);
 match res {
     Ok((_rem, crl)) => {
         for revoked in crl.iter_revoked_certificates() {

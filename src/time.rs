@@ -12,16 +12,13 @@ use nom::bytes::complete::take;
 use nom::combinator::{complete, map_res, opt};
 
 use crate::error::{X509Error, X509Result};
+use crate::traits::FromDer;
 
 /// An ASN.1 timestamp.
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct ASN1Time(DateTime<Utc>);
 
 impl ASN1Time {
-    pub(crate) fn from_der(i: &[u8]) -> X509Result<Self> {
-        map_res(parse_choice_of_time, der_to_utctime)(i).map_err(|_| X509Error::InvalidDate.into())
-    }
-
     pub(crate) fn from_der_opt(i: &[u8]) -> X509Result<Option<Self>> {
         opt(map_res(parse_choice_of_time, der_to_utctime))(i)
             .map_err(|_| X509Error::InvalidDate.into())
@@ -53,6 +50,12 @@ impl ASN1Time {
     #[inline]
     pub fn to_rfc2822(self) -> String {
         self.0.to_rfc2822()
+    }
+}
+
+impl<'a> FromDer<'a> for ASN1Time {
+    fn from_der(i: &[u8]) -> X509Result<Self> {
+        map_res(parse_choice_of_time, der_to_utctime)(i).map_err(|_| X509Error::InvalidDate.into())
     }
 }
 

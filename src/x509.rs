@@ -5,6 +5,7 @@
 
 use crate::error::{X509Error, X509Result};
 use crate::objects::*;
+use crate::traits::FromDer;
 
 use data_encoding::HEXUPPER;
 use der_parser::ber::{parse_ber_integer, BitStringObject, MAX_OBJECT_SIZE};
@@ -26,18 +27,6 @@ use std::fmt;
 pub struct X509Version(pub u32);
 
 impl X509Version {
-    // Parse [0] EXPLICIT Version DEFAULT v1
-    pub(crate) fn from_der(i: &[u8]) -> X509Result<X509Version> {
-        let (rem, hdr) =
-            der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag.0 {
-            0 => {
-                map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
-            }
-            _ => Ok((i, X509Version::V1)),
-        }
-    }
-
     pub(crate) fn from_der_required(i: &[u8]) -> X509Result<X509Version> {
         let (rem, hdr) =
             der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
@@ -46,6 +35,20 @@ impl X509Version {
                 map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
             }
             _ => Ok((&rem[1..], X509Version::V1)),
+        }
+    }
+}
+
+// Parse [0] EXPLICIT Version DEFAULT v1
+impl<'a> FromDer<'a> for X509Version {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        let (rem, hdr) =
+            der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
+        match hdr.tag.0 {
+            0 => {
+                map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
+            }
+            _ => Ok((i, X509Version::V1)),
         }
     }
 }
@@ -65,22 +68,6 @@ pub struct AttributeTypeAndValue<'a> {
 }
 
 impl<'a> AttributeTypeAndValue<'a> {
-    // AttributeTypeAndValue   ::= SEQUENCE {
-    //     type    AttributeType,
-    //     value   AttributeValue }
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
-                .or(Err(X509Error::InvalidX509Name))?;
-            let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
-            let attr = AttributeTypeAndValue {
-                attr_type,
-                attr_value,
-            };
-            Ok((i, attr))
-        })(i)
-    }
-
     /// Attempt to get the content as `str`.
     /// This can fail if the object does not contain a string type.
     ///
@@ -95,6 +82,24 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// sequence).
     pub fn as_slice(&self) -> Result<&'a [u8], X509Error> {
         self.attr_value.as_slice().map_err(|e| e.into())
+    }
+}
+
+// AttributeTypeAndValue   ::= SEQUENCE {
+//     type    AttributeType,
+//     value   AttributeValue }
+impl<'a> FromDer<'a> for AttributeTypeAndValue<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parse_der_sequence_defined_g(|i, _| {
+            let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
+                .or(Err(X509Error::InvalidX509Name))?;
+            let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
+            let attr = AttributeTypeAndValue {
+                attr_type,
+                attr_value,
+            };
+            Ok((i, attr))
+        })(i)
     }
 }
 
@@ -130,7 +135,7 @@ pub struct RelativeDistinguishedName<'a> {
     pub set: Vec<AttributeTypeAndValue<'a>>,
 }
 
-impl<'a> RelativeDistinguishedName<'a> {
+impl<'a> FromDer<'a> for RelativeDistinguishedName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         parse_der_set_defined_g(|i, _| {
             let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
@@ -146,9 +151,9 @@ pub struct SubjectPublicKeyInfo<'a> {
     pub subject_public_key: BitStringObject<'a>,
 }
 
-impl<'a> SubjectPublicKeyInfo<'a> {
+impl<'a> FromDer<'a> for SubjectPublicKeyInfo<'a> {
     /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
-    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
@@ -173,7 +178,7 @@ pub struct AlgorithmIdentifier<'a> {
     pub parameters: Option<DerObject<'a>>,
 }
 
-impl<'a> AlgorithmIdentifier<'a> {
+impl<'a> FromDer<'a> for AlgorithmIdentifier<'a> {
     /// Parse an algorithm identifier
     ///
     /// An algorithm identifier is defined by the following ASN.1 structure:
@@ -191,7 +196,7 @@ impl<'a> AlgorithmIdentifier<'a> {
     // lifetime is *not* useless, it is required to tell the compiler the content of the temporary
     // DerObject has the same lifetime as the input
     #[allow(clippy::needless_lifetimes)]
-    pub fn from_der(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
+    fn from_der(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, algorithm) = map_res(parse_der_oid, |x| x.as_oid_val())(i)
                 .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
@@ -223,20 +228,6 @@ impl<'a> fmt::Display for X509Name<'a> {
 }
 
 impl<'a> X509Name<'a> {
-    /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
-    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;
-            let len = start_i.offset(i);
-            let name = X509Name {
-                rdn_seq,
-                raw: &start_i[..len],
-            };
-            Ok((i, name))
-        })(i)
-    }
-
     /// Attempt to format the current name, using the given registry to convert OIDs to strings.
     ///
     /// Note: a default registry is provided with this crate, and is returned by the
@@ -334,6 +325,22 @@ impl<'a> X509Name<'a> {
     /// Return an iterator over the `EmailAddress` attributes of the X.509 Name.
     pub fn iter_email(&self) -> impl Iterator<Item = &AttributeTypeAndValue> {
         self.iter_by_oid(&OID_PKCS9_EMAIL_ADDRESS)
+    }
+}
+
+impl<'a> FromDer<'a> for X509Name<'a> {
+    /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        let start_i = i;
+        parse_der_sequence_defined_g(move |i, _| {
+            let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;
+            let len = start_i.offset(i);
+            let name = X509Name {
+                rdn_seq,
+                raw: &start_i[..len],
+            };
+            Ok((i, name))
+        })(i)
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::cri_attributes::*;
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
+use crate::traits::FromDer;
 use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };

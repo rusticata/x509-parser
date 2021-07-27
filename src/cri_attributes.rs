@@ -1,6 +1,7 @@
 use crate::{
     error::{X509Error, X509Result},
     extensions::X509Extension,
+    traits::FromDer,
 };
 
 use der_parser::der::{
@@ -21,8 +22,8 @@ pub struct X509CriAttribute<'a> {
     pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
 }
 
-impl<'a> X509CriAttribute<'a> {
-    pub fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
+impl<'a> FromDer<'a> for X509CriAttribute<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let value_start = i;

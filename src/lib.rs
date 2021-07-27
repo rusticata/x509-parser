@@ -43,7 +43,7 @@
 //! static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 //!
 //! # fn main() {
-//! let res = parse_x509_certificate(IGCA_DER);
+//! let res = X509Certificate::from_der(IGCA_DER);
 //! match res {
 //!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());
@@ -58,12 +58,12 @@
 //! To parse a CRL and print information about revoked certificates:
 //!
 //! ```rust
-//! # use x509_parser::parse_x509_crl;
+//! # use x509_parser::prelude::*;
 //! #
 //! # static DER: &[u8] = include_bytes!("../assets/example.crl");
 //! #
 //! # fn main() {
-//! let res = parse_x509_crl(DER);
+//! let res = CertificateRevocationList::from_der(DER);
 //! match res {
 //!     Ok((_rem, crl)) => {
 //!         for revoked in crl.iter_revoked_certificates() {
@@ -136,6 +136,7 @@ pub mod pem;
 pub mod prelude;
 pub mod revocation_list;
 pub mod time;
+pub mod traits;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
@@ -150,6 +151,7 @@ pub use oid_registry;
 use certificate::X509Certificate;
 use error::X509Result;
 use revocation_list::CertificateRevocationList;
+use traits::FromDer;
 
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
 /// object.
