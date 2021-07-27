@@ -85,6 +85,8 @@ impl<'a> X509CertificationRequest<'a> {
                 &signature::ECDSA_P256_SHA256_ASN1
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
                 &signature::ECDSA_P384_SHA384_ASN1
+            } else if *signature_alg == OID_SIG_ED25519 {
+                &signature::ED25519
             } else {
                 return Err(X509Error::SignatureUnsupportedAlgorithm);
             };
