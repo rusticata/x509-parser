@@ -10,7 +10,7 @@ use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
-use nom::combinator::{all_consuming, complete, map_opt, map_res, opt};
+use nom::combinator::{all_consuming, complete, map, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::Err;
 use oid_registry::*;
@@ -116,7 +116,7 @@ impl<'a> FromDer<'a> for X509Extension<'a> {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let (i, critical) = der_read_critical(i)?;
             let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
-            let (i, parsed_extension) = crate::extensions::parser::parse_extension(i, value, &oid)?;
+            let (i, parsed_extension) = parser::parse_extension(i, value, &oid)?;
             let ext = X509Extension {
                 oid,
                 critical,
@@ -194,7 +194,19 @@ pub struct AuthorityKeyIdentifier<'a> {
     pub authority_cert_serial: Option<&'a [u8]>,
 }
 
+impl<'a> FromDer<'a> for AuthorityKeyIdentifier<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_authoritykeyidentifier(i).map_err(Err::convert)
+    }
+}
+
 pub type CertificatePolicies<'a> = Vec<PolicyInformation<'a>>;
+
+impl<'a> FromDer<'a> for CertificatePolicies<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_certificatepolicies(i).map_err(Err::convert)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PolicyInformation<'a> {
@@ -215,8 +227,20 @@ pub struct BasicConstraints {
     pub path_len_constraint: Option<u32>,
 }
 
+impl<'a> FromDer<'a> for BasicConstraints {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_basicconstraints(i).map_err(Err::convert)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyIdentifier<'a>(pub &'a [u8]);
+
+impl<'a> FromDer<'a> for KeyIdentifier<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_keyidentifier(i).map_err(Err::convert)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct KeyUsage {
@@ -284,6 +308,12 @@ impl fmt::Display for KeyUsage {
     }
 }
 
+impl<'a> FromDer<'a> for KeyUsage {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_keyusage(i).map_err(Err::convert)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtendedKeyUsage<'a> {
     pub any: bool,
@@ -294,6 +324,12 @@ pub struct ExtendedKeyUsage<'a> {
     pub time_stamping: bool,
     pub ocsp_signing: bool,
     pub other: Vec<Oid<'a>>,
+}
+
+impl<'a> FromDer<'a> for ExtendedKeyUsage<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_extendedkeyusage(i).map_err(Err::convert)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -360,9 +396,21 @@ impl fmt::Display for NSCertType {
     }
 }
 
+impl<'a> FromDer<'a> for NSCertType {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_nscerttype(i).map_err(Err::convert)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AuthorityInfoAccess<'a> {
     pub accessdescs: HashMap<Oid<'a>, Vec<GeneralName<'a>>>,
+}
+
+impl<'a> FromDer<'a> for AuthorityInfoAccess<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_authorityinfoaccess(i).map_err(Err::convert)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -370,9 +418,21 @@ pub struct InhibitAnyPolicy {
     pub skip_certs: u32,
 }
 
+impl<'a> FromDer<'a> for InhibitAnyPolicy {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        map(parse_der_u32, |skip_certs| InhibitAnyPolicy { skip_certs })(i).map_err(Err::convert)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PolicyMappings<'a> {
     pub mappings: HashMap<Oid<'a>, Vec<Oid<'a>>>,
+}
+
+impl<'a> FromDer<'a> for PolicyMappings<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_policymappings(i).map_err(Err::convert)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -381,9 +441,24 @@ pub struct PolicyConstraints {
     pub inhibit_policy_mapping: Option<u32>,
 }
 
+impl<'a> FromDer<'a> for PolicyConstraints {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_policyconstraints(i).map_err(Err::convert)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubjectAlternativeName<'a> {
     pub general_names: Vec<GeneralName<'a>>,
+}
+
+impl<'a> FromDer<'a> for SubjectAlternativeName<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parse_der_sequence_defined_g(|input, _| {
+            let (i, general_names) = all_consuming(many0(complete(GeneralName::from_der)))(input)?;
+            Ok((i, SubjectAlternativeName { general_names }))
+        })(i)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -409,10 +484,22 @@ pub enum GeneralName<'a> {
     RegisteredID(Oid<'a>),
 }
 
+impl<'a> FromDer<'a> for GeneralName<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_generalname(i).map_err(Err::convert)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NameConstraints<'a> {
     pub permitted_subtrees: Option<Vec<GeneralSubtree<'a>>>,
     pub excluded_subtrees: Option<Vec<GeneralSubtree<'a>>>,
+}
+
+impl<'a> FromDer<'a> for NameConstraints<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_nameconstraints(i).map_err(Err::convert)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -444,35 +531,55 @@ pub(crate) mod parser {
             }
 
             let mut m = HashMap::new();
-            add!(m, OID_X509_EXT_SUBJECT_KEY_IDENTIFIER, parse_keyidentifier);
-            add!(m, OID_X509_EXT_KEY_USAGE, parse_keyusage);
+            add!(
+                m,
+                OID_X509_EXT_SUBJECT_KEY_IDENTIFIER,
+                parse_keyidentifier_ext
+            );
+            add!(m, OID_X509_EXT_KEY_USAGE, parse_keyusage_ext);
             add!(
                 m,
                 OID_X509_EXT_SUBJECT_ALT_NAME,
-                parse_subjectalternativename
+                parse_subjectalternativename_ext
             );
-            add!(m, OID_X509_EXT_BASIC_CONSTRAINTS, parse_basicconstraints);
-            add!(m, OID_X509_EXT_NAME_CONSTRAINTS, parse_nameconstraints);
+            add!(
+                m,
+                OID_X509_EXT_BASIC_CONSTRAINTS,
+                parse_basicconstraints_ext
+            );
+            add!(m, OID_X509_EXT_NAME_CONSTRAINTS, parse_nameconstraints_ext);
             add!(
                 m,
                 OID_X509_EXT_CERTIFICATE_POLICIES,
-                parse_certificatepolicies
+                parse_certificatepolicies_ext
             );
-            add!(m, OID_X509_EXT_POLICY_MAPPINGS, parse_policymappings);
-            add!(m, OID_X509_EXT_POLICY_CONSTRAINTS, parse_policyconstraints);
-            add!(m, OID_X509_EXT_EXTENDED_KEY_USAGE, parse_extendedkeyusage);
+            add!(m, OID_X509_EXT_POLICY_MAPPINGS, parse_policymappings_ext);
+            add!(
+                m,
+                OID_X509_EXT_POLICY_CONSTRAINTS,
+                parse_policyconstraints_ext
+            );
+            add!(
+                m,
+                OID_X509_EXT_EXTENDED_KEY_USAGE,
+                parse_extendedkeyusage_ext
+            );
             add!(
                 m,
                 OID_X509_EXT_INHIBITANT_ANY_POLICY,
-                parse_inhibitanypolicy
+                parse_inhibitanypolicy_ext
             );
-            add!(m, OID_PKIX_AUTHORITY_INFO_ACCESS, parse_authorityinfoaccess);
+            add!(
+                m,
+                OID_PKIX_AUTHORITY_INFO_ACCESS,
+                parse_authorityinfoaccess_ext
+            );
             add!(
                 m,
                 OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
-                parse_authoritykeyidentifier
+                parse_authoritykeyidentifier_ext
             );
-            add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype);
+            add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype_ext);
             add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
             add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
             add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
@@ -521,7 +628,7 @@ pub(crate) mod parser {
     ///
     /// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
     /// unsigned integer, and parsing will fail if value if larger.
-    fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], BasicConstraints, BerError> {
         let (rem, obj) = parse_der_sequence(i)?;
         if let Ok(seq) = obj.as_sequence() {
             let (ca, path_len_constraint) = match seq.len() {
@@ -548,17 +655,23 @@ pub(crate) mod parser {
             };
             Ok((
                 rem,
-                ParsedExtension::BasicConstraints(BasicConstraints {
+                BasicConstraints {
                     ca,
                     path_len_constraint,
-                }),
+                },
             ))
         } else {
             Err(nom::Err::Error(BerError::InvalidLength))
         }
     }
 
-    fn parse_nameconstraints<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    fn parse_basicconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_basicconstraints, ParsedExtension::BasicConstraints)(i)
+    }
+
+    pub(super) fn parse_nameconstraints<'a>(
+        i: &'a [u8],
+    ) -> IResult<&'a [u8], NameConstraints, BerError> {
         fn parse_subtree<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralSubtree, BerError> {
             parse_der_sequence_defined_g(|input, _| {
                 map(parse_generalname, |base| GeneralSubtree { base })(input)
@@ -584,10 +697,14 @@ pub(crate) mod parser {
             Ok((rem, named_constraints))
         })(i)?;
 
-        Ok((ret, ParsedExtension::NameConstraints(named_constraints)))
+        Ok((ret, named_constraints))
     }
 
-    fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
+    fn parse_nameconstraints_ext<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+        map(parse_nameconstraints, ParsedExtension::NameConstraints)(i)
+    }
+
+    pub(super) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
         let (rest, hdr) = verify(der_read_element_header, |hdr| hdr.is_contextspecific())(i)?;
         let len = hdr.len.primitive()?;
         if len > rest.len() {
@@ -653,7 +770,7 @@ pub(crate) mod parser {
         Ok((&rest[len..], name))
     }
 
-    fn parse_subjectalternativename<'a>(
+    pub(super) fn parse_subjectalternativename_ext<'a>(
         i: &'a [u8],
     ) -> IResult<&'a [u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
@@ -665,7 +782,7 @@ pub(crate) mod parser {
         })(i)
     }
 
-    fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], PolicyConstraints, BerError> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, require_explicit_policy) = opt(complete(map_res(
                 parse_der_tagged_implicit(0, parse_der_content(DerTag::Integer)),
@@ -679,14 +796,18 @@ pub(crate) mod parser {
                 require_explicit_policy,
                 inhibit_policy_mapping,
             };
-            Ok((i, ParsedExtension::PolicyConstraints(policy_constraint)))
+            Ok((i, policy_constraint))
         })(i)
+    }
+
+    fn parse_policyconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_policyconstraints, ParsedExtension::PolicyConstraints)(i)
     }
 
     // PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
     //  issuerDomainPolicy      CertPolicyId,
     //  subjectDomainPolicy     CertPolicyId }
-    fn parse_policymappings(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_policymappings(i: &[u8]) -> IResult<&[u8], PolicyMappings, BerError> {
         fn parse_oid_pair(i: &[u8]) -> IResult<&[u8], Vec<DerObject<'_>>, BerError> {
             // read 2 OID as a SEQUENCE OF OID - length will be checked later
             parse_der_sequence_of_v(parse_der_oid)(i)
@@ -708,21 +829,22 @@ pub(crate) mod parser {
                 .and_modify(|v| v.push(right.clone()))
                 .or_insert_with(|| vec![right.clone()]);
         }
-        Ok((
-            ret,
-            ParsedExtension::PolicyMappings(PolicyMappings { mappings }),
-        ))
+        Ok((ret, PolicyMappings { mappings }))
     }
 
-    fn parse_inhibitanypolicy(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (ret, skip_certs) = map_res(parse_der_integer, |x: DerObject| x.as_u32())(i)?;
+    fn parse_policymappings_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_policymappings, ParsedExtension::PolicyMappings)(i)
+    }
+
+    fn parse_inhibitanypolicy_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        let (ret, skip_certs) = parse_der_u32(i)?;
         Ok((
             ret,
             ParsedExtension::InhibitAnyPolicy(InhibitAnyPolicy { skip_certs }),
         ))
     }
 
-    fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage, BerError> {
         let (ret, seq) = parse_der_sequence_of(parse_der_oid)(i)?;
         let mut seen = std::collections::HashSet::new();
         let mut eku = ExtendedKeyUsage {
@@ -759,7 +881,11 @@ pub(crate) mod parser {
                 eku.other.push(oid);
             }
         }
-        Ok((ret, ParsedExtension::ExtendedKeyUsage(eku)))
+        Ok((ret, eku))
+    }
+
+    fn parse_extendedkeyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_extendedkeyusage, ParsedExtension::ExtendedKeyUsage)(i)
     }
 
     // AuthorityInfoAccessSyntax  ::=
@@ -768,7 +894,9 @@ pub(crate) mod parser {
     // AccessDescription  ::=  SEQUENCE {
     //         accessMethod          OBJECT IDENTIFIER,
     //         accessLocation        GeneralName  }
-    fn parse_authorityinfoaccess(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_authorityinfoaccess(
+        i: &[u8],
+    ) -> IResult<&[u8], AuthorityInfoAccess, BerError> {
         fn parse_aia(i: &[u8]) -> IResult<&[u8], (Oid, GeneralName), BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
@@ -788,10 +916,14 @@ pub(crate) mod parser {
                 accessdescs.insert(oid, vec![gn]);
             }
         }
-        Ok((
-            ret,
-            ParsedExtension::AuthorityInfoAccess(AuthorityInfoAccess { accessdescs }),
-        ))
+        Ok((ret, AuthorityInfoAccess { accessdescs }))
+    }
+
+    fn parse_authorityinfoaccess_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(
+            parse_authorityinfoaccess,
+            ParsedExtension::AuthorityInfoAccess,
+        )(i)
     }
 
     fn parse_aki_content<'a>(
@@ -819,23 +951,37 @@ pub(crate) mod parser {
     }
 
     // RFC 5280 section 4.2.1.1: Authority Key Identifier
-    fn parse_authoritykeyidentifier(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_authoritykeyidentifier(
+        i: &[u8],
+    ) -> IResult<&[u8], AuthorityKeyIdentifier, BerError> {
         let (rem, aki) = parse_der_sequence_defined_g(parse_aki_content)(i)?;
-        Ok((rem, ParsedExtension::AuthorityKeyIdentifier(aki)))
+        Ok((rem, aki))
     }
 
-    fn parse_keyidentifier<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    fn parse_authoritykeyidentifier_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(
+            parse_authoritykeyidentifier,
+            ParsedExtension::AuthorityKeyIdentifier,
+        )(i)
+    }
+
+    pub(super) fn parse_keyidentifier<'a>(
+        i: &'a [u8],
+    ) -> IResult<&'a [u8], KeyIdentifier, BerError> {
         let (rest, obj) = parse_der_octetstring(i)?;
         let id = obj
             .content
             .as_slice()
             .or(Err(Err::Error(BerError::BerTypeError)))?;
         let ki = KeyIdentifier(id);
-        let ret = ParsedExtension::SubjectKeyIdentifier(ki);
-        Ok((rest, ret))
+        Ok((rest, ki))
     }
 
-    fn parse_keyusage(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_keyidentifier_ext<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+        map(parse_keyidentifier, ParsedExtension::SubjectKeyIdentifier)(i)
+    }
+
+    pub(super) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, BerError> {
         let (rest, obj) = parse_der_bitstring(i)?;
         let bitstring = obj
             .content
@@ -846,10 +992,14 @@ pub(crate) mod parser {
             .iter()
             .rev()
             .fold(0, |acc, x| acc << 8 | (x.reverse_bits() as u16));
-        Ok((rest, ParsedExtension::KeyUsage(KeyUsage { flags })))
+        Ok((rest, KeyUsage { flags }))
     }
 
-    fn parse_nscerttype(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_keyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_keyusage, ParsedExtension::KeyUsage)(i)
+    }
+
+    pub(super) fn parse_nscerttype(i: &[u8]) -> IResult<&[u8], NSCertType, BerError> {
         let (rest, obj) = parse_der_bitstring(i)?;
         let bitstring = obj
             .content
@@ -860,7 +1010,11 @@ pub(crate) mod parser {
             return Err(Err::Error(BerError::BerValueError));
         }
         let flags = bitstring.data[0].reverse_bits();
-        Ok((rest, ParsedExtension::NSCertType(NSCertType(flags))))
+        Ok((rest, NSCertType(flags)))
+    }
+
+    fn parse_nscerttype_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_nscerttype, ParsedExtension::NSCertType)(i)
     }
 
     // CertificatePolicies ::= SEQUENCE SIZE (1..MAX) OF PolicyInformation
@@ -880,7 +1034,9 @@ pub(crate) mod parser {
     // -- augment the following definition for PolicyQualifierId
     //
     // PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice )
-    fn parse_certificatepolicies(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    pub(super) fn parse_certificatepolicies(
+        i: &[u8],
+    ) -> IResult<&[u8], Vec<PolicyInformation>, BerError> {
         fn parse_policy_qualifier_info(i: &[u8]) -> IResult<&[u8], PolicyQualifierInfo, BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 let (rem, policy_qualifier_id) =
@@ -907,8 +1063,14 @@ pub(crate) mod parser {
                 Ok((rem, info))
             })(i)
         }
-        let (ret, policies) = parse_der_sequence_of_v(parse_policy_information)(i)?;
-        Ok((ret, ParsedExtension::CertificatePolicies(policies)))
+        parse_der_sequence_of_v(parse_policy_information)(i)
+    }
+
+    fn parse_certificatepolicies_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(
+            parse_certificatepolicies,
+            ParsedExtension::CertificatePolicies,
+        )(i)
     }
 
     // CRLReason ::= ENUMERATED { ...

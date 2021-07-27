@@ -15,6 +15,7 @@ use nom::Offset;
 use oid_registry::*;
 use std::collections::HashMap;
 
+/// Certification Signing Request (CSR)
 #[derive(Debug, PartialEq)]
 pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
@@ -23,33 +24,6 @@ pub struct X509CertificationRequest<'a> {
 }
 
 impl<'a> X509CertificationRequest<'a> {
-    /// Parse a certification signing request (CSR)
-    ///
-    /// <pre>
-    /// CertificationRequest ::= SEQUENCE {
-    ///     certificationRequestInfo CertificationRequestInfo,
-    ///     signatureAlgorithm AlgorithmIdentifier{{ SignatureAlgorithms }},
-    ///     signature          BIT STRING
-    /// }
-    /// </pre>
-    ///
-    /// certificateRequestInfo is the "Certification request information", it is the value being
-    /// signed; signatureAlgorithm identifies the signature algorithm; and signature is the result
-    /// of signing the certification request information with the subject's private key.
-    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
-            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = parse_signature_value(i)?;
-            let cert = X509CertificationRequest {
-                certification_request_info,
-                signature_algorithm,
-                signature_value,
-            };
-            Ok((i, cert))
-        })(i)
-    }
-
     pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension>> {
         self.certification_request_info
             .iter_attributes()
@@ -97,6 +71,46 @@ impl<'a> X509CertificationRequest<'a> {
     }
 }
 
+/// <pre>
+/// CertificationRequest ::= SEQUENCE {
+///     certificationRequestInfo CertificationRequestInfo,
+///     signatureAlgorithm AlgorithmIdentifier{{ SignatureAlgorithms }},
+///     signature          BIT STRING
+/// }
+/// </pre>
+impl<'a> FromDer<'a> for X509CertificationRequest<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parse_der_sequence_defined_g(|i, _| {
+            let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
+            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, signature_value) = parse_signature_value(i)?;
+            let cert = X509CertificationRequest {
+                certification_request_info,
+                signature_algorithm,
+                signature_value,
+            };
+            Ok((i, cert))
+        })(i)
+    }
+}
+
+/// Certification Request Info structure
+///
+/// Certification request information is defined by the following ASN.1 structure:
+///
+/// <pre>
+/// CertificationRequestInfo ::= SEQUENCE {
+///      version       INTEGER { v1(0) } (v1,...),
+///      subject       Name,
+///      subjectPKInfo SubjectPublicKeyInfo{{ PKInfoAlgorithms }},
+///      attributes    [0] Attributes{{ CRIAttributes }}
+/// }
+/// </pre>
+///
+/// version is the version number; subject is the distinguished name of the certificate
+/// subject; subject_pki contains information about the public key being certified, and
+/// attributes is a collection of attributes providing additional information about the
+/// subject of the certificate.
 #[derive(Debug, PartialEq)]
 pub struct X509CertificationRequestInfo<'a> {
     pub version: X509Version,
@@ -107,42 +121,6 @@ pub struct X509CertificationRequestInfo<'a> {
 }
 
 impl<'a> X509CertificationRequestInfo<'a> {
-    /// Parse a certification request info structure
-    ///
-    /// Certification request information is defined by the following ASN.1 structure:
-    ///
-    /// <pre>
-    /// CertificationRequestInfo ::= SEQUENCE {
-    ///      version       INTEGER { v1(0) } (v1,...),
-    ///      subject       Name,
-    ///      subjectPKInfo SubjectPublicKeyInfo{{ PKInfoAlgorithms }},
-    ///      attributes    [0] Attributes{{ CRIAttributes }}
-    /// }
-    /// </pre>
-    ///
-    /// version is the version number; subject is the distinguished name of the certificate
-    /// subject; subject_pki contains information about the public key being certified, and
-    /// attributes is a collection of attributes providing additional information about the
-    /// subject of the certificate.
-    pub fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der_required(i)?;
-            let (i, subject) = X509Name::from_der(i)?;
-            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
-            let (i, attributes) = parse_cri_attributes(i)?;
-            let len = start_i.offset(i);
-            let tbs = X509CertificationRequestInfo {
-                version,
-                subject,
-                subject_pki,
-                attributes,
-                raw: &start_i[..len],
-            };
-            Ok((i, tbs))
-        })(i)
-    }
-
     /// Get the CRL entry extensions.
     #[inline]
     pub fn attributes(&self) -> &[X509CriAttribute] {
@@ -175,5 +153,34 @@ impl<'a> X509CertificationRequestInfo<'a> {
                 m.insert(ext.oid.clone(), ext);
                 Ok(m)
             })
+    }
+}
+
+/// <pre>
+/// CertificationRequestInfo ::= SEQUENCE {
+///      version       INTEGER { v1(0) } (v1,...),
+///      subject       Name,
+///      subjectPKInfo SubjectPublicKeyInfo{{ PKInfoAlgorithms }},
+///      attributes    [0] Attributes{{ CRIAttributes }}
+/// }
+/// </pre>
+impl<'a> FromDer<'a> for X509CertificationRequestInfo<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        let start_i = i;
+        parse_der_sequence_defined_g(move |i, _| {
+            let (i, version) = X509Version::from_der_required(i)?;
+            let (i, subject) = X509Name::from_der(i)?;
+            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
+            let (i, attributes) = parse_cri_attributes(i)?;
+            let len = start_i.offset(i);
+            let tbs = X509CertificationRequestInfo {
+                version,
+                subject,
+                subject_pki,
+                attributes,
+                raw: &start_i[..len],
+            };
+            Ok((i, tbs))
+        })(i)
     }
 }

@@ -50,6 +50,12 @@ pub struct ExtensionRequest<'a> {
     pub extensions: Vec<X509Extension<'a>>,
 }
 
+impl<'a> FromDer<'a> for ExtensionRequest<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_extension_request(i).map_err(Err::convert)
+    }
+}
+
 /// Attributes for Certification Request
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParsedCriAttribute<'a> {
@@ -62,6 +68,7 @@ pub(crate) mod parser {
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
+    use nom::combinator::map;
     use nom::{Err, IResult};
 
     type AttrParser = fn(&[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError>;
@@ -75,7 +82,7 @@ pub(crate) mod parser {
             }
 
             let mut m = HashMap::new();
-            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request);
+            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_ext);
             m
         };
     }
@@ -93,15 +100,17 @@ pub(crate) mod parser {
         }
     }
 
-    fn parse_extension_request(i: &[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError> {
+    pub(super) fn parse_extension_request(i: &[u8]) -> IResult<&[u8], ExtensionRequest, BerError> {
         crate::extensions::parse_extension_sequence(i)
-            .map(|(i, extensions)| {
-                (
-                    i,
-                    ParsedCriAttribute::ExtensionRequest(ExtensionRequest { extensions }),
-                )
-            })
+            .map(|(i, extensions)| (i, ExtensionRequest { extensions }))
             .map_err(|_| Err::Error(BerError::BerTypeError))
+    }
+
+    fn parse_extension_request_ext(i: &[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError> {
+        map(
+            parse_extension_request,
+            ParsedCriAttribute::ExtensionRequest,
+        )(i)
     }
 }
 
