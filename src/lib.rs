@@ -24,11 +24,11 @@
 //!
 //! To decode a DER-encoded certificate, the main parsing method is
 //! [`parse_x509_certificate`](fn.parse_x509_certificate.html), which builds a
-//! [`X509Certificate`](x509/struct.X509Certificate.html) object.
+//! [`X509Certificate`](certificate/struct.X509Certificate.html) object.
 //!
 //! The returned objects for parsers follow the definitions of the RFC. This means that accessing
 //! fields is done by accessing struct members recursively. Some helper functions are provided, for
-//! example [X509Certificate::issuer()](x509/struct.X509Certificate.html#method.issuer) returns the
+//! example [X509Certificate::issuer()](certificate/struct.X509Certificate.html#method.issuer) returns the
 //! same as accessing `<object>.tbs_certificate.issuer`.
 //!
 //! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
@@ -82,7 +82,7 @@
 //!
 //! - The `verify` feature adds support for (cryptographic) signature verification, based on `ring`.
 //!   It adds the
-//!   [X509Certificate::verify_signature()](x509/struct.X509Certificate.html#method.verify_signature)
+//!   [X509Certificate::verify_signature()](certificate/struct.X509Certificate.html#method.verify_signature)
 //!   to `X509Certificate`.
 //!
 //! ```rust

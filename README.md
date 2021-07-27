@@ -26,11 +26,11 @@ DER.  A PEM-encoded certificate is a container, storing a DER object. See the
 
 To decode a DER-encoded certificate, the main parsing method is
 [`parse_x509_certificate`](https://docs.rs/x509-parser/latest/x509_parser/fn.parse_x509_certificate.html), which builds a
-[`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html) object.
+[`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html) object.
 
 The returned objects for parsers follow the definitions of the RFC. This means that accessing
 fields is done by accessing struct members recursively. Some helper functions are provided, for
-example [X509Certificate::issuer()](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html#method.issuer) returns the
+example [X509Certificate::issuer()](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.issuer) returns the
 same as accessing `<object>.tbs_certificate.issuer`.
 
 For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module.
@@ -78,7 +78,7 @@ See also `examples/print-cert.rs`.
 
 - The `verify` feature adds support for (cryptographic) signature verification, based on `ring`.
   It adds the
-  [X509Certificate::verify_signature()](https://docs.rs/x509-parser/latest/x509_parser/x509/struct.X509Certificate.html#method.verify_signature)
+  [X509Certificate::verify_signature()](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.verify_signature)
   to `X509Certificate`.
 
 ```rust
