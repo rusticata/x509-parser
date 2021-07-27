@@ -22,3 +22,14 @@ fn test_signature_verification() {
     eprintln!("Verification: {:?}", res);
     assert!(res.is_ok());
 }
+
+static ED25519_DER: &[u8] = include_bytes!("../assets/ed25519.der");
+
+#[test]
+fn test_signature_verification_ed25519() {
+    // this certificate is self-signed
+    let (_, x509_ca) = parse_x509_certificate(ED25519_DER).expect("could not parse certificate");
+    let res = x509_ca.verify_signature(None);
+    eprintln!("Verification: {:?}", res);
+    assert!(res.is_ok());
+}
