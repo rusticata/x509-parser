@@ -3,9 +3,9 @@
 use crate::error::{X509Error, X509Result};
 use crate::time::{der_to_utctime, ASN1Time};
 use crate::traits::FromDer;
-use crate::x509::{ReasonCode, X509Name};
+use crate::x509::{ReasonCode, RelativeDistinguishedName, X509Name};
 
-use der_parser::ber::parse_ber_bool;
+use der_parser::ber::{parse_ber_bool, BitStringObject};
 use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
@@ -158,6 +158,8 @@ pub enum ParsedExtension<'a> {
     PolicyConstraints(PolicyConstraints),
     /// Section 4.2.1.12 of rfc 5280
     ExtendedKeyUsage(ExtendedKeyUsage<'a>),
+    /// Section 4.2.1.13 of rfc 5280
+    CRLDistributionPoints(CRLDistributionPoints<'a>),
     /// Section 4.2.1.14 of rfc 5280
     InhibitAnyPolicy(InhibitAnyPolicy),
     /// Section 4.2.2.1 of rfc 5280
@@ -635,6 +637,27 @@ pub struct GeneralSubtree<'a> {
     // maximum: Option<u32>,
 }
 
+pub type CRLDistributionPoints<'a> = Vec<CRLDistributionPoint<'a>>;
+
+impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_crldistributionpoints(i).map_err(Err::convert)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CRLDistributionPoint<'a> {
+    pub distribution_point: Option<DistributionPointName<'a>>,
+    pub reason: Option<BitStringObject<'a>>,
+    pub crl_issuer: Option<Vec<GeneralName<'a>>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DistributionPointName<'a> {
+    FullName(Vec<GeneralName<'a>>),
+    NameRelativeToCRLIssuer(RelativeDistinguishedName<'a>),
+}
+
 pub(crate) mod parser {
     use crate::extensions::*;
     use crate::traits::FromDer;
@@ -688,6 +711,11 @@ pub(crate) mod parser {
                 m,
                 OID_X509_EXT_EXTENDED_KEY_USAGE,
                 parse_extendedkeyusage_ext
+            );
+            add!(
+                m,
+                OID_X509_EXT_CRL_DISTRIBUTION_POINTS,
+                parse_crldistributionpoints_ext
             );
             add!(
                 m,
@@ -1020,6 +1048,70 @@ pub(crate) mod parser {
 
     fn parse_extendedkeyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         map(parse_extendedkeyusage, ParsedExtension::ExtendedKeyUsage)(i)
+    }
+
+    // DistributionPointName ::= CHOICE {
+    //     fullName                [0]     GeneralNames,
+    //     nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
+    fn parse_distributionpointname(i: &[u8]) -> IResult<&[u8], DistributionPointName, BerError> {
+        let (rem, header) = der_read_element_header(i)?;
+        match header.tag.0 {
+            0 => {
+                let (rem, names) = many1(complete(parse_generalname))(rem)?;
+                Ok((rem, DistributionPointName::FullName(names)))
+            }
+            1 => {
+                let (rem, rdn) = RelativeDistinguishedName::from_der(rem)
+                    .map_err(|_| BerError::BerValueError)?;
+                Ok((rem, DistributionPointName::NameRelativeToCRLIssuer(rdn)))
+            }
+            _ => Err(Err::Error(BerError::InvalidTag)),
+        }
+    }
+
+    // DistributionPoint ::= SEQUENCE {
+    //     distributionPoint       [0]     DistributionPointName OPTIONAL,
+    //     reasons                 [1]     ReasonFlags OPTIONAL,
+    //     cRLIssuer               [2]     GeneralNames OPTIONAL }
+    pub(super) fn parse_crldistributionpoint(
+        i: &[u8],
+    ) -> IResult<&[u8], CRLDistributionPoint, BerError> {
+        parse_der_sequence_defined_g(|content, _| {
+            let (rem, distribution_point) =
+                opt(complete(parse_der_tagged_explicit_g(0, |b, _| {
+                    parse_distributionpointname(b)
+                })))(content)?;
+            let (rem, reason) = opt(complete(parse_der_tagged_explicit_g(1, |b, _| {
+                let (rem, obj) = parse_der_bitstring(b)?;
+                if let DerObjectContent::BitString(_, b) = obj.content {
+                    Ok((rem, b))
+                } else {
+                    unreachable!();
+                }
+            })))(rem)?;
+            let (rem, crl_issuer) = opt(complete(parse_der_tagged_explicit_g(2, |b, _| {
+                many1(complete(parse_generalname))(b)
+            })))(rem)?;
+            let crl_dp = CRLDistributionPoint {
+                distribution_point,
+                reason,
+                crl_issuer,
+            };
+            Ok((rem, crl_dp))
+        })(i)
+    }
+
+    pub(super) fn parse_crldistributionpoints(
+        i: &[u8],
+    ) -> IResult<&[u8], CRLDistributionPoints, BerError> {
+        parse_der_sequence_of_v(parse_crldistributionpoint)(i)
+    }
+
+    fn parse_crldistributionpoints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(
+            parse_crldistributionpoints,
+            ParsedExtension::CRLDistributionPoints,
+        )(i)
     }
 
     // AuthorityInfoAccessSyntax  ::=
