@@ -32,6 +32,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = []
 verify = ["ring"]
+validate = []
 
 [dependencies]
 base64 = "0.13"

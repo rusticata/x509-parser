@@ -132,6 +132,7 @@ pub mod pem;
 pub mod prelude;
 pub mod revocation_list;
 pub mod time;
+pub mod validate;
 pub mod x509;
 
 // reexports

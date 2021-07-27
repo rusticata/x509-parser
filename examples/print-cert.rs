@@ -4,6 +4,12 @@ use std::cmp::min;
 use std::env;
 use std::io;
 use x509_parser::prelude::*;
+#[cfg(feature = "validate")]
+use x509_parser::validate::Validate;
+
+const PARSE_ERRORS_FATAL: bool = false;
+#[cfg(feature = "validate")]
+const VALIDATE_ERRORS_FATAL: bool = false;
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {
     let m = min(bytes.len(), max_len);
@@ -75,7 +81,7 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
     }
 }
 
-fn print_x509_info(x509: &X509Certificate) {
+fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     println!("  Subject: {}", x509.subject());
     println!("  Signature Algorithm:");
     print_x509_digest_algorithm(&x509.signature_algorithm, 4);
@@ -90,24 +96,62 @@ fn print_x509_info(x509: &X509Certificate) {
         print_x509_extension(&ext.oid, ext);
     }
     println!();
+    #[cfg(feature = "validate")]
+    {
+        // structure validation status
+        let (ok, warnings, errors) = x509.validate_to_vec();
+        print!("Structure validation status: ");
+        if ok {
+            println!("Ok");
+        } else {
+            println!("FAIL");
+        }
+        for warning in &warnings {
+            println!("  [W] {}", warning);
+        }
+        for error in &errors {
+            println!("  [E] {}", error);
+        }
+        println!();
+        if VALIDATE_ERRORS_FATAL && !errors.is_empty() {
+            return Err(io::Error::new(io::ErrorKind::Other, "validation failed"));
+        }
+    }
+    Ok(())
+}
+
+fn handle_certificate(file_name: &str, data: &[u8]) -> io::Result<()> {
+    match parse_x509_certificate(&data) {
+        Ok((_, x509)) => {
+            print_x509_info(&x509)?;
+            Ok(())
+        }
+        Err(e) => {
+            let s = format!("Error while parsing {}: {}", file_name, e);
+            if PARSE_ERRORS_FATAL {
+                Err(io::Error::new(io::ErrorKind::Other, s))
+            } else {
+                eprintln!("{}", s);
+                Ok(())
+            }
+        }
+    }
 }
 
 pub fn main() -> io::Result<()> {
     for file_name in env::args().skip(1) {
         println!("File: {}", file_name);
         let data = std::fs::read(file_name.clone()).expect("Unable to read file");
-        if (data[0], data[1]) == (0x30, 0x82) {
+        if matches!((data[0], data[1]), (0x30, 0x81..=0x83)) {
             // probably DER
-            let (_, x509) = parse_x509_certificate(&data).expect("Could not decode DER data");
-            print_x509_info(&x509);
+            handle_certificate(&file_name, &data)?;
         } else {
             // try as PEM
             for (n, pem) in Pem::iter_from_buffer(&data).enumerate() {
                 let pem = pem.expect("Could not decode the PEM file");
                 let data = &pem.contents;
-                let (_, x509) = parse_x509_certificate(&data).expect("Could not decode DER data");
                 println!("Certificate [{}]", n);
-                print_x509_info(&x509);
+                handle_certificate(&file_name, &data)?;
             }
         }
     }

@@ -3,6 +3,8 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
+#[cfg(feature = "validate")]
+use crate::validate::Validate;
 use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name,
     X509Version,
@@ -17,6 +19,8 @@ use der_parser::*;
 use nom::Offset;
 use oid_registry::*;
 use std::collections::HashMap;
+#[cfg(feature = "validate")]
+use std::collections::HashSet;
 
 /// An X.509 v3 Certificate.
 ///
@@ -180,6 +184,19 @@ impl<'a> X509Certificate<'a> {
         let sig = self.signature_value.data;
         key.verify(self.tbs_certificate.raw, sig)
             .or(Err(X509Error::SignatureVerificationError))
+    }
+}
+
+#[cfg(feature = "validate")]
+impl Validate for X509Certificate<'_> {
+    fn validate<W, E>(&self, warn: W, err: E) -> bool
+    where
+        W: FnMut(&str),
+        E: FnMut(&str),
+    {
+        let mut res = true;
+        res |= self.tbs_certificate.validate(warn, err);
+        res
     }
 }
 
@@ -399,6 +416,93 @@ impl<'a> TbsCertificate<'a> {
 impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
     fn as_ref(&self) -> &[u8] {
         &self.raw
+    }
+}
+
+#[cfg(feature = "validate")]
+impl Validate for TbsCertificate<'_> {
+    fn validate<W, E>(&self, mut warn: W, mut err: E) -> bool
+    where
+        W: FnMut(&str),
+        E: FnMut(&str),
+    {
+        let mut res = true;
+        // version must be 0, 1 or 2
+        if self.version.0 >= 3 {
+            err("Invalid version");
+            res = false;
+        }
+        // extensions require v3
+        if !self.extensions().is_empty() && self.version != X509Version::V3 {
+            err("Extensions present but version is not 3");
+            res = false;
+        }
+        let b = self.raw_serial();
+        if b.is_empty() {
+            err("Serial is empty");
+            res = false;
+        } else {
+            // check MSB of serial
+            if b[0] & 0x80 != 0 {
+                warn("Serial number is negative");
+            }
+            // check leading zeroes in serial
+            if b.len() > 1 && b[0] == 0 && b[1] & 0x80 == 0 {
+                warn("Leading zeroes in serial number");
+            }
+        }
+        // subject/issuer: verify charsets
+        // - wildcards in PrintableString
+        // - non-IA5 in IA5String
+        for attr in self.subject.iter_attributes() {
+            match attr.attr_value.content {
+                DerObjectContent::PrintableString(s) | DerObjectContent::IA5String(s) => {
+                    if !s.as_bytes().iter().all(u8::is_ascii) {
+                        warn(&format!(
+                            "Invalid charset in 'Subject', component {}",
+                            attr.attr_type
+                        ));
+                    }
+                }
+                _ => (),
+            }
+        }
+        // check for parse errors or unsupported extensions
+        for ext in self.extensions() {
+            if let ParsedExtension::UnsupportedExtension { .. } = &ext.parsed_extension {
+                warn(&format!("Unsupported extension {}", ext.oid));
+            }
+            if let ParsedExtension::ParseError { error } = &ext.parsed_extension {
+                err(&format!("Parse error in extension {}: {}", ext.oid, error));
+                res = false;
+            }
+        }
+        // check for duplicate extensions
+        let mut m = HashSet::new();
+        for ext in self.extensions() {
+            if m.contains(&ext.oid) {
+                err(&format!("Duplicate extension {}", ext.oid));
+                res = false;
+            } else {
+                m.insert(ext.oid.clone());
+            }
+            // specific extension checks
+            // SAN
+            if let ParsedExtension::SubjectAlternativeName(san) = ext.parsed_extension() {
+                for name in &san.general_names {
+                    match name {
+                        GeneralName::DNSName(ref s) | GeneralName::RFC822Name(ref s) => {
+                            // should be an ia5string
+                            if !s.as_bytes().iter().all(u8::is_ascii) {
+                                warn(&format!("Invalid charset in 'SAN' entry '{}'", s));
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+        res
     }
 }
 
