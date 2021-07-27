@@ -154,6 +154,7 @@ impl<'a> X509Certificate<'a> {
     /// For a leaf certificate, this is the public key of the certificate that signed it.
     /// It is usually an intermediate authority.
     #[cfg(feature = "verify")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
     pub fn verify_signature(
         &self,
         public_key: Option<&SubjectPublicKeyInfo>,
@@ -188,6 +189,7 @@ impl<'a> X509Certificate<'a> {
 }
 
 #[cfg(feature = "validate")]
+#[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 impl Validate for X509Certificate<'_> {
     fn validate<W, E>(&self, warn: W, err: E) -> bool
     where
@@ -420,6 +422,7 @@ impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
 }
 
 #[cfg(feature = "validate")]
+#[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 impl Validate for TbsCertificate<'_> {
     fn validate<W, E>(&self, mut warn: W, mut err: E) -> bool
     where

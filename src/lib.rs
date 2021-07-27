@@ -132,6 +132,8 @@ pub mod pem;
 pub mod prelude;
 pub mod revocation_list;
 pub mod time;
+#[cfg(feature = "validate")]
+#[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
 pub mod x509;
 
