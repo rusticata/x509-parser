@@ -30,7 +30,7 @@ To decode a DER-encoded certificate, the main parsing method is
 
 The returned objects for parsers follow the definitions of the RFC. This means that accessing
 fields is done by accessing struct members recursively. Some helper functions are provided, for
-example [X509Certificate::issuer()](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.issuer) returns the
+example [`X509Certificate::issuer()`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.issuer) returns the
 same as accessing `<object>.tbs_certificate.issuer`.
 
 For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module.
@@ -49,7 +49,7 @@ match res {
     Ok((rem, cert)) => {
         assert!(rem.is_empty());
         //
-        assert_eq!(cert.tbs_certificate.version, X509Version::V3);
+        assert_eq!(cert.version(), X509Version::V3);
     },
     _ => panic!("x509 parsing failed: {:?}", res),
 }
@@ -78,7 +78,7 @@ See also `examples/print-cert.rs`.
 
 - The `verify` feature adds support for (cryptographic) signature verification, based on `ring`.
   It adds the
-  [X509Certificate::verify_signature()](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.verify_signature)
+  [`X509Certificate::verify_signature()`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.verify_signature)
   to `X509Certificate`.
 
 ```rust
@@ -91,6 +91,10 @@ pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>)
         .is_ok()
 }
 ```
+
+- The `validate` features add methods to run more validation functions on the certificate structure
+  and values using the [`Validate`](https://docs.rs/x509-parser/latest/x509_parser/validate/trait.Validate.html) trait.
+  It does not validate any cryptographic parameter (see `verify` above).
 
 ## Rust version requirements
 

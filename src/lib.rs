@@ -28,7 +28,7 @@
 //!
 //! The returned objects for parsers follow the definitions of the RFC. This means that accessing
 //! fields is done by accessing struct members recursively. Some helper functions are provided, for
-//! example [X509Certificate::issuer()](certificate/struct.X509Certificate.html#method.issuer) returns the
+//! example [`X509Certificate::issuer()`](certificate/struct.X509Certificate.html#method.issuer) returns the
 //! same as accessing `<object>.tbs_certificate.issuer`.
 //!
 //! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
@@ -48,7 +48,7 @@
 //!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());
 //!         //
-//!         assert_eq!(cert.tbs_certificate.version, X509Version::V3);
+//!         assert_eq!(cert.version(), X509Version::V3);
 //!     },
 //!     _ => panic!("x509 parsing failed: {:?}", res),
 //! }
@@ -82,7 +82,7 @@
 //!
 //! - The `verify` feature adds support for (cryptographic) signature verification, based on `ring`.
 //!   It adds the
-//!   [X509Certificate::verify_signature()](certificate/struct.X509Certificate.html#method.verify_signature)
+//!   [`X509Certificate::verify_signature()`](certificate/struct.X509Certificate.html#method.verify_signature)
 //!   to `X509Certificate`.
 //!
 //! ```rust
@@ -97,6 +97,10 @@
 //!         .is_ok()
 //! }
 //! ```
+//!
+//! - The `validate` features add methods to run more validation functions on the certificate structure
+//!   and values using the [`Validate`](validate/trait.Validate.html) trait.
+//!   It does not validate any cryptographic parameter (see `verify` above).
 //!
 //! ## Rust version requirements
 //!
@@ -151,7 +155,7 @@ use revocation_list::CertificateRevocationList;
 /// object.
 ///
 ///
-/// This function is an alias to [X509Certificate::from_der](x509/struct.X509Certificate.html#method.from_der). See this function
+/// This function is an alias to [X509Certificate::from_der](certificate::X509Certificate::from_der). See this function
 /// for more information.
 ///
 /// For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
@@ -163,7 +167,7 @@ pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>
 /// Parse a DER-encoded X.509 v2 CRL, and return the remaining of the input and the built
 /// object.
 ///
-/// This function is an alias to [CertificateRevocationList::from_der](x509/struct.CertificateRevocationList.html#method.from_der). See this function
+/// This function is an alias to [CertificateRevocationList::from_der](revocation_list::CertificateRevocationList::from_der). See this function
 /// for more information.
 #[inline]
 pub fn parse_x509_crl(i: &[u8]) -> X509Result<CertificateRevocationList> {

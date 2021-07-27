@@ -93,8 +93,8 @@ impl<'a> X509Certificate<'a> {
     /// let res = parse_x509_certificate(DER);
     /// match res {
     ///     Ok((_rem, x509)) => {
-    ///         let subject = &x509.tbs_certificate.subject;
-    ///         let issuer = &x509.tbs_certificate.issuer;
+    ///         let subject = x509.subject();
+    ///         let issuer = x509.issuer();
     ///         println!("X.509 Subject: {}", subject);
     ///         println!("X.509 Issuer: {}", issuer);
     ///     },
