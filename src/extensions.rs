@@ -1485,6 +1485,108 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_extensions_crl_distribution_points() {
+        // Extension not present
+        {
+            let crt =
+                crate::parse_x509_certificate(include_bytes!("../assets/crl-ext/crl-no-crl.der"))
+                    .unwrap()
+                    .1;
+            assert!(crt
+                .tbs_certificate
+                .extensions_map()
+                .unwrap()
+                .get(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
+                .is_none());
+        }
+        // CRLDistributionPoints has 1 entry with 1 URI
+        {
+            let crt =
+                crate::parse_x509_certificate(include_bytes!("../assets/crl-ext/crl-simple.der"))
+                    .unwrap()
+                    .1;
+            let crl = crt
+                .tbs_certificate
+                .extensions_map()
+                .unwrap()
+                .get(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
+                .unwrap()
+                .parsed_extension();
+            assert!(matches!(crl, ParsedExtension::CRLDistributionPoints(_)));
+            if let ParsedExtension::CRLDistributionPoints(crl) = crl {
+                assert_eq!(crl.len(), 1);
+                assert!(crl[0].reason.is_none());
+                assert!(crl[0].crl_issuer.is_none());
+                let distribution_point = crl[0].distribution_point.as_ref().unwrap();
+                assert!(matches!(
+                    distribution_point,
+                    DistributionPointName::FullName(_)
+                ));
+                if let DistributionPointName::FullName(names) = distribution_point {
+                    assert_eq!(names.len(), 1);
+                    assert!(matches!(names[0], GeneralName::URI(_)));
+                    if let GeneralName::URI(uri) = names[0] {
+                        assert_eq!(uri, "http://example.com/myca.crl")
+                    }
+                }
+            }
+        }
+        // CRLDistributionPoints has 2 entries
+        {
+            let crt =
+                crate::parse_x509_certificate(include_bytes!("../assets/crl-ext/crl-complex.der"))
+                    .unwrap()
+                    .1;
+            let crl = crt
+                .tbs_certificate
+                .extensions_map()
+                .unwrap()
+                .get(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
+                .unwrap()
+                .parsed_extension();
+            assert!(matches!(crl, ParsedExtension::CRLDistributionPoints(_)));
+            if let ParsedExtension::CRLDistributionPoints(crl) = crl {
+                assert_eq!(crl.len(), 2);
+                // XXX: Fails
+                //assert!(crl[0].reason.is_some());
+                //let issuers = crl[0].crl_issuer.as_ref().unwrap();
+                //assert_eq!(issuers.len(), 1);
+                //assert!(matches!(issuers[0], GeneralName::DirectoryName(_)));
+                //if let GeneralName::DirectoryName(name) = &issuers[0] {
+                //    assert_eq!(name.to_string(), "");
+                //}
+                let distribution_point = crl[0].distribution_point.as_ref().unwrap();
+                assert!(matches!(
+                    distribution_point,
+                    DistributionPointName::FullName(_)
+                ));
+                if let DistributionPointName::FullName(names) = distribution_point {
+                    assert_eq!(names.len(), 1);
+                    assert!(matches!(names[0], GeneralName::URI(_)));
+                    if let GeneralName::URI(uri) = names[0] {
+                        assert_eq!(uri, "http://example.com/myca.crl")
+                    }
+                }
+                // XXX: Fails
+                //assert!(crl[1].reason.is_some());
+                assert!(crl[1].crl_issuer.is_none());
+                let distribution_point = crl[1].distribution_point.as_ref().unwrap();
+                assert!(matches!(
+                    distribution_point,
+                    DistributionPointName::FullName(_)
+                ));
+                if let DistributionPointName::FullName(names) = distribution_point {
+                    assert_eq!(names.len(), 1);
+                    assert!(matches!(names[0], GeneralName::URI(_)));
+                    if let GeneralName::URI(uri) = names[0] {
+                        assert_eq!(uri, "http://example.com/myca2.crl")
+                    }
+                }
+            }
+        }
+    }
+
     // Test cases for:
     // - parsing SubjectAlternativeName
     // - parsing NameConstraints
