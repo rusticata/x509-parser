@@ -421,7 +421,7 @@ impl<'a> AuthorityInfoAccess<'a> {
                 access_method: oid,
                 access_location: gn,
             } = desc;
-            if let Some(general_names) = m.get_mut(&oid) {
+            if let Some(general_names) = m.get_mut(oid) {
                 general_names.push(gn);
             } else {
                 m.insert(oid.clone(), vec![gn]);
@@ -507,7 +507,7 @@ impl<'a> PolicyMappings<'a> {
                 issuer_domain_policy: left,
                 subject_domain_policy: right,
             } = desc;
-            if let Some(l) = m.get_mut(&left) {
+            if let Some(l) = m.get_mut(left) {
                 l.push(right);
             } else {
                 m.insert(left.clone(), vec![right]);

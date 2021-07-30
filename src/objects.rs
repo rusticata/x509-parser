@@ -54,15 +54,12 @@ pub fn oid2abbrev<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str
 
 /// Returns the short name corresponding to the OID
 pub fn oid2sn<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str, NidError> {
-    registry.get(oid).map(|ref o| o.sn()).ok_or(NidError)
+    registry.get(oid).map(|o| o.sn()).ok_or(NidError)
 }
 
 /// Returns the description corresponding to the OID
 pub fn oid2description<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str, NidError> {
-    registry
-        .get(oid)
-        .map(|ref o| o.description())
-        .ok_or(NidError)
+    registry.get(oid).map(|o| o.description()).ok_or(NidError)
 }
 
 /// Return a reference to the default registry of known OIDs

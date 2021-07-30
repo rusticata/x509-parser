@@ -377,7 +377,7 @@ impl<'a> TbsCertificate<'a> {
 
 impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
     fn as_ref(&self) -> &[u8] {
-        &self.raw
+        self.raw
     }
 }
 
