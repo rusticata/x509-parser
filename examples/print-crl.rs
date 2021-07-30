@@ -164,7 +164,7 @@ pub fn main() -> io::Result<()> {
             tmpdata = data;
             &tmpdata.contents
         };
-        let (_, crl) = parse_x509_crl(&der_data).expect("Could not decode DER data");
+        let (_, crl) = parse_x509_crl(der_data).expect("Could not decode DER data");
         print_crl_info(&crl);
     }
     Ok(())

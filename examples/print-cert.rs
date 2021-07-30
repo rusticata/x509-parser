@@ -121,7 +121,7 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
 }
 
 fn handle_certificate(file_name: &str, data: &[u8]) -> io::Result<()> {
-    match parse_x509_certificate(&data) {
+    match parse_x509_certificate(data) {
         Ok((_, x509)) => {
             print_x509_info(&x509)?;
             Ok(())
@@ -151,7 +151,7 @@ pub fn main() -> io::Result<()> {
                 let pem = pem.expect("Could not decode the PEM file");
                 let data = &pem.contents;
                 println!("Certificate [{}]", n);
-                handle_certificate(&file_name, &data)?;
+                handle_certificate(&file_name, data)?;
             }
         }
     }
