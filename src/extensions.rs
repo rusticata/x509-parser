@@ -5,7 +5,7 @@ use crate::time::{der_to_utctime, ASN1Time};
 use crate::traits::FromDer;
 use crate::x509::{ReasonCode, RelativeDistinguishedName, X509Name};
 
-use der_parser::ber::{parse_ber_bool, BitStringObject};
+use der_parser::ber::parse_ber_bool;
 use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
@@ -648,7 +648,7 @@ impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CRLDistributionPoint<'a> {
     pub distribution_point: Option<DistributionPointName<'a>>,
-    pub reasons: Option<BitStringObject<'a>>,
+    pub reasons: Option<ReasonFlags>,
     pub crl_issuer: Option<Vec<GeneralName<'a>>>,
 }
 
@@ -656,6 +656,66 @@ pub struct CRLDistributionPoint<'a> {
 pub enum DistributionPointName<'a> {
     FullName(Vec<GeneralName<'a>>),
     NameRelativeToCRLIssuer(RelativeDistinguishedName<'a>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ReasonFlags {
+    pub flags: u16,
+}
+
+impl ReasonFlags {
+    pub fn key_compromise(&self) -> bool {
+        (self.flags >> 1) & 1 == 1
+    }
+    pub fn ca_compromise(&self) -> bool {
+        (self.flags >> 2) & 1 == 1
+    }
+    pub fn affilation_changed(&self) -> bool {
+        (self.flags >> 3) & 1 == 1
+    }
+    pub fn superseded(&self) -> bool {
+        (self.flags >> 4) & 1 == 1
+    }
+    pub fn cessation_of_operation(&self) -> bool {
+        (self.flags >> 5) & 1 == 1
+    }
+    pub fn certificate_hold(&self) -> bool {
+        (self.flags >> 6) & 1 == 1
+    }
+    pub fn privelege_withdrawn(&self) -> bool {
+        (self.flags >> 7) & 1 == 1
+    }
+    pub fn aa_compromise(&self) -> bool {
+        (self.flags >> 8) & 1 == 1
+    }
+}
+
+const REASON_FLAGS: &[&str] = &[
+    "Unused",
+    "Key Compromise",
+    "CA Compromise",
+    "Affiliation Changed",
+    "Superseded",
+    "Cessation Of Operation",
+    "Certificate Hold",
+    "Privilege Withdrawn",
+    "AA Compromise",
+];
+
+impl fmt::Display for ReasonFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        let mut acc = self.flags;
+        for flag_text in REASON_FLAGS {
+            if acc & 1 != 0 {
+                s = s + flag_text + ", ";
+            }
+            acc >>= 1;
+        }
+        s.pop();
+        s.pop();
+        f.write_str(&s)
+    }
 }
 
 pub(crate) mod parser {
@@ -1069,10 +1129,25 @@ pub(crate) mod parser {
         }
     }
 
-    fn parse_tagged1_reasons(i: &[u8]) -> BerResult<BitStringObject> {
+    // ReasonFlags ::= BIT STRING {
+    // unused                  (0),
+    // keyCompromise           (1),
+    // cACompromise            (2),
+    // affiliationChanged      (3),
+    // superseded              (4),
+    // cessationOfOperation    (5),
+    // certificateHold         (6),
+    // privilegeWithdrawn      (7),
+    // aACompromise            (8) }
+    fn parse_tagged1_reasons(i: &[u8]) -> BerResult<ReasonFlags> {
         let (rem, obj) = parse_der_tagged_implicit(1, parse_der_content(DerTag::BitString))(i)?;
         if let DerObjectContent::BitString(_, b) = obj.content {
-            Ok((rem, b))
+            let flags = b
+                .data
+                .iter()
+                .rev()
+                .fold(0, |acc, x| acc << 8 | (x.reverse_bits() as u16));
+            Ok((rem, ReasonFlags { flags }))
         } else {
             Err(nom::Err::Failure(BerError::InvalidTag))
         }
@@ -1555,7 +1630,19 @@ mod tests {
             if let ParsedExtension::CRLDistributionPoints(crl) = crl {
                 assert_eq!(crl.len(), 2);
                 // First CRL Distribution point
-                assert!(crl[0].reasons.is_some());
+                let reasons = crl[0].reasons.as_ref().unwrap();
+                assert!(reasons.key_compromise());
+                assert!(reasons.ca_compromise());
+                assert!(!reasons.affilation_changed());
+                assert!(!reasons.superseded());
+                assert!(!reasons.cessation_of_operation());
+                assert!(!reasons.certificate_hold());
+                assert!(!reasons.privelege_withdrawn());
+                assert!(reasons.aa_compromise());
+                assert_eq!(
+                    format!("{}", reasons),
+                    "Key Compromise, CA Compromise, AA Compromise"
+                );
                 let issuers = crl[0].crl_issuer.as_ref().unwrap();
                 assert_eq!(issuers.len(), 1);
                 assert!(matches!(issuers[0], GeneralName::DirectoryName(_)));
@@ -1575,7 +1662,16 @@ mod tests {
                     }
                 }
                 // Second CRL Distribution point
-                assert!(crl[1].reasons.is_some());
+                let reasons = crl[1].reasons.as_ref().unwrap();
+                assert!(reasons.key_compromise());
+                assert!(reasons.ca_compromise());
+                assert!(!reasons.affilation_changed());
+                assert!(!reasons.superseded());
+                assert!(!reasons.cessation_of_operation());
+                assert!(!reasons.certificate_hold());
+                assert!(!reasons.privelege_withdrawn());
+                assert!(!reasons.aa_compromise());
+                assert_eq!(format!("{}", reasons), "Key Compromise, CA Compromise");
                 assert!(crl[1].crl_issuer.is_none());
                 let distribution_point = crl[1].distribution_point.as_ref().unwrap();
                 assert!(matches!(
