@@ -56,7 +56,7 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
                     println!("        Full Name: {:?}", name);
                 }
                 if let Some(reasons) = &point.reasons {
-                    println!("        Reasons: {:?}", reasons);
+                    println!("        Reasons: {}", reasons);
                 }
                 if let Some(crl_issuer) = &point.crl_issuer {
                     print!("        CRL Issuer: ");
