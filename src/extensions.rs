@@ -648,7 +648,7 @@ impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CRLDistributionPoint<'a> {
     pub distribution_point: Option<DistributionPointName<'a>>,
-    pub reason: Option<BitStringObject<'a>>,
+    pub reasons: Option<BitStringObject<'a>>,
     pub crl_issuer: Option<Vec<GeneralName<'a>>>,
 }
 
@@ -1069,6 +1069,19 @@ pub(crate) mod parser {
         }
     }
 
+    fn parse_tagged1_reasons(i: &[u8]) -> BerResult<BitStringObject> {
+        let (rem, obj) = parse_der_tagged_implicit(1, parse_der_content(DerTag::BitString))(i)?;
+        if let DerObjectContent::BitString(_, b) = obj.content {
+            Ok((rem, b))
+        } else {
+            Err(nom::Err::Failure(BerError::InvalidTag))
+        }
+    }
+
+    fn parse_crlissuer_content(i: &[u8]) -> BerResult<Vec<GeneralName>> {
+        many1(complete(parse_generalname))(i)
+    }
+
     // DistributionPoint ::= SEQUENCE {
     //     distributionPoint       [0]     DistributionPointName OPTIONAL,
     //     reasons                 [1]     ReasonFlags OPTIONAL,
@@ -1081,20 +1094,13 @@ pub(crate) mod parser {
                 opt(complete(parse_der_tagged_explicit_g(0, |b, _| {
                     parse_distributionpointname(b)
                 })))(content)?;
-            let (rem, reason) = opt(complete(parse_der_tagged_explicit_g(1, |b, _| {
-                let (rem, obj) = parse_der_bitstring(b)?;
-                if let DerObjectContent::BitString(_, b) = obj.content {
-                    Ok((rem, b))
-                } else {
-                    unreachable!();
-                }
-            })))(rem)?;
-            let (rem, crl_issuer) = opt(complete(parse_der_tagged_explicit_g(2, |b, _| {
-                many1(complete(parse_generalname))(b)
+            let (rem, reasons) = opt(complete(parse_tagged1_reasons))(rem)?;
+            let (rem, crl_issuer) = opt(complete(parse_der_tagged_implicit_g(2, |i, _, _| {
+                parse_crlissuer_content(i)
             })))(rem)?;
             let crl_dp = CRLDistributionPoint {
                 distribution_point,
-                reason,
+                reasons,
                 crl_issuer,
             };
             Ok((rem, crl_dp))
@@ -1516,7 +1522,7 @@ mod tests {
             assert!(matches!(crl, ParsedExtension::CRLDistributionPoints(_)));
             if let ParsedExtension::CRLDistributionPoints(crl) = crl {
                 assert_eq!(crl.len(), 1);
-                assert!(crl[0].reason.is_none());
+                assert!(crl[0].reasons.is_none());
                 assert!(crl[0].crl_issuer.is_none());
                 let distribution_point = crl[0].distribution_point.as_ref().unwrap();
                 assert!(matches!(
@@ -1548,14 +1554,14 @@ mod tests {
             assert!(matches!(crl, ParsedExtension::CRLDistributionPoints(_)));
             if let ParsedExtension::CRLDistributionPoints(crl) = crl {
                 assert_eq!(crl.len(), 2);
-                // XXX: Fails
-                //assert!(crl[0].reason.is_some());
-                //let issuers = crl[0].crl_issuer.as_ref().unwrap();
-                //assert_eq!(issuers.len(), 1);
-                //assert!(matches!(issuers[0], GeneralName::DirectoryName(_)));
-                //if let GeneralName::DirectoryName(name) = &issuers[0] {
-                //    assert_eq!(name.to_string(), "");
-                //}
+                // First CRL Distribution point
+                assert!(crl[0].reasons.is_some());
+                let issuers = crl[0].crl_issuer.as_ref().unwrap();
+                assert_eq!(issuers.len(), 1);
+                assert!(matches!(issuers[0], GeneralName::DirectoryName(_)));
+                if let GeneralName::DirectoryName(name) = &issuers[0] {
+                    assert_eq!(name.to_string(), "C=US, O=Organisation, CN=Some Name");
+                }
                 let distribution_point = crl[0].distribution_point.as_ref().unwrap();
                 assert!(matches!(
                     distribution_point,
@@ -1568,8 +1574,8 @@ mod tests {
                         assert_eq!(uri, "http://example.com/myca.crl")
                     }
                 }
-                // XXX: Fails
-                //assert!(crl[1].reason.is_some());
+                // Second CRL Distribution point
+                assert!(crl[1].reasons.is_some());
                 assert!(crl[1].crl_issuer.is_none());
                 let distribution_point = crl[1].distribution_point.as_ref().unwrap();
                 assert!(matches!(

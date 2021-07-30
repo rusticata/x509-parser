@@ -26,6 +26,20 @@ fn format_oid(oid: &Oid) -> String {
     }
 }
 
+fn generalname_to_string(gn: &GeneralName) -> String {
+    match gn {
+        GeneralName::DNSName(name) => format!("DNSName:{}", name),
+        GeneralName::DirectoryName(n) => format!("DirName:{}", n),
+        GeneralName::EDIPartyName(obj) => format!("EDIPartyName:{:?}", obj),
+        GeneralName::IPAddress(n) => format!("IPAddress:{:?}", n),
+        GeneralName::OtherName(oid, n) => format!("OtherName:{}, {:?}", oid, n),
+        GeneralName::RFC822Name(n) => format!("RFC822Name:{}", n),
+        GeneralName::RegisteredID(oid) => format!("RegisteredID:{}", oid),
+        GeneralName::URI(n) => format!("URI:{}", n),
+        GeneralName::X400Address(obj) => format!("X400Address:{:?}", obj),
+    }
+}
+
 fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     print!("    {}: ", format_oid(oid));
     print!(" Critical={}", ext.critical);
@@ -34,6 +48,25 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     match ext.parsed_extension() {
         ParsedExtension::BasicConstraints(bc) => {
             println!("      X509v3 CA: {}", bc.ca);
+        }
+        ParsedExtension::CRLDistributionPoints(points) => {
+            println!("      X509v3 CRL Distribution Points:");
+            for point in points {
+                if let Some(name) = &point.distribution_point {
+                    println!("        Full Name: {:?}", name);
+                }
+                if let Some(reasons) = &point.reasons {
+                    println!("        Reasons: {:?}", reasons);
+                }
+                if let Some(crl_issuer) = &point.crl_issuer {
+                    print!("        CRL Issuer: ");
+                    for gn in crl_issuer {
+                        print!("{} ", generalname_to_string(gn));
+                    }
+                    println!();
+                }
+                println!();
+            }
         }
         ParsedExtension::KeyUsage(ku) => {
             println!("      X509v3 Key Usage: {}", ku);
