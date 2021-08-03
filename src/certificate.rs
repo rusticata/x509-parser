@@ -601,12 +601,12 @@ impl Validate for TbsCertificate<'_> {
         // - wildcards in PrintableString
         // - non-IA5 in IA5String
         for attr in self.subject.iter_attributes() {
-            match attr.attr_value.content {
+            match attr.attr_value().content {
                 DerObjectContent::PrintableString(s) | DerObjectContent::IA5String(s) => {
                     if !s.as_bytes().iter().all(u8::is_ascii) {
                         warn(&format!(
                             "Invalid charset in 'Subject', component {}",
-                            attr.attr_type
+                            attr.attr_type()
                         ));
                     }
                 }

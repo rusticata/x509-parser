@@ -30,8 +30,8 @@ fn read_csr_with_san() {
 
     let mut rdns = cri.subject.iter();
     let rdn = rdns.next().unwrap();
-    let first = rdn.set.first().unwrap();
-    assert_eq!(first.attr_type, OID_X509_COMMON_NAME);
+    let first = rdn.iter().next().unwrap();
+    assert_eq!(first.attr_type(), &OID_X509_COMMON_NAME);
     assert_eq!(first.as_str().unwrap(), "test.rusticata.fr");
 
     let expected: &[u8] = &[
