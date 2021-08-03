@@ -28,7 +28,7 @@ fn read_csr_with_san() {
     assert_eq!(cri.attributes().len(), 1);
     assert_eq!(csr.signature_algorithm.algorithm, OID_SIG_ECDSA_WITH_SHA256);
 
-    let mut rdns = cri.subject.rdn_seq.iter();
+    let mut rdns = cri.subject.iter();
     let rdn = rdns.next().unwrap();
     let first = rdn.set.first().unwrap();
     assert_eq!(first.attr_type, OID_X509_COMMON_NAME);

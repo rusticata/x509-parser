@@ -212,9 +212,15 @@ impl<'a> FromDer<'a> for AlgorithmIdentifier<'a> {
     }
 }
 
+/// X.509 Name (as used in `Issuer` and `Subject` fields)
+///
+/// The Name describes a hierarchical name composed of attributes, such
+/// as country name, and corresponding values, such as US.  The type of
+/// the component AttributeValue is determined by the AttributeType; in
+/// general it will be a DirectoryString.
 #[derive(Clone, Debug, PartialEq)]
 pub struct X509Name<'a> {
-    pub rdn_seq: Vec<RelativeDistinguishedName<'a>>,
+    pub(crate) rdn_seq: Vec<RelativeDistinguishedName<'a>>,
     pub(crate) raw: &'a [u8],
 }
 
@@ -228,6 +234,12 @@ impl<'a> fmt::Display for X509Name<'a> {
 }
 
 impl<'a> X509Name<'a> {
+    /// Builds a new `X509Name` from the provided elements.
+    #[inline]
+    pub const fn new(rdn_seq: Vec<RelativeDistinguishedName<'a>>, raw: &'a [u8]) -> Self {
+        X509Name { rdn_seq, raw }
+    }
+
     /// Attempt to format the current name, using the given registry to convert OIDs to strings.
     ///
     /// Note: a default registry is provided with this crate, and is returned by the
@@ -239,6 +251,11 @@ impl<'a> X509Name<'a> {
     // Not using the AsRef trait, as that would not give back the full 'a lifetime
     pub fn as_raw(&self) -> &'a [u8] {
         self.raw
+    }
+
+    /// Return an iterator over the `RelativeDistinguishedName` components of the name
+    pub fn iter(&self) -> impl Iterator<Item = &RelativeDistinguishedName<'a>> {
+        self.rdn_seq.iter()
     }
 
     /// Return an iterator over the `RelativeDistinguishedName` components of the name
@@ -325,6 +342,19 @@ impl<'a> X509Name<'a> {
     /// Return an iterator over the `EmailAddress` attributes of the X.509 Name.
     pub fn iter_email(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
         self.iter_by_oid(&OID_PKCS9_EMAIL_ADDRESS)
+    }
+}
+
+impl<'a> FromIterator<RelativeDistinguishedName<'a>> for X509Name<'a> {
+    fn from_iter<T: IntoIterator<Item = RelativeDistinguishedName<'a>>>(iter: T) -> Self {
+        let rdn_seq = iter.into_iter().collect();
+        X509Name { rdn_seq, raw: &[] }
+    }
+}
+
+impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
+    fn from(name: X509Name<'a>) -> Self {
+        name.rdn_seq
     }
 }
 
