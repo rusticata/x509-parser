@@ -1,4 +1,66 @@
 /// Trait for validating item (for ex. validate X.509 structure)
+///
+/// # Examples
+///
+/// Using callbacks:
+///
+/// ```
+/// use x509_parser::certificate::X509Certificate;
+/// use x509_parser::validate::Validate;
+///
+/// #[cfg(feature = "validate")]
+/// fn validate_certificate(x509: &X509Certificate<'_>) -> Result<(), &'static str> {
+///     println!("  Subject: {}", x509.subject());
+///     // validate and print warnings and errors to stderr
+///     let ok = x509.validate(
+///         |msg| {
+///             eprintln!("  [W] {}", msg);
+///         },
+///         |msg| {
+///             eprintln!("  [E] {}", msg);
+///         },
+///     );
+///     print!("Structure validation status: ");
+///     if ok {
+///         println!("Ok");
+///         Ok(())
+///     } else {
+///         println!("FAIL");
+///         Err("validation failed")
+///     }
+/// }
+/// ```
+///
+/// Collecting warnings and errors to `Vec`:
+///
+/// ```
+/// use x509_parser::certificate::X509Certificate;
+/// use x509_parser::validate::Validate;
+///
+/// #[cfg(feature = "validate")]
+/// fn validate_certificate(x509: &X509Certificate<'_>) -> Result<(), &'static str> {
+///     println!("  Subject: {}", x509.subject());
+///     // validate and print warnings and errors to stderr
+///     let (ok, warnings, errors) = x509.validate_to_vec();
+///     print!("Structure validation status: ");
+///     if ok {
+///         println!("Ok");
+///     } else {
+///         println!("FAIL");
+///     }
+///     for warning in &warnings {
+///         eprintln!("  [W] {}", warning);
+///     }
+///     for error in &errors {
+///         eprintln!("  [E] {}", error);
+///     }
+///     println!();
+///     if !errors.is_empty() {
+///         return Err("validation failed");
+///     }
+///     Ok(())
+/// }
+/// ```
 pub trait Validate {
     /// Attempts to validate current item.
     ///
