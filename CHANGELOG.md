@@ -6,6 +6,41 @@
 
 ### Thanks
 
+## 0.10.0
+
+### Added
+
+- Add the `Validate` trait to run post-parsing validations of X.509 structure
+- Add the `FromDer` trait to unify parsing methods and visibility (#85)
+- Add method to format X509Name using a given registry
+- Add `X509Certificate::public_key()` method
+- Add ED25519 as a signature algorithm (#95)
+- Add support for extensions (#86):
+  - CRL Distribution Points
+- Add `X509CertificateParser` builder to allow specifying parsing options
+
+### Changed/Fixed
+
+- Extensions are now stored in order of appearance in the certificate/CRL (#80)
+  - `.extensions` field is not public anymore, but methods `.extensions()` and `.extensions_map()`
+    have been added
+- Store CRI attributes in order
+- Fix parsing of CertificatePolicies, and use named types (closes #82)
+- Allow specifying registry in oid2sn and similar functions (closes #88)
+- Mark X509Extension::new as const fn + inline
+- Allow leading zeroes in serial number
+- Derive `Clone` for all types (when possible) (#89)
+- Fix certificate validity period check to be inclusive (#90)
+- Do not fail GeneralName parsing for x400Address and ediPartyName, read it as unparsed objects (#87)
+- Change visibility of fields in `X509Name` (replaced by accessors)
+
+### Thanks
+
+- @lilyball for numerous issues, ideas and comments
+- @SergioBenitez for lifetimes fixes (#93) and validity period check fixes (#90)
+- @rappet for Ed25519 signature verification support (#95)
+- @xonatius for the work on CRLDistributionPoints (#96, #98)
+
 ## 0.9.3
 
 ### Added/Changed/Fixed
