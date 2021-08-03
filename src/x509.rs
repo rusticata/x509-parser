@@ -225,12 +225,15 @@ impl<'a> FromDer<'a> for RelativeDistinguishedName<'a> {
 pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
     pub subject_public_key: BitStringObject<'a>,
+    /// A raw unparsed PKIX, ASN.1 DER form (see RFC 5280, Section 4.1).
+    pub raw: &'a [u8],
 }
 
 impl<'a> FromDer<'a> for SubjectPublicKeyInfo<'a> {
     /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
-        parse_der_sequence_defined_g(|i, _| {
+        let start_i = i;
+        parse_der_sequence_defined_g(move |i, _| {
             let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
                 match x.content {
@@ -239,9 +242,12 @@ impl<'a> FromDer<'a> for SubjectPublicKeyInfo<'a> {
                 }
             })(i)
             .or(Err(X509Error::InvalidSPKI))?;
+            let len = start_i.offset(i);
+            let raw = &start_i[..len];
             let spki = SubjectPublicKeyInfo {
                 algorithm,
                 subject_public_key,
+                raw,
             };
             Ok((i, spki))
         })(i)
