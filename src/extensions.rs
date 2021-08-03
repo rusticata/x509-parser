@@ -12,7 +12,7 @@ use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map, map_opt, map_res, opt};
 use nom::multi::{many0, many1};
-use nom::Err;
+use nom::{Err, IResult, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 use std::fmt;
@@ -112,11 +112,43 @@ impl<'a> X509Extension<'a> {
 /// </pre>
 impl<'a> FromDer<'a> for X509Extension<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        X509ExtensionParser::new().parse(i)
+    }
+}
+
+/// `X509Extension` parser builder
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct X509ExtensionParser {
+    deep_parse_extensions: bool,
+}
+
+impl X509ExtensionParser {
+    #[inline]
+    pub const fn new() -> Self {
+        X509ExtensionParser {
+            deep_parse_extensions: true,
+        }
+    }
+
+    #[inline]
+    pub const fn with_deep_parse_extensions(self, deep_parse_extensions: bool) -> Self {
+        X509ExtensionParser {
+            deep_parse_extensions,
+        }
+    }
+}
+
+impl<'a> Parser<&'a [u8], X509Extension<'a>, X509Error> for X509ExtensionParser {
+    fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Extension<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let (i, critical) = der_read_critical(i)?;
             let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
-            let (i, parsed_extension) = parser::parse_extension(i, value, &oid)?;
+            let (i, parsed_extension) = if self.deep_parse_extensions {
+                parser::parse_extension(i, value, &oid)?
+            } else {
+                (&[] as &[_], ParsedExtension::Unparsed)
+            };
             let ext = X509Extension {
                 oid,
                 critical,
@@ -124,7 +156,7 @@ impl<'a> FromDer<'a> for X509Extension<'a> {
                 parsed_extension,
             };
             Ok((i, ext))
-        })(i)
+        })(input)
         .map_err(|_| X509Error::InvalidExtensions.into())
     }
 }
@@ -172,6 +204,8 @@ pub enum ParsedExtension<'a> {
     ReasonCode(ReasonCode),
     /// Section 5.3.3 of rfc 5280
     InvalidityDate(ASN1Time),
+    /// Unparsed extension (was not requested in parsing options)
+    Unparsed,
 }
 
 impl<'a> ParsedExtension<'a> {
@@ -1417,6 +1451,32 @@ pub(crate) fn parse_extensions(i: &[u8], explicit_tag: DerTag) -> X509Result<Vec
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
             all_consuming(parse_extension_sequence)(rem)
+        }
+        Err(_) => Err(X509Error::InvalidExtensions.into()),
+    }
+}
+
+/// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
+pub(crate) fn parse_extension_envelope_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
+    let parser = X509ExtensionParser::new().with_deep_parse_extensions(false);
+
+    parse_der_sequence_defined_g(move |a, _| all_consuming(many0(complete(parser)))(a))(i)
+}
+
+pub(crate) fn parse_extensions_envelope(
+    i: &[u8],
+    explicit_tag: DerTag,
+) -> X509Result<Vec<X509Extension>> {
+    if i.is_empty() {
+        return Ok((i, Vec::new()));
+    }
+
+    match der_read_element_header(i) {
+        Ok((rem, hdr)) => {
+            if hdr.tag != explicit_tag {
+                return Err(Err::Error(X509Error::InvalidExtensions));
+            }
+            all_consuming(parse_extension_envelope_sequence)(rem)
         }
         Err(_) => Err(X509Error::InvalidExtensions.into()),
     }

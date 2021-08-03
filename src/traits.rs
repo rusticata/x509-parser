@@ -29,6 +29,7 @@ use crate::error::X509Result;
 /// }
 /// # }
 /// ```
+
 pub trait FromDer<'a>: Sized {
     /// Attempt to parse input bytes into a DER object
     fn from_der(bytes: &'a [u8]) -> X509Result<'a, Self>;

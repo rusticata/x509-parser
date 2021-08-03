@@ -17,7 +17,7 @@ use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use der_parser::*;
-use nom::Offset;
+use nom::{Offset, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 #[cfg(feature = "validate")]
@@ -185,8 +185,76 @@ impl<'a> FromDer<'a> for X509Certificate<'a> {
     /// # }
     /// ```
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
+        // run parser with default options
+        X509CertificateParser::new().parse(i)
+    }
+}
+
+/// X.509 Certificate parser
+///
+/// This object is a parser builder, and allows specifying parsing options.
+/// Currently, the only option is to control deep parsing of X.509v3 extensions:
+/// a parser can decide to skip deep-parsing to be faster (the structure of extensions is still
+/// parsed, and the contents can be parsed later using the [`from_der`](FromDer::from_der)
+/// method from individual extension objects).
+///
+/// This object uses the `nom::Parser` trait, which must be imported.
+///
+/// # Example
+///
+/// To parse a certificate without parsing extensions:
+///
+/// ```rust
+/// use x509_parser::certificate::X509CertificateParser;
+/// use x509_parser::nom::Parser;
+///
+/// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
+/// #
+/// # fn main() {
+/// // create a parser that will not parse extensions
+/// let mut parser = X509CertificateParser::new()
+///     .with_deep_parse_extensions(false);
+/// let res = parser.parse(DER);
+/// match res {
+///     Ok((_rem, x509)) => {
+///         let subject = x509.subject();
+///         let issuer = x509.issuer();
+///         println!("X.509 Subject: {}", subject);
+///         println!("X.509 Issuer: {}", issuer);
+///     },
+///     _ => panic!("x509 parsing failed: {:?}", res),
+/// }
+/// # }
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct X509CertificateParser {
+    deep_parse_extensions: bool,
+    // strict: bool,
+}
+
+impl X509CertificateParser {
+    #[inline]
+    pub const fn new() -> Self {
+        X509CertificateParser {
+            deep_parse_extensions: true,
+        }
+    }
+
+    #[inline]
+    pub const fn with_deep_parse_extensions(self, deep_parse_extensions: bool) -> Self {
+        X509CertificateParser {
+            deep_parse_extensions,
+        }
+    }
+}
+
+impl<'a> Parser<&'a [u8], X509Certificate<'a>, X509Error> for X509CertificateParser {
+    fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
-            let (i, tbs_certificate) = TbsCertificate::from_der(i)?;
+            // pass options to TbsCertificate parser
+            let mut tbs_parser =
+                TbsCertificateParser::new().with_deep_parse_extensions(self.deep_parse_extensions);
+            let (i, tbs_certificate) = tbs_parser.parse(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
             let cert = X509Certificate {
@@ -195,7 +263,7 @@ impl<'a> FromDer<'a> for X509Certificate<'a> {
                 signature_value,
             };
             Ok((i, cert))
-        })(i)
+        })(input)
     }
 }
 
@@ -213,7 +281,7 @@ impl Validate for X509Certificate<'_> {
     }
 }
 
-/// The sequence TBSCertificate contains information associated with the
+/// The sequence `TBSCertificate` contains information associated with the
 /// subject of the certificate and the CA that issued it.
 ///
 /// RFC5280 definition:
@@ -432,6 +500,67 @@ impl<'a> FromDer<'a> for TbsCertificate<'a> {
             };
             Ok((i, tbs))
         })(i)
+    }
+}
+
+/// `TbsCertificate` parser builder
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TbsCertificateParser {
+    deep_parse_extensions: bool,
+}
+
+impl TbsCertificateParser {
+    #[inline]
+    pub const fn new() -> Self {
+        TbsCertificateParser {
+            deep_parse_extensions: true,
+        }
+    }
+
+    #[inline]
+    pub const fn with_deep_parse_extensions(self, deep_parse_extensions: bool) -> Self {
+        TbsCertificateParser {
+            deep_parse_extensions,
+        }
+    }
+}
+
+impl<'a> Parser<&'a [u8], TbsCertificate<'a>, X509Error> for TbsCertificateParser {
+    fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], TbsCertificate<'a>, X509Error> {
+        let start_i = input;
+        parse_der_sequence_defined_g(move |i, _| {
+            let (i, version) = X509Version::from_der(i)?;
+            let (i, serial) = parse_serial(i)?;
+            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
+            let (i, issuer) = X509Name::from_der(i)?;
+            let (i, validity) = Validity::from_der(i)?;
+            let (i, subject) = X509Name::from_der(i)?;
+            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
+            let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
+            let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
+            let (i, extensions) = if self.deep_parse_extensions {
+                parse_extensions(i, BerTag(3))?
+            } else {
+                parse_extensions_envelope(i, BerTag(3))?
+            };
+            let len = start_i.offset(i);
+            let tbs = TbsCertificate {
+                version,
+                serial: serial.1,
+                signature,
+                issuer,
+                validity,
+                subject,
+                subject_pki,
+                issuer_uid,
+                subject_uid,
+                extensions,
+
+                raw: &start_i[..len],
+                raw_serial: serial.0,
+            };
+            Ok((i, tbs))
+        })(input)
     }
 }
 

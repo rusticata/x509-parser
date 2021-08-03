@@ -1,6 +1,7 @@
 use chrono::offset::{TimeZone, Utc};
 use chrono::Datelike;
 use der_parser::oid;
+use nom::Parser;
 use oid_registry::*;
 use std::collections::HashMap;
 use x509_parser::prelude::*;
@@ -342,5 +343,14 @@ fn test_duplicate_authority_info_access() {
             }
         }
         err => panic!("x509 parsing failed: {:?}", err),
+    }
+}
+
+#[test]
+fn test_x509_parser_no_ext() {
+    let mut parser = X509CertificateParser::new().with_deep_parse_extensions(false);
+    let (_, x509) = parser.parse(IGCA_DER).expect("parsing failed");
+    for ext in x509.extensions() {
+        assert_eq!(ext.parsed_extension(), &ParsedExtension::Unparsed);
     }
 }

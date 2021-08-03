@@ -23,8 +23,13 @@
 //! [`pem`](pem/index.html) module for more documentation.
 //!
 //! To decode a DER-encoded certificate, the main parsing method is
-//! [`parse_x509_certificate`](fn.parse_x509_certificate.html), which builds a
+//! [`X509Certificate::from_der`] (
+//! part of the [`FromDer`](traits/trait.FromDer.html) trait
+//! ), which builds a
 //! [`X509Certificate`](certificate/struct.X509Certificate.html) object.
+//!
+//! An alternative method is to use [`X509CertificateParser`](certificate/struct.X509CertificateParser.html),
+//! which allows specifying parsing options (for example, not automatically parsing option contents).
 //!
 //! The returned objects for parsers follow the definitions of the RFC. This means that accessing
 //! fields is done by accessing struct members recursively. Some helper functions are provided, for
