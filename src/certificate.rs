@@ -322,27 +322,27 @@ pub struct TbsCertificate<'a> {
 impl<'a> TbsCertificate<'a> {
     /// Returns the certificate extensions
     #[inline]
-    pub fn extensions(&self) -> &[X509Extension] {
+    pub fn extensions(&self) -> &[X509Extension<'a>] {
         &self.extensions
     }
 
     /// Returns an iterator over the certificate extensions
     #[inline]
-    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension> {
+    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension<'a>> {
         self.extensions.iter()
     }
 
     /// Searches for an extension with the given `Oid`.
     ///
     /// Note: if there are several extensions with the same `Oid`, the first one is returned.
-    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension> {
+    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension<'a>> {
         self.extensions.iter().find(|&ext| ext.oid == *oid)
     }
 
     /// Builds and returns a map of extensions.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
-    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension>, X509Error> {
+    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension<'a>>, X509Error> {
         self.extensions
             .iter()
             .try_fold(HashMap::new(), |mut m, ext| {
@@ -370,7 +370,7 @@ impl<'a> TbsCertificate<'a> {
             })
     }
 
-    pub fn extended_key_usage(&self) -> Option<(bool, &ExtendedKeyUsage)> {
+    pub fn extended_key_usage(&self) -> Option<(bool, &ExtendedKeyUsage<'a>)> {
         self.find_extension(&OID_X509_EXT_EXTENDED_KEY_USAGE)
             .and_then(|ext| match ext.parsed_extension {
                 ParsedExtension::ExtendedKeyUsage(ref eku) => Some((ext.critical, eku)),
@@ -394,7 +394,7 @@ impl<'a> TbsCertificate<'a> {
             })
     }
 
-    pub fn policy_mappings(&self) -> Option<(bool, &PolicyMappings)> {
+    pub fn policy_mappings(&self) -> Option<(bool, &PolicyMappings<'a>)> {
         self.find_extension(&OID_X509_EXT_POLICY_MAPPINGS)
             .and_then(|ext| match ext.parsed_extension {
                 ParsedExtension::PolicyMappings(ref pm) => Some((ext.critical, pm)),
@@ -402,7 +402,7 @@ impl<'a> TbsCertificate<'a> {
             })
     }
 
-    pub fn subject_alternative_name(&self) -> Option<(bool, &SubjectAlternativeName)> {
+    pub fn subject_alternative_name(&self) -> Option<(bool, &SubjectAlternativeName<'a>)> {
         self.find_extension(&OID_X509_EXT_SUBJECT_ALT_NAME)
             .and_then(|ext| match ext.parsed_extension {
                 ParsedExtension::SubjectAlternativeName(ref san) => Some((ext.critical, san)),
@@ -410,7 +410,7 @@ impl<'a> TbsCertificate<'a> {
             })
     }
 
-    pub fn name_constraints(&self) -> Option<(bool, &NameConstraints)> {
+    pub fn name_constraints(&self) -> Option<(bool, &NameConstraints<'a>)> {
         self.find_extension(&OID_X509_EXT_NAME_CONSTRAINTS)
             .and_then(|ext| match ext.parsed_extension {
                 ParsedExtension::NameConstraints(ref nc) => Some((ext.critical, nc)),
@@ -426,7 +426,7 @@ impl<'a> TbsCertificate<'a> {
     }
 
     /// Get the raw bytes of the certificate serial number
-    pub fn raw_serial(&self) -> &[u8] {
+    pub fn raw_serial(&self) -> &'a [u8] {
         self.raw_serial
     }
 
