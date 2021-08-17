@@ -5,12 +5,18 @@ use crate::error::X509Result;
 ///
 /// The returned object uses zero-copy, and so has the same lifetime as the input.
 ///
-#[cfg_attr(feature = "validate", doc = r#"
+#[cfg_attr(
+    feature = "validate",
+    doc = r#"
 Note that only parsing is done, not validation (see the [`Validate`](crate::validate::Validate) trait).
-"#)]
-#[cfg_attr(not(feature = "validate"), doc = r#"
+"#
+)]
+#[cfg_attr(
+    not(feature = "validate"),
+    doc = r#"
 Note that only parsing is done, not validation.
-"#)]
+"#
+)]
 ///
 /// # Example
 ///
