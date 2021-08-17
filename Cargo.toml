@@ -20,8 +20,11 @@ include = [
   "Cargo.toml",
   "src/*.rs",
   "tests/*.rs",
+  "assets/*.crl",
+  "assets/*.csr",
   "assets/*.der",
   "assets/*.pem",
+  "assets/crl-ext/*.der",
   "examples/*.rs"
 ]
 
