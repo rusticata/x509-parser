@@ -10,7 +10,7 @@ use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
-use nom::combinator::{all_consuming, complete, map, map_opt, map_res, opt};
+use nom::combinator::{all_consuming, complete, map, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult, Parser};
 use oid_registry::*;
@@ -1428,7 +1428,7 @@ pub(crate) mod parser {
     // CRLNumber ::= INTEGER (0..MAX)
     // Note from RFC 3280: "CRL verifiers MUST be able to handle CRLNumber values up to 20 octets."
     fn parse_crl_number(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (rest, num) = map_opt(parse_der_integer, |obj| obj.as_biguint())(i)?;
+        let (rest, num) = map_res(parse_der_integer, |obj| obj.as_biguint())(i)?;
         Ok((rest, ParsedExtension::CRLNumber(num)))
     }
 }

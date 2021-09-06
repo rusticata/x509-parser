@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate nom;
+use nom::bytes::complete::take;
 
 #[test]
 fn test01() {
@@ -7,13 +6,11 @@ fn test01() {
     let _ = x509_parser::parse_x509_certificate(data);
 }
 
-named!(parser02<&[u8],()>,
-    do_parse!(
-        _hdr: take!(1) >>
-        _data: take!(18_446_744_073_709_551_615) >>
-        ( () )
-    )
-);
+fn parser02(input: &[u8]) -> nom::IResult<&[u8], ()> {
+    let (_hdr, input) = take(1_usize)(input)?;
+    let (_data, input) = take(18_446_744_073_709_551_615_usize)(input)?;
+    Ok((input, ()))
+}
 
 #[test]
 fn test02() {
