@@ -43,7 +43,7 @@ chrono = { version="0.4", default-features=false, features=["std"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "6.0"
-oid-registry = { version="0.1.1", features=["crypto", "x509"] }
+oid-registry = { version="0.1.5", features=["crypto", "x509"] }
 rusticata-macros = "3.0"
 ring = { version="0.16", optional=true }
 der-parser = { version = "5.1.2", features=["bigint"] }
