@@ -15,11 +15,14 @@
 ### Changed/Fixed
 
 - Fix der-parser dependency (#102)
+- Update oid-registry dependency (#77)
 - Set MSRV to 1.46 (indirect dependency on lexical-core and bitvec)
 - Extend the lifetimes exposed on TbsCertificate (#104)
 - Add missing test assets (#103)
 
 ### Thanks
+
+- @jgalenson, @g2p, @kpp
 
 ## 0.10.0
 
