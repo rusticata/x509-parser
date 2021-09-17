@@ -6,6 +6,12 @@
 
 ### Thanks
 
+## 0.12.0
+
+### Added/Changed/Fixed
+
+- Upgrade to nom 7
+
 ## 0.11.0
 
 ### Added

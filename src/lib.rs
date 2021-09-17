@@ -109,7 +109,7 @@
 //!
 //! ## Rust version requirements
 //!
-//! `x509-parser` requires **Rustc version 1.46 or greater**, based on nom 6
+//! `x509-parser` requires **Rustc version 1.46 or greater**, based on nom 7
 //! dependencies and for proc-macro attributes support.
 //!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
