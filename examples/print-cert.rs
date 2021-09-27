@@ -129,11 +129,11 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
         print_x509_extension(&ext.oid, ext);
     }
     println!();
+    print!("Structure validation status: ");
     #[cfg(feature = "validate")]
     {
         // structure validation status
         let (ok, warnings, errors) = x509.validate_to_vec();
-        print!("Structure validation status: ");
         if ok {
             println!("Ok");
         } else {
@@ -149,6 +149,10 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
         if VALIDATE_ERRORS_FATAL && !errors.is_empty() {
             return Err(io::Error::new(io::ErrorKind::Other, "validation failed"));
         }
+    }
+    #[cfg(not(feature = "validate"))]
+    {
+        println!("Unknown (feature 'validate' not enabled)");
     }
     Ok(())
 }
