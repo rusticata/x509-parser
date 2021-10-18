@@ -8,7 +8,7 @@ pub struct X509NameStructureValidator;
 impl<'a> Validator<'a> for X509NameStructureValidator {
     type Item = X509Name<'a>;
 
-    fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool {
+    fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
         let res = true;
         // subject/issuer: verify charsets
         // - wildcards in PrintableString

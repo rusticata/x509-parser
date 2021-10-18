@@ -44,27 +44,27 @@ use crate::x509::X509Version;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct X509StructureValidator;
 
 impl<'a> Validator<'a> for X509StructureValidator {
     type Item = X509Certificate<'a>;
 
-    fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool {
+    fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
         let mut res = true;
-        res &= TbsCertificateStructureValidator::validate(&item.tbs_certificate, l);
+        res &= TbsCertificateStructureValidator.validate(&item.tbs_certificate, l);
         res
     }
 }
 
 /// Default X.509 structure validator for `TbsCertificate`
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TbsCertificateStructureValidator;
 
 impl<'a> Validator<'a> for TbsCertificateStructureValidator {
     type Item = TbsCertificate<'a>;
 
-    fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool {
+    fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
         let mut res = true;
         // version must be 0, 1 or 2
         if item.version.0 >= 3 {
@@ -91,8 +91,8 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
             }
         }
         // subject/issuer: verify charsets
-        res &= X509NameStructureValidator::validate(&item.subject, l);
-        res &= X509NameStructureValidator::validate(&item.issuer, l);
+        res &= X509NameStructureValidator.validate(&item.subject, l);
+        res &= X509NameStructureValidator.validate(&item.issuer, l);
         // check for parse errors or unsupported extensions
         for ext in item.extensions() {
             if let ParsedExtension::UnsupportedExtension { .. } = &ext.parsed_extension {

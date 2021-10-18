@@ -274,7 +274,7 @@ impl Validate for X509Certificate<'_> {
         W: FnMut(&str),
         E: FnMut(&str),
     {
-        X509StructureValidator::validate(self, &mut CallbackLogger::new(warn, err))
+        X509StructureValidator.validate(self, &mut CallbackLogger::new(warn, err))
     }
 }
 
@@ -570,7 +570,7 @@ impl Validate for TbsCertificate<'_> {
         W: FnMut(&str),
         E: FnMut(&str),
     {
-        TbsCertificateStructureValidator::validate(self, &mut CallbackLogger::new(warn, err))
+        TbsCertificateStructureValidator.validate(self, &mut CallbackLogger::new(warn, err))
     }
 }
 

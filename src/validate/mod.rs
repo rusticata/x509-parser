@@ -1,9 +1,12 @@
 mod certificate;
+mod extensions;
 mod loggers;
 mod name;
 mod structure;
+use std::marker::PhantomData;
 
 pub use certificate::*;
+pub use extensions::*;
 pub use loggers::*;
 pub use name::*;
 pub use structure::*;
@@ -153,7 +156,42 @@ pub trait Validator<'a> {
     ///
     /// Call `l.warn()` if a non-fatal error was encountered, and `l.err()`
     /// if the error is fatal. These functions receive a description of the error.
-    fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool;
+    fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool;
+
+    fn chain<V2>(self, v2: V2) -> ChainValidator<'a, Self, V2, Self::Item>
+    where
+        Self: Sized,
+        V2: Validator<'a, Item = Self::Item>,
+    {
+        ChainValidator {
+            v1: self,
+            v2,
+            _p: PhantomData,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ChainValidator<'a, A, B, I>
+where
+    A: Validator<'a, Item = I>,
+    B: Validator<'a, Item = I>,
+{
+    v1: A,
+    v2: B,
+    _p: PhantomData<&'a ()>,
+}
+
+impl<'a, A, B, I> Validator<'a> for ChainValidator<'a, A, B, I>
+where
+    A: Validator<'a, Item = I>,
+    B: Validator<'a, Item = I>,
+{
+    type Item = I;
+
+    fn validate<L: Logger>(&'_ self, item: &'a Self::Item, l: &'_ mut L) -> bool {
+        self.v1.validate(item, l) & self.v2.validate(item, l)
+    }
 }
 
 #[allow(deprecated)]
@@ -183,7 +221,7 @@ mod tests {
     impl<'a> Validator<'a> for V1Validator {
         type Item = V1;
 
-        fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool {
+        fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
             if item.a > 10 {
                 l.warn("a is greater than 10");
             }
@@ -210,13 +248,13 @@ mod tests {
     fn validator_warn() {
         let mut logger = VecLogger::default();
         let v1 = V1 { a: 1 };
-        let res = V1Validator::validate(&v1, &mut logger);
+        let res = V1Validator.validate(&v1, &mut logger);
         assert!(res);
         assert!(logger.warnings().is_empty());
         assert!(logger.errors().is_empty());
         // same, with one warning
         let v20 = V1 { a: 20 };
-        let res = V1Validator::validate(&v20, &mut logger);
+        let res = V1Validator.validate(&v20, &mut logger);
         assert!(res);
         assert_eq!(logger.warnings(), &["a is greater than 10".to_string()]);
         assert!(logger.errors().is_empty());
