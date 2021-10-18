@@ -1,6 +1,3 @@
-#![cfg(feature = "validate")]
-#![cfg_attr(docsrs, doc(cfg(feature = "validate")))]
-
 pub trait Logger {
     fn warn(&mut self, message: &str);
 

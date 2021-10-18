@@ -132,7 +132,7 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     {
         let mut logger = VecLogger::default();
         // structure validation status
-        let ok = X509StructureValidator::validate(&x509, &mut logger);
+        let ok = X509StructureValidator::validate(x509, &mut logger);
         // x509.validate_to_vec();
         if ok {
             println!("Ok");

@@ -51,8 +51,6 @@ use crate::x509::X509Version;
 #[derive(Debug)]
 pub struct X509StructureValidator;
 
-#[cfg(feature = "validate")]
-#[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 impl<'a> Validator<'a> for X509StructureValidator {
     type Item = X509Certificate<'a>;
 
@@ -64,13 +62,9 @@ impl<'a> Validator<'a> for X509StructureValidator {
 }
 
 /// Default X.509 structure validator for `TbsCertificate`
-#[cfg(feature = "validate")]
-#[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 #[derive(Debug)]
 pub struct TbsCertificateStructureValidator;
 
-#[cfg(feature = "validate")]
-#[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 impl<'a> Validator<'a> for TbsCertificateStructureValidator {
     type Item = TbsCertificate<'a>;
 

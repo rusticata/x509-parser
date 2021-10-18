@@ -69,7 +69,7 @@ pub use structure::*;
 ///     Ok(())
 /// }
 /// ```
-#[deprecated(since = "0.13", note = "please use `X509StructureValidator` instead")]
+#[deprecated(since = "0.13.0", note = "please use `X509StructureValidator` instead")]
 pub trait Validate {
     /// Attempts to validate current item.
     ///
