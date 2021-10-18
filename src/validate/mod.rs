@@ -1,3 +1,8 @@
+mod loggers;
+mod structure;
+pub use loggers::*;
+pub use structure::*;
+
 /// Trait for validating item (for ex. validate X.509 structure)
 ///
 /// # Examples
@@ -6,8 +11,9 @@
 ///
 /// ```
 /// use x509_parser::certificate::X509Certificate;
+/// # #[allow(deprecated)]
 /// use x509_parser::validate::Validate;
-///
+/// # #[allow(deprecated)]
 /// #[cfg(feature = "validate")]
 /// fn validate_certificate(x509: &X509Certificate<'_>) -> Result<(), &'static str> {
 ///     println!("  Subject: {}", x509.subject());
@@ -35,8 +41,10 @@
 ///
 /// ```
 /// use x509_parser::certificate::X509Certificate;
+/// # #[allow(deprecated)]
 /// use x509_parser::validate::Validate;
 ///
+/// # #[allow(deprecated)]
 /// #[cfg(feature = "validate")]
 /// fn validate_certificate(x509: &X509Certificate<'_>) -> Result<(), &'static str> {
 ///     println!("  Subject: {}", x509.subject());
@@ -61,6 +69,7 @@
 ///     Ok(())
 /// }
 /// ```
+#[deprecated(since = "0.13", note = "please use `X509StructureValidator` instead")]
 pub trait Validate {
     /// Attempts to validate current item.
     ///
@@ -88,9 +97,64 @@ pub trait Validate {
     }
 }
 
+/// Trait for build item validators (for ex. validate X.509 structure)
+///
+/// See [`X509StructureValidator`] for a default implementation, validating the
+/// DER structure of a X.509 Certificate.
+///
+/// See implementors of the [`Logger`] trait for methods to collect or handle warnings and errors.
+///
+/// # Examples
+///
+/// Collecting warnings and errors to `Vec`:
+///
+/// ```
+/// use x509_parser::certificate::X509Certificate;
+/// use x509_parser::validate::*;
+///
+/// # #[allow(deprecated)]
+/// #[cfg(feature = "validate")]
+/// fn validate_certificate(x509: &X509Certificate<'_>) -> Result<(), &'static str> {
+///     let mut logger = VecLogger::default();
+///     println!("  Subject: {}", x509.subject());
+///     // validate and print warnings and errors to stderr
+///     let ok = X509StructureValidator::validate(&x509, &mut logger);
+///     print!("Structure validation status: ");
+///     if ok {
+///         println!("Ok");
+///     } else {
+///         println!("FAIL");
+///     }
+///     for warning in logger.warnings() {
+///         eprintln!("  [W] {}", warning);
+///     }
+///     for error in logger.errors() {
+///         eprintln!("  [E] {}", error);
+///     }
+///     println!();
+///     if !logger.errors().is_empty() {
+///         return Err("validation failed");
+///     }
+///     Ok(())
+/// }
+/// ```
+pub trait Validator<'a> {
+    /// The item to validate
+    type Item;
+
+    /// Attempts to validate current item.
+    ///
+    /// Returns `true` if item was validated.
+    ///
+    /// Call `l.warn()` if a non-fatal error was encountered, and `l.err()`
+    /// if the error is fatal. These functions receive a description of the error.
+    fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool;
+}
+
+#[allow(deprecated)]
 #[cfg(test)]
 mod tests {
-    use super::Validate;
+    use crate::validate::*;
 
     struct V1 {
         a: u32,
@@ -109,6 +173,19 @@ mod tests {
         }
     }
 
+    struct V1Validator;
+
+    impl<'a> Validator<'a> for V1Validator {
+        type Item = V1;
+
+        fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool {
+            if item.a > 10 {
+                l.warn("a is greater than 10");
+            }
+            true
+        }
+    }
+
     #[test]
     fn validate_warn() {
         let v1 = V1 { a: 1 };
@@ -122,5 +199,21 @@ mod tests {
         assert!(res);
         assert_eq!(warn, vec!["a is greater than 10".to_string()]);
         assert!(err.is_empty());
+    }
+
+    #[test]
+    fn validator_warn() {
+        let mut logger = VecLogger::default();
+        let v1 = V1 { a: 1 };
+        let res = V1Validator::validate(&v1, &mut logger);
+        assert!(res);
+        assert!(logger.warnings().is_empty());
+        assert!(logger.errors().is_empty());
+        // same, with one warning
+        let v20 = V1 { a: 20 };
+        let res = V1Validator::validate(&v20, &mut logger);
+        assert!(res);
+        assert_eq!(logger.warnings(), &["a is greater than 10".to_string()]);
+        assert!(logger.errors().is_empty());
     }
 }

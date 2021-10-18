@@ -4,8 +4,6 @@ use std::cmp::min;
 use std::env;
 use std::io;
 use x509_parser::prelude::*;
-#[cfg(feature = "validate")]
-use x509_parser::validate::Validate;
 
 const PARSE_ERRORS_FATAL: bool = false;
 #[cfg(feature = "validate")]
@@ -132,21 +130,23 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     print!("Structure validation status: ");
     #[cfg(feature = "validate")]
     {
+        let mut logger = VecLogger::default();
         // structure validation status
-        let (ok, warnings, errors) = x509.validate_to_vec();
+        let ok = X509StructureValidator::validate(&x509, &mut logger);
+        // x509.validate_to_vec();
         if ok {
             println!("Ok");
         } else {
             println!("FAIL");
         }
-        for warning in &warnings {
+        for warning in logger.warnings() {
             println!("  [W] {}", warning);
         }
-        for error in &errors {
+        for error in logger.errors() {
             println!("  [E] {}", error);
         }
         println!();
-        if VALIDATE_ERRORS_FATAL && !errors.is_empty() {
+        if VALIDATE_ERRORS_FATAL && !logger.errors().is_empty() {
             return Err(io::Error::new(io::ErrorKind::Other, "validation failed"));
         }
     }
