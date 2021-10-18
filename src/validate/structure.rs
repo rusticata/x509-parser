@@ -1,8 +1,4 @@
-use std::collections::HashSet;
-
-use der_parser::der::DerObjectContent;
-
-use super::{Logger, Validator};
+use super::{Logger, Validator, X509NameStructureValidator};
 use crate::certificate::*;
 use crate::extensions::{GeneralName, ParsedExtension};
 use crate::x509::X509Version;
@@ -56,7 +52,7 @@ impl<'a> Validator<'a> for X509StructureValidator {
 
     fn validate<L: Logger>(item: &'a Self::Item, l: &'a mut L) -> bool {
         let mut res = true;
-        res |= TbsCertificateStructureValidator::validate(&item.tbs_certificate, l);
+        res &= TbsCertificateStructureValidator::validate(&item.tbs_certificate, l);
         res
     }
 }
@@ -95,21 +91,8 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
             }
         }
         // subject/issuer: verify charsets
-        // - wildcards in PrintableString
-        // - non-IA5 in IA5String
-        for attr in item.subject.iter_attributes() {
-            match attr.attr_value().content {
-                DerObjectContent::PrintableString(s) | DerObjectContent::IA5String(s) => {
-                    if !s.as_bytes().iter().all(u8::is_ascii) {
-                        l.warn(&format!(
-                            "Invalid charset in 'Subject', component {}",
-                            attr.attr_type()
-                        ));
-                    }
-                }
-                _ => (),
-            }
-        }
+        res &= X509NameStructureValidator::validate(&item.subject, l);
+        res &= X509NameStructureValidator::validate(&item.issuer, l);
         // check for parse errors or unsupported extensions
         for ext in item.extensions() {
             if let ParsedExtension::UnsupportedExtension { .. } = &ext.parsed_extension {
@@ -120,15 +103,8 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
                 res = false;
             }
         }
-        // check for duplicate extensions
-        let mut m = HashSet::new();
+        // check extensions
         for ext in item.extensions() {
-            if m.contains(&ext.oid) {
-                l.err(&format!("Duplicate extension {}", ext.oid));
-                res = false;
-            } else {
-                m.insert(ext.oid.clone());
-            }
             // specific extension checks
             // SAN
             if let ParsedExtension::SubjectAlternativeName(san) = ext.parsed_extension() {

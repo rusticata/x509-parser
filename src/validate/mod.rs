@@ -1,6 +1,11 @@
+mod certificate;
 mod loggers;
+mod name;
 mod structure;
+
+pub use certificate::*;
 pub use loggers::*;
+pub use name::*;
 pub use structure::*;
 
 /// Trait for validating item (for ex. validate X.509 structure)
