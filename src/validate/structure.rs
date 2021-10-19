@@ -24,7 +24,7 @@ use crate::x509::X509Version;
 ///     let mut logger = VecLogger::default();
 ///     println!("  Subject: {}", x509.subject());
 ///     // validate and print warnings and errors to stderr
-///     let ok = X509StructureValidator::validate(&x509, &mut logger);
+///     let ok = X509StructureValidator.validate(&x509, &mut logger);
 ///     print!("Structure validation status: ");
 ///     if ok {
 ///         println!("Ok");
