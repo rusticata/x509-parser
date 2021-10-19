@@ -44,6 +44,18 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
     print!(" len={}", ext.value.len());
     println!();
     match ext.parsed_extension() {
+        ParsedExtension::AuthorityKeyIdentifier(aki) => {
+            println!("      X509v3 Authority Key Identifier");
+            if let Some(key_id) = &aki.key_identifier {
+                println!("        Key Identifier: {:x}", key_id);
+            }
+            if let Some(issuer) = &aki.authority_cert_issuer {
+                println!("        Cert Issuer: {:?}", issuer);
+            }
+            if let Some(serial) = aki.authority_cert_serial {
+                println!("        Cert Serial: {}", format_serial(serial));
+            }
+        }
         ParsedExtension::BasicConstraints(bc) => {
             println!("      X509v3 CA: {}", bc.ca);
         }
@@ -78,13 +90,7 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
             }
         }
         ParsedExtension::SubjectKeyIdentifier(id) => {
-            let mut s =
-                id.0.iter()
-                    .fold(String::with_capacity(3 * id.0.len()), |a, b| {
-                        a + &format!("{:02x}:", b)
-                    });
-            s.pop();
-            println!("      X509v3 Subject Key Identifier: {}", &s);
+            println!("      X509v3 Subject Key Identifier: {:x}", id);
         }
         x => println!("      {:?}", x),
     }

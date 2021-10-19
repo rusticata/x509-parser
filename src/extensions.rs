@@ -3,6 +3,7 @@
 use crate::error::{X509Error, X509Result};
 use crate::time::{der_to_utctime, ASN1Time};
 use crate::traits::FromDer;
+use crate::utils::format_serial;
 use crate::x509::{ReasonCode, RelativeDistinguishedName, X509Name};
 
 use der_parser::ber::parse_ber_bool;
@@ -15,7 +16,7 @@ use nom::multi::{many0, many1};
 use nom::{Err, IResult, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, LowerHex};
 
 /// X.509 version 3 extension
 ///
@@ -275,6 +276,13 @@ pub struct KeyIdentifier<'a>(pub &'a [u8]);
 impl<'a> FromDer<'a> for KeyIdentifier<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_keyidentifier(i).map_err(Err::convert)
+    }
+}
+
+impl<'a> LowerHex for KeyIdentifier<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = format_serial(self.0);
+        f.write_str(&s)
     }
 }
 
