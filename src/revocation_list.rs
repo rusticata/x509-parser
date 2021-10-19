@@ -2,6 +2,7 @@ use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
 use crate::traits::FromDer;
+use crate::utils::format_serial;
 use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
@@ -289,14 +290,7 @@ impl<'a> RevokedCertificate<'a> {
 
     /// Get a formatted string of the certificate serial number, separated by ':'
     pub fn raw_serial_as_string(&self) -> String {
-        let mut s = self
-            .raw_serial
-            .iter()
-            .fold(String::with_capacity(3 * self.raw_serial.len()), |a, b| {
-                a + &format!("{:02x}:", b)
-            });
-        s.pop();
-        s
+        format_serial(self.raw_serial)
     }
 
     /// Get the code identifying the reason for the revocation, if present

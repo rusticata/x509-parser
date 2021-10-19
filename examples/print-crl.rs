@@ -22,24 +22,13 @@ fn format_oid(oid: &Oid) -> String {
 
 fn print_authority_key_identifier(aki: &AuthorityKeyIdentifier, level: usize) {
     if let Some(id) = &aki.key_identifier {
-        let mut s =
-            id.0.iter()
-                .fold(String::with_capacity(3 * id.0.len()), |a, b| {
-                    a + &format!("{:02x}:", b)
-                });
-        s.pop();
-        println!("{:indent$}keyid: {}", "", &s, indent = level);
+        println!("{:indent$}keyid: {:x}", "", id, indent = level);
     }
     if aki.authority_cert_issuer.is_some() {
         unimplemented!();
     }
     if let Some(serial) = aki.authority_cert_serial {
-        let mut s = serial
-            .iter()
-            .fold(String::with_capacity(3 * serial.len()), |a, b| {
-                a + &format!("{:02x}:", b)
-            });
-        s.pop();
+        let s = format_serial(serial);
         println!("{:indent$}serial: {}", "", &s, indent = level);
     }
 }
