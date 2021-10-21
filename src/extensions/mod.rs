@@ -372,6 +372,11 @@ pub struct AuthorityInfoAccess<'a> {
 }
 
 impl<'a> AuthorityInfoAccess<'a> {
+    /// Returns an iterator over the Access Descriptors
+    pub fn iter(&self) -> impl Iterator<Item = &AccessDescription<'a>> {
+        self.accessdescs.iter()
+    }
+
     /// Returns a `HashMap` mapping `Oid` to the list of references to `GeneralNames`
     ///
     /// If several names match the same `Oid`, they are merged in the same entry.

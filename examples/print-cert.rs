@@ -39,10 +39,12 @@ fn generalname_to_string(gn: &GeneralName) -> String {
 }
 
 fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
-    print!("    {}: ", format_oid(oid));
-    print!(" Critical={}", ext.critical);
-    print!(" len={}", ext.value.len());
-    println!();
+    println!(
+        "    [crit:{} l:{}] {}: ",
+        ext.critical,
+        ext.value.len(),
+        format_oid(oid)
+    );
     match ext.parsed_extension() {
         ParsedExtension::AuthorityKeyIdentifier(aki) => {
             println!("      X509v3 Authority Key Identifier");
@@ -50,7 +52,9 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
                 println!("        Key Identifier: {:x}", key_id);
             }
             if let Some(issuer) = &aki.authority_cert_issuer {
-                println!("        Cert Issuer: {:?}", issuer);
+                for name in issuer {
+                    println!("        Cert Issuer: {}", name);
+                }
             }
             if let Some(serial) = aki.authority_cert_serial {
                 println!("        Cert Serial: {}", format_serial(serial));

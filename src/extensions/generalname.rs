@@ -1,5 +1,6 @@
 use super::UnparsedObject;
 use crate::error::X509Result;
+use crate::prelude::format_serial;
 use crate::traits::FromDer;
 use crate::x509::X509Name;
 use der_parser::der::*;
@@ -8,6 +9,7 @@ use der_parser::oid::Oid;
 use nom::bytes::streaming::take;
 use nom::combinator::{all_consuming, verify};
 use nom::{Err, IResult};
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 /// Represents a GeneralName as defined in RFC5280. There
@@ -37,6 +39,22 @@ pub enum GeneralName<'a> {
 impl<'a> FromDer<'a> for GeneralName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_generalname(i).map_err(Err::convert)
+    }
+}
+
+impl<'a> fmt::Display for GeneralName<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GeneralName::OtherName(oid, _) => write!(f, "OtherName({}, [...])", oid),
+            GeneralName::RFC822Name(s) => write!(f, "RFC822Name({})", s),
+            GeneralName::DNSName(s) => write!(f, "DNSName({})", s),
+            GeneralName::X400Address(_) => write!(f, "X400Address(<unparsed>)"),
+            GeneralName::DirectoryName(dn) => write!(f, "DirectoryName({})", dn),
+            GeneralName::EDIPartyName(_) => write!(f, "EDIPartyName(<unparsed>)"),
+            GeneralName::URI(s) => write!(f, "URI({})", s),
+            GeneralName::IPAddress(b) => write!(f, "IPAddress({})", format_serial(b)),
+            GeneralName::RegisteredID(oid) => write!(f, "RegisteredID({})", oid),
+        }
     }
 }
 
