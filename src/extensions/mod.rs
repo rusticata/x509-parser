@@ -22,11 +22,13 @@ mod generalname;
 mod keyusage;
 mod nameconstraints;
 mod policymappings;
+mod sct;
 
 pub use generalname::*;
 pub use keyusage::*;
 pub use nameconstraints::*;
 pub use policymappings::*;
+pub use sct::*;
 
 /// X.509 version 3 extension
 ///
@@ -217,6 +219,8 @@ pub enum ParsedExtension<'a> {
     ReasonCode(ReasonCode),
     /// Section 5.3.3 of rfc 5280
     InvalidityDate(ASN1Time),
+    /// rfc 6962
+    SCT(Vec<SignedCertificateTimestamp<'a>>),
     /// Unparsed extension (was not requested in parsing options)
     Unparsed,
 }
@@ -658,6 +662,7 @@ pub(crate) mod parser {
                 OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
                 parse_authoritykeyidentifier_ext
             );
+            add!(m, OID_CT_LIST_SCT, parse_sct_ext);
             add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype_ext);
             add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
             add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
@@ -1086,6 +1091,13 @@ pub(crate) mod parser {
     fn parse_crl_number(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         let (rest, num) = map_res(parse_der_integer, |obj| obj.as_biguint())(i)?;
         Ok((rest, ParsedExtension::CRLNumber(num)))
+    }
+
+    fn parse_sct_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(
+            parse_ct_signed_certificate_timestamp_list,
+            ParsedExtension::SCT,
+        )(i)
     }
 }
 
