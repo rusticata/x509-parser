@@ -193,6 +193,8 @@ pub enum ParsedExtension<'a> {
     PolicyMappings(PolicyMappings<'a>),
     /// Section 4.2.1.6 of rfc 5280
     SubjectAlternativeName(SubjectAlternativeName<'a>),
+    /// Section 4.2.1.7 of rfc 5280
+    IssuerAlternativeName(IssuerAlternativeName<'a>),
     /// Section 4.2.1.9 of rfc 5280
     BasicConstraints(BasicConstraints),
     /// Section 4.2.1.10 of rfc 5280
@@ -478,6 +480,20 @@ impl<'a> FromDer<'a> for SubjectAlternativeName<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct IssuerAlternativeName<'a> {
+    pub general_names: Vec<GeneralName<'a>>,
+}
+
+impl<'a> FromDer<'a> for IssuerAlternativeName<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parse_der_sequence_defined_g(|input, _| {
+            let (i, general_names) = all_consuming(many0(complete(GeneralName::from_der)))(input)?;
+            Ok((i, IssuerAlternativeName { general_names }))
+        })(i)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct UnparsedObject<'a> {
     pub header: DerObjectHeader<'a>,
     pub data: &'a [u8],
@@ -594,6 +610,11 @@ pub(crate) mod parser {
                 m,
                 OID_X509_EXT_SUBJECT_ALT_NAME,
                 parse_subjectalternativename_ext
+            );
+            add!(
+                m,
+                OID_X509_EXT_ISSUER_ALT_NAME,
+                parse_issueralternativename_ext
             );
             add!(
                 m,
@@ -739,6 +760,18 @@ pub(crate) mod parser {
             Ok((
                 i,
                 ParsedExtension::SubjectAlternativeName(SubjectAlternativeName { general_names }),
+            ))
+        })(i)
+    }
+
+    pub(super) fn parse_issueralternativename_ext<'a>(
+        i: &'a [u8],
+    ) -> IResult<&'a [u8], ParsedExtension, BerError> {
+        parse_der_sequence_defined_g(|input, _| {
+            let (i, general_names) = all_consuming(many0(complete(parse_generalname)))(input)?;
+            Ok((
+                i,
+                ParsedExtension::IssuerAlternativeName(IssuerAlternativeName { general_names }),
             ))
         })(i)
     }
