@@ -48,3 +48,6 @@ rusticata-macros = "4.0"
 ring = { version="0.16", optional=true }
 der-parser = { version = "6.0.0", features=["bigint"] }
 thiserror = "1.0"
+
+[patch.crates-io]
+oid-registry = { git="https://github.com/rusticata/oid-registry" }
