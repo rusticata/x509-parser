@@ -6,6 +6,19 @@
 
 ### Thanks
 
+## 0.13.0
+
+### Added/Changed/Fixed
+
+- Add `Validator` trait and deprecate `Validate`
+  * The previous validation is implemented in `X509StructureValidator`
+  * Split some checks (not on structure) to `X509CertificateValidator`
+- Extensions:
+  * add support for IssuerAltName
+  * start adding support for CT Signed Certificate Timestamp (rfc6962)
+
+### Thanks
+
 ## 0.12.0
 
 ### Added/Changed/Fixed
