@@ -213,6 +213,8 @@ pub enum ParsedExtension<'a> {
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
     /// Netscape certificate type (subject is SSL client, an SSL server, or a CA)
     NSCertType(NSCertType),
+    /// Netscape certificate comment
+    NsCertComment(&'a str),
     /// Section 5.3.1 of rfc 5280
     CRLNumber(BigUint),
     /// Section 5.3.1 of rfc 5280
@@ -664,6 +666,7 @@ pub(crate) mod parser {
             );
             add!(m, OID_CT_LIST_SCT, parse_sct_ext);
             add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype_ext);
+            add!(m, OID_X509_EXT_CERT_COMMENT, parse_nscomment_ext);
             add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
             add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
             add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
@@ -1008,6 +1011,12 @@ pub(crate) mod parser {
 
     fn parse_nscerttype_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         map(parse_nscerttype, ParsedExtension::NSCertType)(i)
+    }
+
+    fn parse_nscomment_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        let (i, obj) = parse_der_ia5string(i)?;
+        let s = obj.as_str()?;
+        Ok((i, ParsedExtension::NsCertComment(s)))
     }
 
     // CertificatePolicies ::= SEQUENCE SIZE (1..MAX) OF PolicyInformation

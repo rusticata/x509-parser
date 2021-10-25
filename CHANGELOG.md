@@ -14,6 +14,7 @@
   * The previous validation is implemented in `X509StructureValidator`
   * Split some checks (not on structure) to `X509CertificateValidator`
 - Extensions:
+  * add support for nsComment
   * add support for IssuerAltName
   * start adding support for CT Signed Certificate Timestamp (rfc6962)
 
