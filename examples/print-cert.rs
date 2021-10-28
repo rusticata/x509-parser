@@ -1,9 +1,13 @@
+use der_parser::ber::BerTag;
 use der_parser::oid::Oid;
 use nom::HexDisplay;
 use std::cmp::min;
+use std::convert::TryFrom;
 use std::env;
 use std::io;
+use std::net::{Ipv4Addr, Ipv6Addr};
 use x509_parser::prelude::*;
+use x509_parser::public_key::PublicKey;
 
 const PARSE_ERRORS_FATAL: bool = false;
 #[cfg(feature = "validate")]
@@ -90,7 +94,31 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
         }
         ParsedExtension::SubjectAlternativeName(san) => {
             for name in &san.general_names {
-                println!("      X509v3 SAN: {:?}", name);
+                let s = match name {
+                    GeneralName::DNSName(s) => {
+                        format!("DNS:{}", s)
+                    }
+                    GeneralName::IPAddress(b) => {
+                        let ip = match b.len() {
+                            4 => {
+                                let b = <[u8; 4]>::try_from(*b).unwrap();
+                                let ip = Ipv4Addr::from(b);
+                                format!("{}", ip)
+                            }
+                            16 => {
+                                let b = <[u8; 16]>::try_from(*b).unwrap();
+                                let ip = Ipv6Addr::from(b);
+                                format!("{}", ip)
+                            }
+                            l => format!("invalid (len={})", l),
+                        };
+                        format!("IP Address:{}", ip)
+                    }
+                    _ => {
+                        format!("{:?}", name)
+                    }
+                };
+                println!("      X509v3 SAN: {}", s);
             }
         }
         ParsedExtension::SubjectKeyIdentifier(id) => {
@@ -108,12 +136,14 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
         indent = level
     );
     if let Some(parameter) = &alg.parameters {
-        println!(
-            "{:indent$}Parameter: <PRESENT> {:?}",
-            "",
-            parameter.header.tag,
-            indent = level
-        );
+        let s = match parameter.header.tag {
+            BerTag::Oid => {
+                let oid = parameter.as_oid().unwrap();
+                format_oid(oid)
+            }
+            _ => format!("{}", parameter.header.tag),
+        };
+        println!("{:indent$}Parameter: <PRESENT> {}", "", s, indent = level);
         if let Ok(bytes) = parameter.as_slice() {
             print_hex_dump(bytes, 32);
         }
@@ -123,15 +153,26 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
 }
 
 fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
-    println!("  Subject: {}", x509.subject());
-    println!("  Signature Algorithm:");
-    print_x509_digest_algorithm(&x509.signature_algorithm, 4);
-    println!("  Issuer: {}", x509.issuer());
+    let version = x509.version();
+    if version.0 < 3 {
+        println!("  Version: {}", version);
+    } else {
+        println!("  Version: INVALID({})", version.0);
+    }
     println!("  Serial: {}", x509.tbs_certificate.raw_serial_as_string());
+    println!("  Subject: {}", x509.subject());
+    println!("  Issuer: {}", x509.issuer());
     println!("  Validity:");
     println!("    NotBefore: {}", x509.validity().not_before.to_rfc2822());
     println!("    NotAfter:  {}", x509.validity().not_after.to_rfc2822());
     println!("    is_valid:  {}", x509.validity().is_valid());
+    println!("  Subject Public Key Info:");
+    print_x509_ski(x509.public_key());
+    println!("  Signature Algorithm:");
+    print_x509_digest_algorithm(&x509.signature_algorithm, 4);
+    for l in format_number_to_hex_with_colon(x509.signature_value.data, 16) {
+        println!("      {}", l);
+    }
     println!("  Extensions:");
     for ext in x509.extensions() {
         print_x509_extension(&ext.oid, ext);
@@ -166,6 +207,68 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
         println!("Unknown (feature 'validate' not enabled)");
     }
     Ok(())
+}
+
+fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
+    println!("    Public Key Algorithm:");
+    print_x509_digest_algorithm(&public_key.algorithm, 6);
+    match public_key.parsed() {
+        Ok(PublicKey::RSA(rsa)) => {
+            // XXX integer must be positive!
+            assert_eq!(rsa.modulus[0] & 0x80, 0);
+            assert_eq!(rsa.exponent[0] & 0x80, 0);
+            println!("    RSA Public Key: ({} bit)", rsa.key_size());
+            // print_hex_dump(rsa.modulus, 1024);
+            for l in format_number_to_hex_with_colon(rsa.modulus, 16) {
+                println!("        {}", l);
+            }
+            if let Ok(e) = rsa.try_exponent() {
+                println!("    exponent: 0x{:x} ({})", e, e);
+            } else {
+                println!("    exponent: <INVALID>:");
+                print_hex_dump(rsa.exponent, 32);
+            }
+        }
+        Ok(PublicKey::EC(ec)) => {
+            println!("    RSA Public Key: ({} bit)", ec.key_size());
+            for l in format_number_to_hex_with_colon(ec.data(), 16) {
+                println!("        {}", l);
+            }
+            // // identify curve
+            // if let Some(params) = &public_key.algorithm.parameters {
+            //     let curve_oid = params.as_oid();
+            //     let curve = curve_oid
+            //         .map(|oid| {
+            //             oid_registry()
+            //                 .get(oid)
+            //                 .map(|entry| entry.sn())
+            //                 .unwrap_or("<UNKNOWN>")
+            //         })
+            //         .unwrap_or("<ERROR: NOT AN OID>");
+            //     println!("    Curve: {}", curve);
+            // }
+        }
+        Ok(PublicKey::Unknown(b)) => {
+            println!("    Unknown key type");
+            print_hex_dump(b, 32);
+        }
+        Err(_) => {
+            println!("    INVALID PUBLIC KEY");
+        }
+    }
+    // dbg!(&public_key);
+    // todo!();
+}
+
+fn format_number_to_hex_with_colon(b: &[u8], row_size: usize) -> Vec<String> {
+    let mut v = Vec::with_capacity(1 + b.len() / row_size);
+    for r in b.chunks(row_size) {
+        let s = r.iter().fold(String::with_capacity(3 * r.len()), |a, b| {
+            a + &format!("{:02x}:", b)
+        });
+        v.push(s)
+    }
+    v
 }
 
 fn handle_certificate(file_name: &str, data: &[u8]) -> io::Result<()> {
