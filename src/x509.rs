@@ -5,6 +5,7 @@
 
 use crate::error::{X509Error, X509Result};
 use crate::objects::*;
+use crate::public_key::*;
 use crate::traits::FromDer;
 
 use data_encoding::HEXUPPER;
@@ -227,6 +228,19 @@ pub struct SubjectPublicKeyInfo<'a> {
     pub subject_public_key: BitStringObject<'a>,
     /// A raw unparsed PKIX, ASN.1 DER form (see RFC 5280, Section 4.1).
     pub raw: &'a [u8],
+}
+
+impl<'a> SubjectPublicKeyInfo<'a> {
+    /// Attempt to parse the public key, and return the parsed version or an error
+    pub fn parsed(&self) -> Result<PublicKey, X509Error> {
+        let b = self.subject_public_key.data;
+        if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
+            let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
+            Ok(PublicKey::RSA(key))
+        } else {
+            Ok(PublicKey::Unknown(b))
+        }
+    }
 }
 
 impl<'a> FromDer<'a> for SubjectPublicKeyInfo<'a> {

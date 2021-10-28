@@ -139,6 +139,7 @@ pub mod extensions;
 pub mod objects;
 pub mod pem;
 pub mod prelude;
+pub mod public_key;
 pub mod revocation_list;
 pub mod time;
 pub mod traits;

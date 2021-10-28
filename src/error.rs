@@ -61,6 +61,9 @@ pub enum X509Error {
     #[error("signature unsupported algorithm")]
     SignatureUnsupportedAlgorithm,
 
+    #[error("invalid number")]
+    InvalidNumber,
+
     #[error("BER error: {0}")]
     Der(#[from] BerError),
     #[error("nom error: {0:?}")]
