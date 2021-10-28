@@ -227,6 +227,8 @@ pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
     pub subject_public_key: BitStringObject<'a>,
     /// A raw unparsed PKIX, ASN.1 DER form (see RFC 5280, Section 4.1).
+    ///
+    /// Note: use the [`Self::parsed()`] function to parse this object.
     pub raw: &'a [u8],
 }
 
@@ -237,6 +239,9 @@ impl<'a> SubjectPublicKeyInfo<'a> {
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
             let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
             Ok(PublicKey::RSA(key))
+        } else if self.algorithm.algorithm == OID_KEY_TYPE_EC_PUBLIC_KEY {
+            let key = ECPoint::from(b);
+            Ok(PublicKey::EC(key))
         } else {
             Ok(PublicKey::Unknown(b))
         }

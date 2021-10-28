@@ -5,11 +5,24 @@ use der_parser::{
     error::BerResult,
 };
 
+/// Public Key value
 #[derive(Debug, PartialEq)]
 pub enum PublicKey<'a> {
     RSA(RSAPublicKey<'a>),
+    EC(ECPoint<'a>),
 
     Unknown(&'a [u8]),
+}
+
+impl<'a> PublicKey<'a> {
+    /// Return the key size (in bits) or 0
+    pub fn key_size(&self) -> usize {
+        match self {
+            Self::EC(ec) => ec.key_size(),
+            Self::RSA(rsa) => rsa.key_size(),
+            _ => 0,
+        }
+    }
 }
 
 /// RSA public Key, defined in rfc3279
@@ -38,6 +51,17 @@ impl<'a> RSAPublicKey<'a> {
         let int = <u64>::from_be_bytes(buf);
         Ok(int)
     }
+
+    /// Return the key size (in bits) or 0
+    pub fn key_size(&self) -> usize {
+        if !self.modulus.is_empty() && self.modulus[0] & 0x80 == 0 {
+            // XXX len must substract leading zeroes
+            let modulus = &self.modulus[1..];
+            8 * modulus.len()
+        } else {
+            0
+        }
+    }
 }
 
 // helper function to parse with error type BerError
@@ -55,5 +79,46 @@ fn parse_rsa_key(bytes: &[u8]) -> BerResult<RSAPublicKey> {
 impl<'a> FromDer<'a> for RSAPublicKey<'a> {
     fn from_der(bytes: &'a [u8]) -> X509Result<'a, Self> {
         parse_rsa_key(bytes).map_err(|_| nom::Err::Error(X509Error::InvalidSPKI))
+    }
+}
+
+/// Elliptic Curve point, as defined in [RFC5480](https://datatracker.ietf.org/doc/html/rfc5480)
+#[derive(Debug, PartialEq)]
+pub struct ECPoint<'a> {
+    data: &'a [u8],
+}
+
+impl<'a> ECPoint<'a> {
+    /// EC Point content (See Standards for Efficient Cryptography Group (SECG), "SEC1: Elliptic Curve Cryptography")
+    pub fn data(&'a self) -> &'a [u8] {
+        self.data
+    }
+
+    /// Return the key size (in bits) or 0
+    pub fn key_size(&self) -> usize {
+        match self.data {
+            [] => {
+                // empty
+                0
+            }
+            [4, rem @ ..] => {
+                // uncompressed
+                rem.len() * 8 / 2
+            }
+            [2 | 3, rem @ ..] => {
+                // compressed
+                rem.len() * 8
+            }
+            _ => {
+                // invalid
+                0
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a [u8]> for ECPoint<'a> {
+    fn from(data: &'a [u8]) -> Self {
+        ECPoint { data }
     }
 }
