@@ -120,7 +120,7 @@ impl<'a> X509Certificate<'a> {
         let signature_alg = &self.signature_algorithm.algorithm;
         // identify verification algorithm
         let verification_alg: &dyn signature::VerificationAlgorithm =
-            if *signature_alg == OID_PKCS1_SHA1WITHRSA {
+            if *signature_alg == OID_PKCS1_SHA1WITHRSA || *signature_alg == OID_SHA1_WITH_RSA {
                 &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
             } else if *signature_alg == OID_PKCS1_SHA256WITHRSA {
                 &signature::RSA_PKCS1_2048_8192_SHA256
