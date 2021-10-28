@@ -105,7 +105,7 @@ impl<'a> ECPoint<'a> {
                 // uncompressed
                 rem.len() * 8 / 2
             }
-            [2 | 3, rem @ ..] => {
+            [2..=3, rem @ ..] => {
                 // compressed
                 rem.len() * 8
             }
