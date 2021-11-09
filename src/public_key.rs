@@ -44,7 +44,7 @@ impl<'a> RSAPublicKey<'a> {
     /// Returns an error if integer is too large, empty, or negative
     pub fn try_exponent(&self) -> Result<u64, X509Error> {
         let mut buf = [0u8; 8];
-        if self.exponent.is_empty() || self.exponent[0] & 0x80 != 0 {
+        if self.exponent.is_empty() || self.exponent[0] & 0x80 != 0 || self.exponent.len() > 8 {
             return Err(X509Error::InvalidNumber);
         }
         buf[8_usize.saturating_sub(self.exponent.len())..].copy_from_slice(self.exponent);
