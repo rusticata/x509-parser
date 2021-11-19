@@ -11,7 +11,7 @@ use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
-use nom::combinator::{all_consuming, complete, map, map_res, opt};
+use nom::combinator::{all_consuming, complete, cut, map, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult, Parser};
 use oid_registry::*;
@@ -479,7 +479,8 @@ pub struct SubjectAlternativeName<'a> {
 impl<'a> FromDer<'a> for SubjectAlternativeName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|input, _| {
-            let (i, general_names) = all_consuming(many0(complete(GeneralName::from_der)))(input)?;
+            let (i, general_names) =
+                all_consuming(many0(complete(cut(GeneralName::from_der))))(input)?;
             Ok((i, SubjectAlternativeName { general_names }))
         })(i)
     }
@@ -493,7 +494,8 @@ pub struct IssuerAlternativeName<'a> {
 impl<'a> FromDer<'a> for IssuerAlternativeName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|input, _| {
-            let (i, general_names) = all_consuming(many0(complete(GeneralName::from_der)))(input)?;
+            let (i, general_names) =
+                all_consuming(many0(complete(cut(GeneralName::from_der))))(input)?;
             Ok((i, IssuerAlternativeName { general_names }))
         })(i)
     }
@@ -592,7 +594,7 @@ pub(crate) mod parser {
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
-    use nom::combinator::map;
+    use nom::combinator::{cut, map};
     use nom::{Err, IResult};
 
     type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, BerError>;
@@ -764,7 +766,7 @@ pub(crate) mod parser {
         i: &'a [u8],
     ) -> IResult<&'a [u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
-            let (i, general_names) = all_consuming(many0(complete(parse_generalname)))(input)?;
+            let (i, general_names) = all_consuming(many0(complete(cut(parse_generalname))))(input)?;
             Ok((
                 i,
                 ParsedExtension::SubjectAlternativeName(SubjectAlternativeName { general_names }),
@@ -776,7 +778,7 @@ pub(crate) mod parser {
         i: &'a [u8],
     ) -> IResult<&'a [u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
-            let (i, general_names) = all_consuming(many0(complete(parse_generalname)))(input)?;
+            let (i, general_names) = all_consuming(many0(complete(cut(parse_generalname))))(input)?;
             Ok((
                 i,
                 ParsedExtension::IssuerAlternativeName(IssuerAlternativeName { general_names }),
