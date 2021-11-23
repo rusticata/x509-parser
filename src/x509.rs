@@ -244,7 +244,7 @@ impl<'a> SubjectPublicKeyInfo<'a> {
             Ok(PublicKey::EC(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_DSA {
             let s = parse_der_integer(b)
-                .and_then(|(_, obj)| obj.as_slice().map_err(|e| Err::Error(e)))
+                .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::DSA(s))
         } else {
