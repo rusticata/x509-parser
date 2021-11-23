@@ -1,7 +1,8 @@
 use super::{Logger, Validator, X509NameStructureValidator};
 use crate::certificate::*;
 use crate::extensions::{GeneralName, ParsedExtension};
-use crate::x509::X509Version;
+use crate::public_key::PublicKey;
+use crate::x509::{SubjectPublicKeyInfo, X509Version};
 
 /// Default X.509 structure validator for `X509Certificate`
 ///
@@ -93,6 +94,8 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
         // subject/issuer: verify charsets
         res &= X509NameStructureValidator.validate(&item.subject, l);
         res &= X509NameStructureValidator.validate(&item.issuer, l);
+        // subject public key
+        res &= X509PublicKeyValidator.validate(&item.subject_pki, l);
         // check for parse errors or unsupported extensions
         for ext in item.extensions() {
             if let ParsedExtension::UnsupportedExtension { .. } = &ext.parsed_extension {
@@ -119,6 +122,37 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
                         _ => (),
                     }
                 }
+            }
+        }
+        res
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct X509PublicKeyValidator;
+
+impl<'a> Validator<'a> for X509PublicKeyValidator {
+    type Item = SubjectPublicKeyInfo<'a>;
+
+    fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
+        let mut res = true;
+        // res &= TbsCertificateStructureValidator.validate(&item.tbs_certificate, l);
+        match item.parsed() {
+            Ok(PublicKey::RSA(rsa)) => {
+                if rsa.modulus[0] & 0x80 != 0 {
+                    l.warn("Public key: (RSA) modulus is negative");
+                }
+                if rsa.exponent[0] & 0x80 != 0 {
+                    l.warn("Public key: (RSA) exponent is negative");
+                }
+            }
+            Ok(PublicKey::EC(_)) | Ok(PublicKey::DSA(_)) => {}
+            Ok(PublicKey::Unknown(_b)) => {
+                l.warn("Unknown public key type");
+            }
+            Err(_) => {
+                l.err("Invalid public key");
+                res = false;
             }
         }
         res

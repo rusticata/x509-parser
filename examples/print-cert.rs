@@ -214,9 +214,6 @@ fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
     print_x509_digest_algorithm(&public_key.algorithm, 6);
     match public_key.parsed() {
         Ok(PublicKey::RSA(rsa)) => {
-            // XXX integer must be positive!
-            assert_eq!(rsa.modulus[0] & 0x80, 0);
-            assert_eq!(rsa.exponent[0] & 0x80, 0);
             println!("    RSA Public Key: ({} bit)", rsa.key_size());
             // print_hex_dump(rsa.modulus, 1024);
             for l in format_number_to_hex_with_colon(rsa.modulus, 16) {
@@ -256,7 +253,10 @@ fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
         }
         Ok(PublicKey::Unknown(b)) => {
             println!("    Unknown key type");
-            print_hex_dump(b, 32);
+            print_hex_dump(b, 256);
+            let (rem, res) = der_parser::parse_der(b).unwrap();
+            eprintln!("rem: {} bytes", rem.len());
+            eprintln!("{:?}", res);
         }
         Err(_) => {
             println!("    INVALID PUBLIC KEY");
