@@ -248,6 +248,12 @@ fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
             //     println!("    Curve: {}", curve);
             // }
         }
+        Ok(PublicKey::DSA(y)) => {
+            println!("    DSA Public Key: ({} bit)", 8 * y.len());
+            for l in format_number_to_hex_with_colon(y, 16) {
+                println!("        {}", l);
+            }
+        }
         Ok(PublicKey::Unknown(b)) => {
             println!("    Unknown key type");
             print_hex_dump(b, 32);

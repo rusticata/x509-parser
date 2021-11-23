@@ -10,6 +10,8 @@ use der_parser::{
 pub enum PublicKey<'a> {
     RSA(RSAPublicKey<'a>),
     EC(ECPoint<'a>),
+    /// DSAPublicKey ::= INTEGER -- public key, Y
+    DSA(&'a [u8]),
 
     Unknown(&'a [u8]),
 }
@@ -20,6 +22,7 @@ impl<'a> PublicKey<'a> {
         match self {
             Self::EC(ec) => ec.key_size(),
             Self::RSA(rsa) => rsa.key_size(),
+            Self::DSA(y) => y.len() * 8,
             _ => 0,
         }
     }

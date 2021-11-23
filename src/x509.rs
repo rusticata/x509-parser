@@ -242,6 +242,11 @@ impl<'a> SubjectPublicKeyInfo<'a> {
         } else if self.algorithm.algorithm == OID_KEY_TYPE_EC_PUBLIC_KEY {
             let key = ECPoint::from(b);
             Ok(PublicKey::EC(key))
+        } else if self.algorithm.algorithm == OID_KEY_TYPE_DSA {
+            let s = parse_der_integer(b)
+                .and_then(|(_, obj)| obj.as_slice().map_err(|e| Err::Error(e)))
+                .or(Err(X509Error::InvalidSPKI))?;
+            Ok(PublicKey::DSA(s))
         } else {
             Ok(PublicKey::Unknown(b))
         }
