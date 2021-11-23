@@ -257,6 +257,12 @@ fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
                 println!("        {}", l);
             }
         }
+        Ok(PublicKey::GostR3410_2012(y)) => {
+            println!("    GOST R 34.10-2012 Public Key: ({} bit)", 8 * y.len());
+            for l in format_number_to_hex_with_colon(y, 16) {
+                println!("        {}", l);
+            }
+        }
         Ok(PublicKey::Unknown(b)) => {
             println!("    Unknown key type");
             print_hex_dump(b, 256);

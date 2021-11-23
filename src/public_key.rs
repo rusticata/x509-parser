@@ -14,6 +14,9 @@ pub enum PublicKey<'a> {
     DSA(&'a [u8]),
     /// GostR3410-94-PublicKey ::= OCTET STRING -- public key, Y (RFC 4491)
     GostR3410(&'a [u8]),
+    /// GostR3410-2012-256-PublicKey ::= OCTET STRING (64),
+    /// GostR3410-2012-512-PublicKey ::= OCTET STRING (128). (RFC 4491-bis)
+    GostR3410_2012(&'a [u8]),
 
     Unknown(&'a [u8]),
 }

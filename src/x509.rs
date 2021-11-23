@@ -252,6 +252,13 @@ impl<'a> SubjectPublicKeyInfo<'a> {
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::GostR3410(s))
+        } else if self.algorithm.algorithm == OID_KEY_TYPE_GOST_R3410_2012_256
+            || self.algorithm.algorithm == OID_KEY_TYPE_GOST_R3410_2012_512
+        {
+            let s = parse_der_octetstring(b)
+                .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
+                .or(Err(X509Error::InvalidSPKI))?;
+            Ok(PublicKey::GostR3410_2012(s))
         } else {
             Ok(PublicKey::Unknown(b))
         }

@@ -146,10 +146,10 @@ impl<'a> Validator<'a> for X509PublicKeyValidator {
                     l.warn("Public key: (RSA) exponent is negative");
                 }
             }
-            Ok(PublicKey::EC(_)) | Ok(PublicKey::DSA(_)) | Ok(PublicKey::GostR3410(_)) => {}
             Ok(PublicKey::Unknown(_b)) => {
                 l.warn("Unknown public key type");
             }
+            Ok(_) => {}
             Err(_) => {
                 l.err("Invalid public key");
                 res = false;
