@@ -227,7 +227,7 @@ fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
             }
         }
         Ok(PublicKey::EC(ec)) => {
-            println!("    RSA Public Key: ({} bit)", ec.key_size());
+            println!("    EC Public Key: ({} bit)", ec.key_size());
             for l in format_number_to_hex_with_colon(ec.data(), 16) {
                 println!("        {}", l);
             }
