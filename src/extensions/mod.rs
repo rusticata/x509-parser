@@ -1016,9 +1016,21 @@ pub(crate) mod parser {
     }
 
     fn parse_nscomment_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (i, obj) = parse_der_ia5string(i)?;
-        let s = obj.as_str()?;
-        Ok((i, ParsedExtension::NsCertComment(s)))
+        match parse_der_ia5string(i) {
+            Ok((i, obj)) => {
+                let s = obj.as_str()?;
+                Ok((i, ParsedExtension::NsCertComment(s)))
+            }
+            Err(e) => {
+                // Some implementations encode the comment directly, without
+                // wrapping it in an IA5String
+                if let Ok(s) = std::str::from_utf8(i) {
+                    Ok((&[], ParsedExtension::NsCertComment(s)))
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     // CertificatePolicies ::= SEQUENCE SIZE (1..MAX) OF PolicyInformation
