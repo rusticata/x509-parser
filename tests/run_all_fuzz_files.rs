@@ -14,7 +14,7 @@ fn parse_dir(name: &str) {
     match fs::read_dir(name) {
         Ok(dir_entries) => {
             dir_entries.for_each(|entry| {
-                let _ = entry.as_ref().map(|e| parse_file(e));
+                let _ = entry.as_ref().map(parse_file);
             });
         }
         Err(_) => eprintln!("fuzzer corpus/artifacts not found - ignoring test"),
