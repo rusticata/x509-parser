@@ -266,9 +266,12 @@ fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {
         Ok(PublicKey::Unknown(b)) => {
             println!("    Unknown key type");
             print_hex_dump(b, 256);
-            let (rem, res) = der_parser::parse_der(b).unwrap();
-            eprintln!("rem: {} bytes", rem.len());
-            eprintln!("{:?}", res);
+            if let Ok((rem, res)) = der_parser::parse_der(b) {
+                eprintln!("rem: {} bytes", rem.len());
+                eprintln!("{:?}", res);
+            } else {
+                eprintln!("      <Could not parse key as DER>");
+            }
         }
         Err(_) => {
             println!("    INVALID PUBLIC KEY");
