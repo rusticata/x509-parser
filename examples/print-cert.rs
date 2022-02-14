@@ -1,4 +1,4 @@
-use der_parser::ber::BerTag;
+use der_parser::der::Tag;
 use der_parser::oid::Oid;
 use nom::HexDisplay;
 use std::cmp::min;
@@ -136,12 +136,12 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
         indent = level
     );
     if let Some(parameter) = &alg.parameters {
-        let s = match parameter.header.tag {
-            BerTag::Oid => {
+        let s = match parameter.tag() {
+            Tag::Oid => {
                 let oid = parameter.as_oid().unwrap();
                 format_oid(oid)
             }
-            _ => format!("{}", parameter.header.tag),
+            _ => format!("{}", parameter.tag()),
         };
         println!("{:indent$}Parameter: <PRESENT> {}", "", s, indent = level);
         if let Ok(bytes) = parameter.as_slice() {

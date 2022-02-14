@@ -128,7 +128,7 @@ pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsag
         if !seen.insert(oid.clone()) {
             continue;
         }
-        let asn1 = oid.bytes();
+        let asn1 = oid.as_bytes();
         if asn1 == oid!(raw 2.5.29.37.0) {
             eku.any = true;
         } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.1) {

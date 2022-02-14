@@ -503,7 +503,7 @@ impl<'a> FromDer<'a> for IssuerAlternativeName<'a> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnparsedObject<'a> {
-    pub header: DerObjectHeader<'a>,
+    pub header: Header<'a>,
     pub data: &'a [u8],
 }
 
@@ -789,11 +789,11 @@ pub(crate) mod parser {
     pub(super) fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], PolicyConstraints, BerError> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, require_explicit_policy) = opt(complete(map_res(
-                parse_der_tagged_implicit(0, parse_der_content(DerTag::Integer)),
+                parse_der_tagged_implicit(0, parse_der_content(Tag::Integer)),
                 |x| x.as_u32(),
             )))(input)?;
             let (i, inhibit_policy_mapping) = all_consuming(opt(complete(map_res(
-                parse_der_tagged_implicit(1, parse_der_content(DerTag::Integer)),
+                parse_der_tagged_implicit(1, parse_der_content(Tag::Integer)),
                 |x| x.as_u32(),
             ))))(i)?;
             let policy_constraint = PolicyConstraints {
@@ -829,7 +829,7 @@ pub(crate) mod parser {
     //     nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
     fn parse_distributionpointname(i: &[u8]) -> IResult<&[u8], DistributionPointName, BerError> {
         let (rem, header) = der_read_element_header(i)?;
-        match header.tag.0 {
+        match header.tag().0 {
             0 => {
                 let (rem, names) = many1(complete(parse_generalname))(rem)?;
                 Ok((rem, DistributionPointName::FullName(names)))
@@ -854,7 +854,7 @@ pub(crate) mod parser {
     // privilegeWithdrawn      (7),
     // aACompromise            (8) }
     fn parse_tagged1_reasons(i: &[u8]) -> BerResult<ReasonFlags> {
-        let (rem, obj) = parse_der_tagged_implicit(1, parse_der_content(DerTag::BitString))(i)?;
+        let (rem, obj) = parse_der_tagged_implicit(1, parse_der_content(Tag::BitString))(i)?;
         if let DerObjectContent::BitString(_, b) = obj.content {
             let flags = b
                 .data
@@ -940,7 +940,7 @@ pub(crate) mod parser {
 
     fn parse_aki_content<'a>(
         i: &'a [u8],
-        _hdr: DerObjectHeader<'_>,
+        _hdr: Header<'_>,
     ) -> IResult<&'a [u8], AuthorityKeyIdentifier<'a>, BerError> {
         let (i, key_identifier) = opt(complete(parse_der_tagged_implicit_g(0, |d, _, _| {
             Ok((&[], KeyIdentifier(d)))
@@ -951,7 +951,7 @@ pub(crate) mod parser {
             })))(i)?;
         let (i, authority_cert_serial) = opt(complete(parse_der_tagged_implicit(
             2,
-            parse_der_content(DerTag::Integer),
+            parse_der_content(Tag::Integer),
         )))(i)?;
         let authority_cert_serial = authority_cert_serial.and_then(|o| o.as_slice().ok());
         let aki = AuthorityKeyIdentifier {
@@ -1131,14 +1131,14 @@ pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension
     )
 }
 
-pub(crate) fn parse_extensions(i: &[u8], explicit_tag: DerTag) -> X509Result<Vec<X509Extension>> {
+pub(crate) fn parse_extensions(i: &[u8], explicit_tag: Tag) -> X509Result<Vec<X509Extension>> {
     if i.is_empty() {
         return Ok((i, Vec::new()));
     }
 
     match der_read_element_header(i) {
         Ok((rem, hdr)) => {
-            if hdr.tag != explicit_tag {
+            if hdr.tag() != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
             all_consuming(parse_extension_sequence)(rem)
@@ -1156,7 +1156,7 @@ pub(crate) fn parse_extension_envelope_sequence(i: &[u8]) -> X509Result<Vec<X509
 
 pub(crate) fn parse_extensions_envelope(
     i: &[u8],
-    explicit_tag: DerTag,
+    explicit_tag: Tag,
 ) -> X509Result<Vec<X509Extension>> {
     if i.is_empty() {
         return Ok((i, Vec::new()));
@@ -1164,7 +1164,7 @@ pub(crate) fn parse_extensions_envelope(
 
     match der_read_element_header(i) {
         Ok((rem, hdr)) => {
-            if hdr.tag != explicit_tag {
+            if hdr.tag() != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
             all_consuming(parse_extension_envelope_sequence)(rem)

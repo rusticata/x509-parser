@@ -1,5 +1,5 @@
-use chrono::offset::{TimeZone, Utc};
-use chrono::Datelike;
+use ::time::macros::datetime;
+use ::time::OffsetDateTime;
 use der_parser::oid;
 use nom::Parser;
 use oid_registry::*;
@@ -42,7 +42,7 @@ fn test_x509_parser() {
             assert_eq!(cn_list, Ok(vec!["IGC/A"]));
             //
             let sig = &tbs_cert.signature;
-            assert_eq!(sig.algorithm, oid!(1.2.840 .113549 .1 .1 .5));
+            assert_eq!(sig.algorithm, oid! {1.2.840.113549.1.1.5});
             //
             let expected_issuer = "C=FR, ST=France, L=Paris, O=PM/SGDN, OU=DCSSI, CN=IGC/A, Email=igca@sgdn.pm.gouv.fr";
             assert_eq!(format!("{}", tbs_cert.issuer), expected_issuer);
@@ -52,15 +52,15 @@ fn test_x509_parser() {
             let sig_alg = &cert.signature_algorithm;
             assert_eq!(sig_alg.algorithm, OID_PKCS1_SHA1WITHRSA);
             //
-            let not_before = tbs_cert.validity.not_before;
-            let not_after = tbs_cert.validity.not_after;
-            let nb = Utc.timestamp(not_before.timestamp(), 0);
-            let na = Utc.timestamp(not_after.timestamp(), 0);
+            let not_before = &tbs_cert.validity.not_before;
+            let not_after = &tbs_cert.validity.not_after;
+            let nb = not_before.to_datetime();
+            let na = not_after.to_datetime();
             assert_eq!(nb.year(), 2002);
-            assert_eq!(nb.month(), 12);
+            assert_eq!(nb.month() as u8, 12);
             assert_eq!(nb.day(), 13);
             assert_eq!(na.year(), 2020);
-            assert_eq!(na.month(), 10);
+            assert_eq!(na.month() as u8, 10);
             assert_eq!(na.day(), 17);
             let policies = vec![PolicyInformation {
                 policy_id: oid!(1.2.250 .1 .121 .1 .1 .1),
@@ -150,7 +150,7 @@ fn test_parse_subject_public_key_info() {
         .1;
     assert_eq!(res.algorithm.algorithm, OID_PKCS1_RSAENCRYPTION);
     let params = res.algorithm.parameters.expect("algorithm parameters");
-    assert_eq!(params.header.tag.0, 5);
+    assert_eq!(params.tag().0, 5);
     let spk = res.subject_public_key;
     println!("spk.data.len {}", spk.data.len());
     assert_eq!(spk.data.len(), 270);
@@ -187,24 +187,25 @@ fn test_crl_parse() {
 
             let this_update = tbs_cert_list.this_update;
             let next_update = tbs_cert_list.next_update.unwrap();
-            let tu = Utc.timestamp(this_update.timestamp(), 0);
-            let nu = Utc.timestamp(next_update.timestamp(), 0);
+            let tu = OffsetDateTime::from_unix_timestamp(this_update.timestamp()).unwrap();
+            let nu = OffsetDateTime::from_unix_timestamp(next_update.timestamp()).unwrap();
             assert_eq!(tu.year(), 2013);
-            assert_eq!(tu.month(), 2);
+            assert_eq!(tu.month() as u8, 2);
             assert_eq!(tu.day(), 18);
             assert_eq!(nu.year(), 2013);
-            assert_eq!(nu.month(), 2);
+            assert_eq!(nu.month() as u8, 2);
             assert_eq!(nu.day(), 18);
 
-            let revocation_date =
-                ASN1Time::from_timestamp(Utc.ymd(2013, 2, 18).and_hms(10, 22, 12).timestamp());
-            let invalidity_date =
-                ASN1Time::from_timestamp(Utc.ymd(2013, 2, 18).and_hms(10, 22, 00).timestamp());
+            let revocation_date = datetime! {2013-02-18 10:22:12 UTC};
+            let invalidity_date = datetime! {2013-02-18 10:22:00 UTC};
 
             let revoked_certs = &tbs_cert_list.revoked_certificates;
             let revoked_cert_0 = &revoked_certs[0];
             assert_eq!(*revoked_cert_0.serial(), 0x147947u32.into());
-            assert_eq!(revoked_cert_0.revocation_date, revocation_date);
+            assert_eq!(
+                revoked_cert_0.revocation_date.to_datetime(),
+                revocation_date
+            );
             let expected_extensions = vec![
                 X509Extension::new(
                     oid!(2.5.29 .21),
@@ -218,7 +219,7 @@ fn test_crl_parse() {
                     &[
                         24, 15, 50, 48, 49, 51, 48, 50, 49, 56, 49, 48, 50, 50, 48, 48, 90,
                     ],
-                    ParsedExtension::InvalidityDate(invalidity_date),
+                    ParsedExtension::InvalidityDate(invalidity_date.into()),
                 ),
             ];
             assert_eq!(revoked_cert_0.extensions(), &expected_extensions as &[_]);
@@ -304,13 +305,15 @@ fn test_crl_parse_minimal() {
     match parse_x509_crl(MINIMAL_CRL_DER) {
         Ok((e, crl)) => {
             assert!(e.is_empty());
-            let revocation_date =
-                ASN1Time::from_timestamp(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0).timestamp());
+            let revocation_date = datetime! {1970-01-01 00:00:00 UTC};
             let revoked_certificates = &crl.tbs_cert_list.revoked_certificates;
             assert_eq!(revoked_certificates.len(), 1);
             let revoked_cert_0 = &revoked_certificates[0];
             assert_eq!(*revoked_cert_0.serial(), 42u32.into());
-            assert_eq!(revoked_cert_0.revocation_date, revocation_date);
+            assert_eq!(
+                revoked_cert_0.revocation_date.to_datetime(),
+                revocation_date
+            );
             assert!(revoked_cert_0.extensions().is_empty());
             assert!(crl.tbs_cert_list.extensions().is_empty());
             assert_eq!(crl.tbs_cert_list.as_ref(), &MINIMAL_CRL_DER[4..(4 + 79)]);
