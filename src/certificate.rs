@@ -110,6 +110,8 @@ impl<'a> X509Certificate<'a> {
     ///
     /// For a leaf certificate, this is the public key of the certificate that signed it.
     /// It is usually an intermediate authority.
+    ///
+    /// Not all algorithms are supported, this function is limited to what `ring` supports.
     #[cfg(feature = "verify")]
     #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
     pub fn verify_signature(
@@ -130,9 +132,11 @@ impl<'a> X509Certificate<'a> {
             } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
                 &signature::RSA_PKCS1_2048_8192_SHA512
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
-                &signature::ECDSA_P256_SHA256_ASN1
+                self.get_ec_curve_sha(&self.public_key().algorithm, 256)
+                    .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
-                &signature::ECDSA_P384_SHA384_ASN1
+                self.get_ec_curve_sha(&self.public_key().algorithm, 384)
+                    .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
             } else if *signature_alg == OID_SIG_ED25519 {
                 &signature::ED25519
             } else {
@@ -144,6 +148,33 @@ impl<'a> X509Certificate<'a> {
         let sig = self.signature_value.data;
         key.verify(self.tbs_certificate.raw, sig)
             .or(Err(X509Error::SignatureVerificationError))
+    }
+
+    /// Find the verification algorithm for the given EC curve and SHA digest size
+    ///
+    /// Not all algorithms are supported, we are limited to what `ring` supports.
+    #[cfg(feature = "verify")]
+    fn get_ec_curve_sha(
+        &self,
+        pubkey_alg: &AlgorithmIdentifier,
+        sha_len: usize,
+    ) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
+        use ring::signature;
+        let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
+        if curve_oid == &OID_EC_P256 {
+            match sha_len {
+                256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
+                _ => None,
+            }
+        } else if curve_oid == &OID_NIST_EC_P384 {
+            match sha_len {
+                256 => Some(&signature::ECDSA_P384_SHA256_ASN1),
+                384 => Some(&signature::ECDSA_P384_SHA384_ASN1),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 }
 

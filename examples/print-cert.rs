@@ -206,6 +206,17 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     {
         println!("Unknown (feature 'validate' not enabled)");
     }
+    #[cfg(feature = "verify")]
+    {
+        println!("Signature verification: ");
+        if x509.verify_signature(None).is_ok() {
+            println!("  [I] certificate is self-signed");
+        } else if x509.subject() == x509.issuer() {
+            println!("  [W] certificate looks self-signed, but signature verification failed");
+        } else {
+            println!("  [W] signature verification failed");
+        }
+    }
     Ok(())
 }
 
