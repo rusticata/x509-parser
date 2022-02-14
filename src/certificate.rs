@@ -12,15 +12,16 @@ use crate::x509::{
     X509Version,
 };
 
-use der_parser::ber::{parse_ber_optional, BerTag, BitStringObject};
+use der_parser::ber::{parse_ber_optional, BitStringObject, Tag};
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
-use der_parser::oid::Oid;
 use der_parser::*;
 use nom::{Offset, Parser};
+use oid_registry::Oid;
 use oid_registry::*;
 use std::collections::HashMap;
+use time::Duration;
 
 /// An X.509 v3 Certificate.
 ///
@@ -109,6 +110,8 @@ impl<'a> X509Certificate<'a> {
     ///
     /// For a leaf certificate, this is the public key of the certificate that signed it.
     /// It is usually an intermediate authority.
+    ///
+    /// Not all algorithms are supported, this function is limited to what `ring` supports.
     #[cfg(feature = "verify")]
     #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
     pub fn verify_signature(
@@ -129,9 +132,11 @@ impl<'a> X509Certificate<'a> {
             } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
                 &signature::RSA_PKCS1_2048_8192_SHA512
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
-                &signature::ECDSA_P256_SHA256_ASN1
+                self.get_ec_curve_sha(&self.public_key().algorithm, 256)
+                    .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
-                &signature::ECDSA_P384_SHA384_ASN1
+                self.get_ec_curve_sha(&self.public_key().algorithm, 384)
+                    .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
             } else if *signature_alg == OID_SIG_ED25519 {
                 &signature::ED25519
             } else {
@@ -143,6 +148,33 @@ impl<'a> X509Certificate<'a> {
         let sig = self.signature_value.data;
         key.verify(self.tbs_certificate.raw, sig)
             .or(Err(X509Error::SignatureVerificationError))
+    }
+
+    /// Find the verification algorithm for the given EC curve and SHA digest size
+    ///
+    /// Not all algorithms are supported, we are limited to what `ring` supports.
+    #[cfg(feature = "verify")]
+    fn get_ec_curve_sha(
+        &self,
+        pubkey_alg: &AlgorithmIdentifier,
+        sha_len: usize,
+    ) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
+        use ring::signature;
+        let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
+        if curve_oid == &OID_EC_P256 {
+            match sha_len {
+                256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
+                _ => None,
+            }
+        } else if curve_oid == &OID_NIST_EC_P384 {
+            match sha_len {
+                256 => Some(&signature::ECDSA_P384_SHA256_ASN1),
+                384 => Some(&signature::ECDSA_P384_SHA384_ASN1),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -472,7 +504,7 @@ impl<'a> FromDer<'a> for TbsCertificate<'a> {
             let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
             let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
             let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
-            let (i, extensions) = parse_extensions(i, BerTag(3))?;
+            let (i, extensions) = parse_extensions(i, Tag(3))?;
             let len = start_i.offset(i);
             let tbs = TbsCertificate {
                 version,
@@ -530,9 +562,9 @@ impl<'a> Parser<&'a [u8], TbsCertificate<'a>, X509Error> for TbsCertificateParse
             let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
             let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
             let (i, extensions) = if self.deep_parse_extensions {
-                parse_extensions(i, BerTag(3))?
+                parse_extensions(i, Tag(3))?
             } else {
-                parse_extensions_envelope(i, BerTag(3))?
+                parse_extensions_envelope(i, Tag(3))?
             };
             let len = start_i.offset(i);
             let tbs = TbsCertificate {
@@ -580,7 +612,7 @@ impl Validity {
     /// If the certificate is not currently valid, then `None` is
     /// returned.  Otherwise, the `Duration` until the certificate
     /// expires is returned.
-    pub fn time_to_expiration(&self) -> Option<std::time::Duration> {
+    pub fn time_to_expiration(&self) -> Option<Duration> {
         let now = ASN1Time::now();
         if !self.is_valid_at(now) {
             return None;
@@ -637,7 +669,7 @@ impl<'a> UniqueIdentifier<'a> {
     fn parse(i: &[u8], tag: u32) -> BerResult<Option<UniqueIdentifier>> {
         let (rem, obj) = parse_ber_optional(parse_der_tagged_implicit(
             tag,
-            parse_der_content(DerTag::BitString),
+            parse_der_content(Tag::BitString),
         ))(i)?;
         let unique_id = match obj.content {
             DerObjectContent::Optional(None) => Ok(None),
@@ -662,11 +694,11 @@ mod tests {
             not_after: ASN1Time::now(),
         };
         assert_eq!(v.time_to_expiration(), None);
-        v.not_after = (v.not_after + std::time::Duration::new(60, 0)).unwrap();
+        v.not_after = (v.not_after + Duration::new(60, 0)).unwrap();
         assert!(v.time_to_expiration().is_some());
-        assert!(v.time_to_expiration().unwrap() <= std::time::Duration::from_secs(60));
+        assert!(v.time_to_expiration().unwrap() <= Duration::new(60, 0));
         // The following assumes this timing won't take 10 seconds... I
         // think that is safe.
-        assert!(v.time_to_expiration().unwrap() > std::time::Duration::from_secs(50));
+        assert!(v.time_to_expiration().unwrap() > Duration::new(50, 0));
     }
 }

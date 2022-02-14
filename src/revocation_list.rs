@@ -7,7 +7,7 @@ use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
 
-use der_parser::ber::{BerTag, BitStringObject};
+use der_parser::ber::{BitStringObject, Tag};
 use der_parser::der::*;
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
@@ -215,7 +215,7 @@ impl<'a> FromDer<'a> for TbsCertList<'a> {
             let (i, this_update) = ASN1Time::from_der(i)?;
             let (i, next_update) = ASN1Time::from_der_opt(i)?;
             let (i, revoked_certificates) = opt(complete(parse_revoked_certificates))(i)?;
-            let (i, extensions) = parse_extensions(i, BerTag(0))?;
+            let (i, extensions) = parse_extensions(i, Tag(0))?;
             let len = start_i.offset(i);
             let tbs = TbsCertList {
                 version,

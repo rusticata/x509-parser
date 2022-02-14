@@ -4,9 +4,7 @@ use crate::{
     traits::FromDer,
 };
 
-use der_parser::der::{
-    der_read_element_header, parse_der_oid, parse_der_sequence_defined_g, DerTag,
-};
+use der_parser::der::{der_read_element_header, parse_der_oid, parse_der_sequence_defined_g, Tag};
 use der_parser::error::BerError;
 use der_parser::oid::Oid;
 use nom::combinator::map_res;
@@ -28,7 +26,7 @@ impl<'a> FromDer<'a> for X509CriAttribute<'a> {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
             let value_start = i;
             let (i, hdr) = der_read_element_header(i)?;
-            if hdr.tag != DerTag::Set {
+            if hdr.tag() != Tag::Set {
                 return Err(Err::Error(BerError::BerTypeError));
             };
 
@@ -119,7 +117,8 @@ pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<Vec<X509CriAttribute>
     if i.is_empty() {
         return Ok((i, Vec::new()));
     }
-    (0..hdr.structured)
+    let constructed = if hdr.constructed() { 1 } else { 0 };
+    (0..constructed)
         .into_iter()
         .try_fold((i, Vec::new()), |(i, mut attrs), _| {
             let (rem, attr) = X509CriAttribute::from_der(i)?;

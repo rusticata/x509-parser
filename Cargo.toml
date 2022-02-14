@@ -38,16 +38,14 @@ verify = ["ring"]
 validate = []
 
 [dependencies]
+asn1-rs = { version = "0.3", features=["datetime"] }
 base64 = "0.13"
-chrono = { version="0.4", default-features=false, features=["std"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "7.0"
-oid-registry = { version="0.2.0", features=["crypto", "x509"] }
+oid-registry = { version="0.4", features=["crypto", "x509"] }
 rusticata-macros = "4.0"
 ring = { version="0.16.11", optional=true }
-der-parser = { version = "6.0.0", features=["bigint"] }
+der-parser = { version = "7.0.0", features=["bigint"] }
 thiserror = "1.0.2"
-
-[patch.crates-io]
-oid-registry = { git="https://github.com/rusticata/oid-registry" }
+time = { version="0.3", features=["formatting"] }

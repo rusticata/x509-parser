@@ -8,7 +8,7 @@ use der_parser::error::BerError;
 use der_parser::oid::Oid;
 use nom::bytes::streaming::take;
 use nom::combinator::{all_consuming, verify};
-use nom::{Err, IResult};
+use nom::{Err, IResult, Needed};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -60,20 +60,21 @@ impl<'a> fmt::Display for GeneralName<'a> {
 
 pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
     let (rest, hdr) = verify(der_read_element_header, |hdr| hdr.is_contextspecific())(i)?;
-    let len = hdr.len.primitive()?;
+    let len = hdr.length().definite()?;
     if len > rest.len() {
-        return Err(nom::Err::Failure(BerError::ObjectTooShort));
+        let needed = Needed::new(len - rest.len());
+        return Err(nom::Err::Failure(BerError::Incomplete(needed)));
     }
-    fn ia5str<'a>(i: &'a [u8], hdr: DerObjectHeader) -> Result<&'a str, Err<BerError>> {
+    fn ia5str<'a>(i: &'a [u8], hdr: Header) -> Result<&'a str, Err<BerError>> {
         // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
         // are using unicode characters
-        der_read_element_content_as(i, DerTag::Utf8String, hdr.len, hdr.is_constructed(), 0)?
+        der_read_element_content_as(i, Tag::Utf8String, hdr.length(), hdr.is_constructed(), 1)?
             .1
             .as_slice()
             .and_then(|s| std::str::from_utf8(s).map_err(|_| BerError::BerValueError))
             .map_err(nom::Err::Failure)
     }
-    let name = match hdr.tag.0 {
+    let name = match hdr.tag().0 {
         0 => {
             // otherName SEQUENCE { OID, [0] explicit any defined by oid }
             let (any, oid) = parse_der_oid(rest)?;
@@ -106,10 +107,10 @@ pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralNam
             // IPAddress, OctetString
             let ip = der_read_element_content_as(
                 rest,
-                DerTag::OctetString,
-                hdr.len,
+                Tag::OctetString,
+                hdr.length(),
                 hdr.is_constructed(),
-                0,
+                1,
             )?
             .1
             .as_slice()
@@ -118,13 +119,13 @@ pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralNam
         }
         8 => {
             let oid =
-                der_read_element_content_as(rest, DerTag::Oid, hdr.len, hdr.is_constructed(), 0)?
+                der_read_element_content_as(rest, Tag::Oid, hdr.length(), hdr.is_constructed(), 1)?
                     .1
                     .as_oid_val()
                     .map_err(nom::Err::Failure)?;
             GeneralName::RegisteredID(oid)
         }
-        _ => return Err(Err::Failure(BerError::UnknownTag)),
+        _ => return Err(Err::Failure(BerError::unexpected_tag(None, hdr.tag()))),
     };
     Ok((&rest[len..], name))
 }

@@ -8,12 +8,12 @@ use crate::objects::*;
 use crate::public_key::*;
 use crate::traits::FromDer;
 
+use self::asn1_rs::Oid;
 use data_encoding::HEXUPPER;
 use der_parser::ber::{parse_ber_integer, BitStringObject, MAX_OBJECT_SIZE};
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
-use der_parser::oid::Oid;
 use der_parser::*;
 use nom::branch::alt;
 use nom::bytes::complete::take;
@@ -41,7 +41,7 @@ impl X509Version {
     pub(crate) fn from_der_required(i: &[u8]) -> X509Result<X509Version> {
         let (rem, hdr) =
             der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag.0 {
+        match hdr.tag().0 {
             0 => {
                 map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
             }
@@ -55,7 +55,7 @@ impl<'a> FromDer<'a> for X509Version {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let (rem, hdr) =
             der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag.0 {
+        match hdr.tag().0 {
             0 => {
                 map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
             }
@@ -165,12 +165,12 @@ fn parse_attribute_value(i: &[u8]) -> DerResult {
 
 fn parse_malformed_string(i: &[u8]) -> DerResult {
     let (rem, hdr) = der_read_element_header(i)?;
-    let len = hdr.len.primitive()?;
+    let len = hdr.length().definite()?;
     if len > MAX_OBJECT_SIZE {
         return Err(nom::Err::Error(BerError::InvalidLength));
     }
-    match hdr.tag {
-        DerTag::PrintableString => {
+    match hdr.tag() {
+        Tag::PrintableString => {
             // if we are in this function, the PrintableString could not be validated.
             // Accept it without validating charset, because some tools do not respect the charset
             // restrictions (for ex. they use '*' while explicingly disallowed)

@@ -83,7 +83,7 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
         println!(
             "{:indent$}Parameter: <PRESENT> {:?}",
             "",
-            parameter.header.tag,
+            parameter.tag(),
             indent = level
         );
         if let Ok(bytes) = parameter.as_slice() {

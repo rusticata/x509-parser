@@ -1,4 +1,4 @@
-use der_parser::ber::BerTag;
+use der_parser::der::Tag;
 use der_parser::oid::Oid;
 use nom::HexDisplay;
 use std::cmp::min;
@@ -136,12 +136,12 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
         indent = level
     );
     if let Some(parameter) = &alg.parameters {
-        let s = match parameter.header.tag {
-            BerTag::Oid => {
+        let s = match parameter.tag() {
+            Tag::Oid => {
                 let oid = parameter.as_oid().unwrap();
                 format_oid(oid)
             }
-            _ => format!("{}", parameter.header.tag),
+            _ => format!("{}", parameter.tag()),
         };
         println!("{:indent$}Parameter: <PRESENT> {}", "", s, indent = level);
         if let Ok(bytes) = parameter.as_slice() {
@@ -205,6 +205,17 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     #[cfg(not(feature = "validate"))]
     {
         println!("Unknown (feature 'validate' not enabled)");
+    }
+    #[cfg(feature = "verify")]
+    {
+        println!("Signature verification: ");
+        if x509.verify_signature(None).is_ok() {
+            println!("  [I] certificate is self-signed");
+        } else if x509.subject() == x509.issuer() {
+            println!("  [W] certificate looks self-signed, but signature verification failed");
+        } else {
+            println!("  [W] signature verification failed");
+        }
     }
     Ok(())
 }
