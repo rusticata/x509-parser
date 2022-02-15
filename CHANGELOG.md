@@ -10,15 +10,34 @@
 
 ### Added/Changed/Fixed
 
+Crate:
+- Update to der-parser 7.0 and asn1-rs
+- Remove chrono (#111)
+- Set MSRV to 1.53
+
+Validators:
+- Add `Deref<Target=TbsCertificate>` trait to `X509Certificate`
 - Add `Validator` trait and deprecate `Validate`
   * The previous validation is implemented in `X509StructureValidator`
   * Split some checks (not on structure) to `X509CertificateValidator`
-- Extensions:
-  * add support for nsComment
-  * add support for IssuerAltName
-  * start adding support for CT Signed Certificate Timestamp (rfc6962)
+
+Extensions:
+- add support for nsComment
+- add support for IssuerAltName
+- start adding support for CT Signed Certificate Timestamp (rfc6962)
+- raise error if a SAN entry cannot be parsed
+- deprecate `TbsCertificate::find_extension()` and add preferred method `TbsCertificate::get_extension_unique()`:
+  the latter checks for duplicate extensions (#113)
+
+Signatures:
+- Fix signature verification for EC curves (#116)
+
+Public Keys:
+- Add base functions for parsing public keys (RSA, DSA, GOST)
 
 ### Thanks
+
+- @lilyball, @g2p
 
 ## 0.12.0
 
