@@ -12,6 +12,7 @@ use crate::x509::{
     X509Version,
 };
 
+use core::ops::Deref;
 use der_parser::ber::{parse_ber_optional, BitStringObject, Tag};
 use der_parser::der::*;
 use der_parser::error::*;
@@ -30,7 +31,8 @@ use time::Duration;
 /// using the path `x509.tbs_certificate.subject`.
 ///
 /// `X509Certificate` also contains convenience methods to access the most common fields (subject,
-/// issuer, etc.).
+/// issuer, etc.). These are provided using `Deref<Target = TbsCertificate>`, so documentation for
+/// these methods can be found in the [`TbsCertificate`] object.
 ///
 /// A `X509Certificate` is a zero-copy view over a buffer, so the lifetime is the same as the
 /// buffer containing the binary representation.
@@ -67,41 +69,6 @@ pub struct X509Certificate<'a> {
 }
 
 impl<'a> X509Certificate<'a> {
-    /// Get the version of the encoded certificate
-    pub fn version(&self) -> X509Version {
-        self.tbs_certificate.version
-    }
-
-    /// Get the certificate subject.
-    #[inline]
-    pub fn subject(&self) -> &X509Name {
-        &self.tbs_certificate.subject
-    }
-
-    /// Get the certificate issuer.
-    #[inline]
-    pub fn issuer(&self) -> &X509Name {
-        &self.tbs_certificate.issuer
-    }
-
-    /// Get the certificate validity.
-    #[inline]
-    pub fn validity(&self) -> &Validity {
-        &self.tbs_certificate.validity
-    }
-
-    /// Get the certificate public key information.
-    #[inline]
-    pub fn public_key(&self) -> &SubjectPublicKeyInfo {
-        &self.tbs_certificate.subject_pki
-    }
-
-    /// Get the certificate extensions.
-    #[inline]
-    pub fn extensions(&self) -> &[X509Extension] {
-        &self.tbs_certificate.extensions
-    }
-
     /// Verify the cryptographic signature of this certificate
     ///
     /// `public_key` is the public key of the **signer**. For a self-signed certificate,
@@ -175,6 +142,14 @@ impl<'a> X509Certificate<'a> {
         } else {
             None
         }
+    }
+}
+
+impl<'a> Deref for X509Certificate<'a> {
+    type Target = TbsCertificate<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tbs_certificate
     }
 }
 
@@ -350,6 +325,35 @@ pub struct TbsCertificate<'a> {
 }
 
 impl<'a> TbsCertificate<'a> {
+    /// Get the version of the encoded certificate
+    pub fn version(&self) -> X509Version {
+        self.version
+    }
+
+    /// Get the certificate subject.
+    #[inline]
+    pub fn subject(&self) -> &X509Name {
+        &self.subject
+    }
+
+    /// Get the certificate issuer.
+    #[inline]
+    pub fn issuer(&self) -> &X509Name {
+        &self.issuer
+    }
+
+    /// Get the certificate validity.
+    #[inline]
+    pub fn validity(&self) -> &Validity {
+        &self.validity
+    }
+
+    /// Get the certificate public key information.
+    #[inline]
+    pub fn public_key(&self) -> &SubjectPublicKeyInfo {
+        &self.subject_pki
+    }
+
     /// Returns the certificate extensions
     #[inline]
     pub fn extensions(&self) -> &[X509Extension<'a>] {
