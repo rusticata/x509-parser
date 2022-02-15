@@ -368,7 +368,28 @@ impl<'a> TbsCertificate<'a> {
 
     /// Searches for an extension with the given `Oid`.
     ///
-    /// Note: if there are several extensions with the same `Oid`, the first one is returned.
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error `DuplicateExtensions` if the extension is present twice or more.
+    #[inline]
+    pub fn get_extension_unique(&self, oid: &Oid) -> Result<Option<&X509Extension<'a>>, X509Error> {
+        get_extension_unique(&self.extensions, oid)
+    }
+
+    /// Searches for an extension with the given `Oid`.
+    ///
+    /// ## Duplicate extensions
+    ///
+    /// Note: if there are several extensions with the same `Oid`, the first one is returned, masking other values.
+    ///
+    /// RFC5280 forbids having duplicate extensions, but does not specify how errors should be handled.
+    ///
+    /// **Because of this, the `find_extension` method is not safe and should not be used!**
+    /// The [`get_extension_unique`](Self::get_extension_unique) method checks for duplicate extensions and should be
+    /// preferred.
+    #[deprecated(
+        since = "0.13.0",
+        note = "Do not use this function (duplicate extensions are not checked), use `get_extension_unique`"
+    )]
     pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension<'a>> {
         self.extensions.iter().find(|&ext| ext.oid == *oid)
     }
@@ -388,74 +409,135 @@ impl<'a> TbsCertificate<'a> {
             })
     }
 
-    pub fn basic_constraints(&self) -> Option<(bool, &BasicConstraints)> {
-        self.find_extension(&OID_X509_EXT_BASIC_CONSTRAINTS)
+    /// Attempt to get the certificate Basic Constraints extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is present twice or more.
+    pub fn basic_constraints(
+        &self,
+    ) -> Result<Option<BasicExtension<&BasicConstraints>>, X509Error> {
+        let r = self
+            .get_extension_unique(&OID_X509_EXT_BASIC_CONSTRAINTS)?
             .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::BasicConstraints(ref bc) => Some((ext.critical, bc)),
+                ParsedExtension::BasicConstraints(ref bc) => {
+                    Some(BasicExtension::new(ext.critical, bc))
+                }
                 _ => None,
+            });
+        Ok(r)
+    }
+
+    /// Attempt to get the certificate Key Usage extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn key_usage(&self) -> Result<Option<BasicExtension<&KeyUsage>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_KEY_USAGE)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::KeyUsage(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
-    pub fn key_usage(&self) -> Option<(bool, &KeyUsage)> {
-        self.find_extension(&OID_X509_EXT_KEY_USAGE)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::KeyUsage(ref ku) => Some((ext.critical, ku)),
-                _ => None,
+    /// Attempt to get the certificate Extended Key Usage extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn extended_key_usage(
+        &self,
+    ) -> Result<Option<BasicExtension<&ExtendedKeyUsage>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_EXTENDED_KEY_USAGE)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::ExtendedKeyUsage(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
-    pub fn extended_key_usage(&self) -> Option<(bool, &ExtendedKeyUsage<'a>)> {
-        self.find_extension(&OID_X509_EXT_EXTENDED_KEY_USAGE)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::ExtendedKeyUsage(ref eku) => Some((ext.critical, eku)),
-                _ => None,
+    /// Attempt to get the certificate Policy Constraints extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn policy_constraints(
+        &self,
+    ) -> Result<Option<BasicExtension<&PolicyConstraints>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_POLICY_CONSTRAINTS)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::PolicyConstraints(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
-    pub fn policy_constraints(&self) -> Option<(bool, &PolicyConstraints)> {
-        self.find_extension(&OID_X509_EXT_POLICY_CONSTRAINTS)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::PolicyConstraints(ref pc) => Some((ext.critical, pc)),
-                _ => None,
+    /// Attempt to get the certificate Policy Constraints extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn inhibit_anypolicy(
+        &self,
+    ) -> Result<Option<BasicExtension<&InhibitAnyPolicy>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_INHIBITANT_ANY_POLICY)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::InhibitAnyPolicy(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
-    pub fn inhibit_anypolicy(&self) -> Option<(bool, &InhibitAnyPolicy)> {
-        self.find_extension(&OID_X509_EXT_INHIBITANT_ANY_POLICY)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::InhibitAnyPolicy(ref iap) => Some((ext.critical, iap)),
-                _ => None,
+    /// Attempt to get the certificate Policy Mappings extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn policy_mappings(&self) -> Result<Option<BasicExtension<&PolicyMappings>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_POLICY_MAPPINGS)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::PolicyMappings(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
-    pub fn policy_mappings(&self) -> Option<(bool, &PolicyMappings<'a>)> {
-        self.find_extension(&OID_X509_EXT_POLICY_MAPPINGS)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::PolicyMappings(ref pm) => Some((ext.critical, pm)),
-                _ => None,
+    /// Attempt to get the certificate Subject Alternative Name extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn subject_alternative_name(
+        &self,
+    ) -> Result<Option<BasicExtension<&SubjectAlternativeName>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_SUBJECT_ALT_NAME)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::SubjectAlternativeName(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
-    pub fn subject_alternative_name(&self) -> Option<(bool, &SubjectAlternativeName<'a>)> {
-        self.find_extension(&OID_X509_EXT_SUBJECT_ALT_NAME)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::SubjectAlternativeName(ref san) => Some((ext.critical, san)),
-                _ => None,
-            })
-    }
-
-    pub fn name_constraints(&self) -> Option<(bool, &NameConstraints<'a>)> {
-        self.find_extension(&OID_X509_EXT_NAME_CONSTRAINTS)
-            .and_then(|ext| match ext.parsed_extension {
-                ParsedExtension::NameConstraints(ref nc) => Some((ext.critical, nc)),
-                _ => None,
+    /// Attempt to get the certificate Name Constraints extension
+    ///
+    /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
+    /// or an error if the extension is invalid, or is present twice or more.
+    pub fn name_constraints(&self) -> Result<Option<BasicExtension<&NameConstraints>>, X509Error> {
+        self.get_extension_unique(&OID_X509_EXT_NAME_CONSTRAINTS)?
+            .map_or(Ok(None), |ext| match ext.parsed_extension {
+                ParsedExtension::NameConstraints(ref value) => {
+                    Ok(Some(BasicExtension::new(ext.critical, value)))
+                }
+                _ => Err(X509Error::InvalidExtensions),
             })
     }
 
     /// Returns true if certificate has `basicConstraints CA:true`
     pub fn is_ca(&self) -> bool {
         self.basic_constraints()
-            .map(|(_, bc)| bc.ca)
+            .unwrap_or(None)
+            .map(|ext| ext.value.ca)
             .unwrap_or(false)
     }
 
@@ -468,6 +550,25 @@ impl<'a> TbsCertificate<'a> {
     pub fn raw_serial_as_string(&self) -> String {
         format_serial(self.raw_serial)
     }
+}
+
+/// Searches for an extension with the given `Oid`.
+///
+/// Note: if there are several extensions with the same `Oid`, an error `DuplicateExtensions` is returned.
+fn get_extension_unique<'a, 'b>(
+    extensions: &'a [X509Extension<'b>],
+    oid: &Oid,
+) -> Result<Option<&'a X509Extension<'b>>, X509Error> {
+    let mut res = None;
+    for ext in extensions {
+        if ext.oid == *oid {
+            if res.is_some() {
+                return Err(X509Error::DuplicateExtensions);
+            }
+            res = Some(ext);
+        }
+    }
+    Ok(res)
 }
 
 impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
@@ -604,6 +705,19 @@ impl Validate for TbsCertificate<'_> {
     }
 }
 
+/// Basic extension structure, used in search results
+#[derive(Debug, PartialEq)]
+pub struct BasicExtension<T> {
+    pub critical: bool,
+    pub value: T,
+}
+
+impl<T> BasicExtension<T> {
+    pub const fn new(critical: bool, value: T) -> Self {
+        Self { critical, value }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Validity {
     pub not_before: ASN1Time,
@@ -704,5 +818,23 @@ mod tests {
         // The following assumes this timing won't take 10 seconds... I
         // think that is safe.
         assert!(v.time_to_expiration().unwrap() > Duration::new(50, 0));
+    }
+
+    #[test]
+    fn extension_duplication() {
+        let extensions = vec![
+            X509Extension::new(oid! {1.2}, true, &[], ParsedExtension::Unparsed),
+            X509Extension::new(oid! {1.3}, true, &[], ParsedExtension::Unparsed),
+            X509Extension::new(oid! {1.2}, true, &[], ParsedExtension::Unparsed),
+            X509Extension::new(oid! {1.4}, true, &[], ParsedExtension::Unparsed),
+            X509Extension::new(oid! {1.4}, true, &[], ParsedExtension::Unparsed),
+        ];
+
+        let r2 = get_extension_unique(&extensions, &oid! {1.2});
+        assert!(r2.is_err());
+        let r3 = get_extension_unique(&extensions, &oid! {1.3});
+        assert!(r3.is_ok());
+        let r4 = get_extension_unique(&extensions, &oid! {1.4});
+        assert!(r4.is_err());
     }
 }

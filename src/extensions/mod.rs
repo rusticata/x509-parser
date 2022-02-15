@@ -1208,16 +1208,24 @@ mod tests {
         let crt = crate::parse_x509_certificate(include_bytes!("../../assets/extension1.der"))
             .unwrap()
             .1;
-        let tbs = crt.tbs_certificate;
+        let tbs = &crt.tbs_certificate;
+        let bc = crt
+            .basic_constraints()
+            .expect("could not get basic constraints")
+            .expect("no basic constraints found");
         assert_eq!(
-            tbs.basic_constraints().unwrap().1,
+            bc.value,
             &BasicConstraints {
                 ca: true,
                 path_len_constraint: Some(1)
             }
         );
         {
-            let ku = tbs.key_usage().unwrap().1;
+            let ku = tbs
+                .key_usage()
+                .expect("could not get key usage")
+                .expect("no key usage found")
+                .value;
             assert!(ku.digital_signature());
             assert!(!ku.non_repudiation());
             assert!(ku.key_encipherment());
@@ -1229,7 +1237,11 @@ mod tests {
             assert!(ku.decipher_only());
         }
         {
-            let eku = tbs.extended_key_usage().unwrap().1;
+            let eku = tbs
+                .extended_key_usage()
+                .expect("could not get extended key usage")
+                .expect("no extended key usage found")
+                .value;
             assert!(!eku.any);
             assert!(eku.server_auth);
             assert!(!eku.client_auth);
@@ -1240,18 +1252,28 @@ mod tests {
             assert_eq!(eku.other, vec![oid!(1.2.3 .4 .0 .42)]);
         }
         assert_eq!(
-            tbs.policy_constraints().unwrap().1,
+            tbs.policy_constraints()
+                .expect("could not get policy constraints")
+                .expect("no policy constraints found")
+                .value,
             &PolicyConstraints {
                 require_explicit_policy: None,
                 inhibit_policy_mapping: Some(10)
             }
         );
-        assert_eq!(
-            tbs.inhibit_anypolicy().unwrap().1,
-            &InhibitAnyPolicy { skip_certs: 2 }
-        );
+        let val = tbs
+            .inhibit_anypolicy()
+            .expect("could not get inhibit_anypolicy")
+            .expect("no inhibit_anypolicy found")
+            .value;
+        assert_eq!(val, &InhibitAnyPolicy { skip_certs: 2 });
         {
-            let alt_names = &tbs.subject_alternative_name().unwrap().1.general_names;
+            let alt_names = &tbs
+                .subject_alternative_name()
+                .expect("could not get subject alt names")
+                .expect("no subject alt names found")
+                .value
+                .general_names;
             assert_eq!(alt_names[0], GeneralName::RFC822Name("foo@example.com"));
             assert_eq!(alt_names[1], GeneralName::URI("http://my.url.here/"));
             assert_eq!(
@@ -1277,7 +1299,11 @@ mod tests {
         }
 
         {
-            let name_constraints = &tbs.name_constraints().unwrap().1;
+            let name_constraints = &tbs
+                .name_constraints()
+                .expect("could not get name constraints")
+                .expect("no name constraints found")
+                .value;
             assert_eq!(name_constraints.permitted_subtrees, None);
             assert_eq!(
                 name_constraints.excluded_subtrees,
@@ -1301,14 +1327,23 @@ mod tests {
             .1;
         let tbs = crt.tbs_certificate;
         assert_eq!(
-            tbs.policy_constraints().unwrap().1,
+            tbs.policy_constraints()
+                .expect("could not get policy constraints")
+                .expect("no policy constraints found")
+                .value,
             &PolicyConstraints {
                 require_explicit_policy: Some(5000),
                 inhibit_policy_mapping: None
             }
         );
         {
-            let pm = tbs.policy_mappings().unwrap().1.clone().into_hashmap();
+            let pm = tbs
+                .policy_mappings()
+                .expect("could not get policy_mappings")
+                .expect("no policy_mappings found")
+                .value
+                .clone()
+                .into_hashmap();
             let mut pm_ref = HashMap::new();
             pm_ref.insert(oid!(2.34.23), vec![oid!(2.2)]);
             pm_ref.insert(oid!(1.1), vec![oid!(0.0.4)]);

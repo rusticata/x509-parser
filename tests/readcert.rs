@@ -328,8 +328,9 @@ fn test_duplicate_authority_info_access() {
         Ok((_, cert)) => {
             let extension = cert
                 .tbs_certificate
-                .find_extension(&OID_PKIX_AUTHORITY_INFO_ACCESS)
-                .unwrap();
+                .get_extension_unique(&OID_PKIX_AUTHORITY_INFO_ACCESS)
+                .expect("could not get AIA")
+                .expect("no AIA found");
             let mut accessdescs = HashMap::new();
             let ca_issuers = vec![
                 &GeneralName::URI("http://cdp1.pca.dfn.de/dfn-ca-global-g2/pub/cacert/cacert.crt"),
