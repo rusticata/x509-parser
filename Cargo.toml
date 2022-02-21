@@ -19,6 +19,8 @@ include = [
   ".travis.yml",
   "Cargo.toml",
   "src/*.rs",
+  "src/extensions/*.rs",
+  "src/validate/*.rs",
   "tests/*.rs",
   "assets/*.crl",
   "assets/*.csr",
