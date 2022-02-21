@@ -131,6 +131,7 @@ impl<'a> X509Certificate<'a> {
         if curve_oid == &OID_EC_P256 {
             match sha_len {
                 256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
+                384 => Some(&signature::ECDSA_P256_SHA384_ASN1),
                 _ => None,
             }
         } else if curve_oid == &OID_NIST_EC_P384 {
