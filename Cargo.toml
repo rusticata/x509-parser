@@ -50,4 +50,4 @@ rusticata-macros = "4.0"
 ring = { version="0.16.11", optional=true }
 der-parser = { version = "7.0.0", features=["bigint"] }
 thiserror = "1.0.2"
-time = { version="0.3", features=["formatting"] }
+time = { version="0.3.7", features=["formatting"] }
