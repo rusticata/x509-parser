@@ -381,7 +381,7 @@ impl<'a> X509Name<'a> {
 
     /// Return an iterator over the attribute types and values of the name
     pub fn iter_attributes(&self) -> impl Iterator<Item = &AttributeTypeAndValue<'a>> {
-        self.rdn_seq.iter().map(|rdn| rdn.set.iter()).flatten()
+        self.rdn_seq.iter().flat_map(|rdn| rdn.set.iter())
     }
 
     /// Return an iterator over the components identified by the given OID
