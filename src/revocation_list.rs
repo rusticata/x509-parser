@@ -12,7 +12,7 @@ use der_parser::der::*;
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map, opt};
-use nom::multi::many1;
+use nom::multi::many0;
 use nom::Offset;
 use oid_registry::*;
 use std::collections::HashMap;
@@ -340,6 +340,6 @@ impl<'a> FromDer<'a> for RevokedCertificate<'a> {
 
 fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
     parse_der_sequence_defined_g(|a, _| {
-        all_consuming(many1(complete(RevokedCertificate::from_der)))(a)
+        all_consuming(many0(complete(RevokedCertificate::from_der)))(a)
     })(i)
 }
