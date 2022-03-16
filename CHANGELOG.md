@@ -6,6 +6,19 @@
 
 ### Thanks
 
+
+## 0.13.1
+
+### Fixed
+
+- Fix regression with certificate verification for ECDSA signatures using the P-256 curve and SHA-384 (#118)
+- Set minimum version of `time` to 0.3.7 (#119)
+- Allow empty SEQUENCE when OPTIONAL, for ex in CRL extensions (#120)
+
+### Thanks
+
+- @SergioBenitez, @flavio, @acarlson0000
+
 ## 0.13.0
 
 ### Added/Changed/Fixed
