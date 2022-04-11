@@ -40,7 +40,7 @@ verify = ["ring"]
 validate = []
 
 [dependencies]
-asn1-rs = { version = "0.3", features=["datetime"] }
+asn1-rs = { version = "0.4", features=["datetime"] }
 base64 = "0.13"
 data-encoding = "2.2.1"
 lazy_static = "1.4"
