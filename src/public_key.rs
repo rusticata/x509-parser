@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::traits::FromDer;
+use asn1_rs::FromDer;
 use der_parser::{
     der::{parse_der_integer, parse_der_sequence_defined_g},
     error::BerResult,
@@ -84,7 +84,7 @@ fn parse_rsa_key(bytes: &[u8]) -> BerResult<RSAPublicKey> {
     })(bytes)
 }
 
-impl<'a> FromDer<'a> for RSAPublicKey<'a> {
+impl<'a> FromDer<'a, X509Error> for RSAPublicKey<'a> {
     fn from_der(bytes: &'a [u8]) -> X509Result<'a, Self> {
         parse_rsa_key(bytes).map_err(|_| nom::Err::Error(X509Error::InvalidSPKI))
     }

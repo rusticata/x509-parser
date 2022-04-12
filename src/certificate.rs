@@ -3,7 +3,6 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
-use crate::traits::FromDer;
 use crate::utils::format_serial;
 #[cfg(feature = "validate")]
 use crate::validate::*;
@@ -12,7 +11,7 @@ use crate::x509::{
     X509Version,
 };
 
-use asn1_rs::FromDer as Asn1FromDer;
+use asn1_rs::FromDer;
 use core::ops::Deref;
 use der_parser::ber::{parse_ber_optional, BitStringObject, Tag};
 use der_parser::der::*;
@@ -39,8 +38,8 @@ use time::Duration;
 /// buffer containing the binary representation.
 ///
 /// ```rust
+/// # use x509_parser::prelude::FromDer;
 /// # use x509_parser::certificate::X509Certificate;
-/// # use x509_parser::traits::FromDer;
 /// #
 /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 /// #
@@ -156,7 +155,7 @@ impl<'a> Deref for X509Certificate<'a> {
     }
 }
 
-impl<'a> FromDer<'a> for X509Certificate<'a> {
+impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
     /// Parse a DER-encoded X.509 Certificate, and return the remaining of the input and the built
     /// object.
     ///
@@ -581,7 +580,7 @@ impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
     }
 }
 
-impl<'a> FromDer<'a> for TbsCertificate<'a> {
+impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
     /// Parse a DER-encoded TbsCertificate object
     ///
     /// <pre>
@@ -756,7 +755,7 @@ impl Validity {
     }
 }
 
-impl<'a> FromDer<'a> for Validity {
+impl<'a> FromDer<'a, X509Error> for Validity {
     fn from_der(i: &[u8]) -> X509Result<Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, not_before) = ASN1Time::from_der(i)?;

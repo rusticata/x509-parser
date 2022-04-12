@@ -1,7 +1,7 @@
 use super::GeneralName;
-use crate::error::X509Result;
+use crate::error::{X509Error, X509Result};
 use crate::extensions::parse_generalname;
-use crate::traits::FromDer;
+use asn1_rs::FromDer;
 use der_parser::der::*;
 use der_parser::error::BerError;
 use nom::combinator::{all_consuming, complete, map, opt};
@@ -14,7 +14,7 @@ pub struct NameConstraints<'a> {
     pub excluded_subtrees: Option<Vec<GeneralSubtree<'a>>>,
 }
 
-impl<'a> FromDer<'a> for NameConstraints<'a> {
+impl<'a> FromDer<'a, X509Error> for NameConstraints<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_nameconstraints(i).map_err(Err::convert)
     }

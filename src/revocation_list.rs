@@ -1,13 +1,12 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
-use crate::traits::FromDer;
 use crate::utils::format_serial;
 use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
 
-use asn1_rs::FromDer as Asn1FromDer;
+use asn1_rs::FromDer;
 use der_parser::ber::{BitStringObject, Tag};
 use der_parser::der::*;
 use der_parser::num_bigint::BigUint;
@@ -27,8 +26,8 @@ use std::collections::HashMap;
 /// To parse a CRL and print information about revoked certificates:
 ///
 /// ```rust
+/// use x509_parser::prelude::FromDer;
 /// use x509_parser::revocation_list::CertificateRevocationList;
-/// use x509_parser::traits::FromDer;
 ///
 /// # static DER: &'static [u8] = include_bytes!("../assets/example.crl");
 /// #
@@ -112,7 +111,7 @@ impl<'a> CertificateRevocationList<'a> {
 ///      signatureAlgorithm   AlgorithmIdentifier,
 ///      signatureValue       BIT STRING  }
 /// </pre>
-impl<'a> FromDer<'a> for CertificateRevocationList<'a> {
+impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
@@ -205,7 +204,7 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
     }
 }
 
-impl<'a> FromDer<'a> for TbsCertList<'a> {
+impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
@@ -322,7 +321,7 @@ impl<'a> RevokedCertificate<'a> {
 //     crlEntryExtensions      Extensions OPTIONAL
 //                                   -- if present, MUST be v2
 //                          }  OPTIONAL,
-impl<'a> FromDer<'a> for RevokedCertificate<'a> {
+impl<'a> FromDer<'a, X509Error> for RevokedCertificate<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, (raw_serial, user_certificate)) = parse_serial(i)?;

@@ -2,10 +2,10 @@
 
 use crate::error::{X509Error, X509Result};
 use crate::time::{der_to_utctime, ASN1Time};
-use crate::traits::FromDer;
 use crate::utils::format_serial;
 use crate::x509::{ReasonCode, RelativeDistinguishedName};
 
+use asn1_rs::FromDer;
 use der_parser::ber::parse_ber_bool;
 use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
@@ -53,8 +53,8 @@ pub use sct::*;
 /// # Example
 ///
 /// ```rust
+/// use x509_parser::prelude::FromDer;
 /// use x509_parser::extensions::{X509Extension, ParsedExtension};
-/// use x509_parser::traits::FromDer;
 ///
 /// static DER: &[u8] = &[
 ///    0x30, 0x1D, 0x06, 0x03, 0x55, 0x1D, 0x0E, 0x04, 0x16, 0x04, 0x14, 0xA3, 0x05, 0x2F, 0x18,
@@ -123,7 +123,7 @@ impl<'a> X509Extension<'a> {
 ///     critical    BOOLEAN DEFAULT FALSE,
 ///     extnValue   OCTET STRING  }
 /// </pre>
-impl<'a> FromDer<'a> for X509Extension<'a> {
+impl<'a> FromDer<'a, X509Error> for X509Extension<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         X509ExtensionParser::new().parse(i)
     }
@@ -249,7 +249,7 @@ pub struct AuthorityKeyIdentifier<'a> {
     pub authority_cert_serial: Option<&'a [u8]>,
 }
 
-impl<'a> FromDer<'a> for AuthorityKeyIdentifier<'a> {
+impl<'a> FromDer<'a, X509Error> for AuthorityKeyIdentifier<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_authoritykeyidentifier(i).map_err(Err::convert)
     }
@@ -257,11 +257,11 @@ impl<'a> FromDer<'a> for AuthorityKeyIdentifier<'a> {
 
 pub type CertificatePolicies<'a> = Vec<PolicyInformation<'a>>;
 
-impl<'a> FromDer<'a> for CertificatePolicies<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parser::parse_certificatepolicies(i).map_err(Err::convert)
-    }
-}
+// impl<'a> FromDer<'a> for CertificatePolicies<'a> {
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+//         parser::parse_certificatepolicies(i).map_err(Err::convert)
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PolicyInformation<'a> {
@@ -282,7 +282,7 @@ pub struct BasicConstraints {
     pub path_len_constraint: Option<u32>,
 }
 
-impl<'a> FromDer<'a> for BasicConstraints {
+impl<'a> FromDer<'a, X509Error> for BasicConstraints {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_basicconstraints(i).map_err(Err::convert)
     }
@@ -291,7 +291,7 @@ impl<'a> FromDer<'a> for BasicConstraints {
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyIdentifier<'a>(pub &'a [u8]);
 
-impl<'a> FromDer<'a> for KeyIdentifier<'a> {
+impl<'a> FromDer<'a, X509Error> for KeyIdentifier<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_keyidentifier(i).map_err(Err::convert)
     }
@@ -368,7 +368,7 @@ impl fmt::Display for NSCertType {
     }
 }
 
-impl<'a> FromDer<'a> for NSCertType {
+impl<'a> FromDer<'a, X509Error> for NSCertType {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_nscerttype(i).map_err(Err::convert)
     }
@@ -427,7 +427,7 @@ impl<'a> AuthorityInfoAccess<'a> {
     }
 }
 
-impl<'a> FromDer<'a> for AuthorityInfoAccess<'a> {
+impl<'a> FromDer<'a, X509Error> for AuthorityInfoAccess<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_authorityinfoaccess(i).map_err(Err::convert)
     }
@@ -453,7 +453,7 @@ pub struct InhibitAnyPolicy {
     pub skip_certs: u32,
 }
 
-impl<'a> FromDer<'a> for InhibitAnyPolicy {
+impl<'a> FromDer<'a, X509Error> for InhibitAnyPolicy {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         map(parse_der_u32, |skip_certs| InhibitAnyPolicy { skip_certs })(i).map_err(Err::convert)
     }
@@ -465,7 +465,7 @@ pub struct PolicyConstraints {
     pub inhibit_policy_mapping: Option<u32>,
 }
 
-impl<'a> FromDer<'a> for PolicyConstraints {
+impl<'a> FromDer<'a, X509Error> for PolicyConstraints {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_policyconstraints(i).map_err(Err::convert)
     }
@@ -476,7 +476,7 @@ pub struct SubjectAlternativeName<'a> {
     pub general_names: Vec<GeneralName<'a>>,
 }
 
-impl<'a> FromDer<'a> for SubjectAlternativeName<'a> {
+impl<'a> FromDer<'a, X509Error> for SubjectAlternativeName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) =
@@ -491,7 +491,7 @@ pub struct IssuerAlternativeName<'a> {
     pub general_names: Vec<GeneralName<'a>>,
 }
 
-impl<'a> FromDer<'a> for IssuerAlternativeName<'a> {
+impl<'a> FromDer<'a, X509Error> for IssuerAlternativeName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) =
@@ -509,11 +509,11 @@ pub struct UnparsedObject<'a> {
 
 pub type CRLDistributionPoints<'a> = Vec<CRLDistributionPoint<'a>>;
 
-impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parser::parse_crldistributionpoints(i).map_err(Err::convert)
-    }
-}
+// impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+//         parser::parse_crldistributionpoints(i).map_err(Err::convert)
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CRLDistributionPoint<'a> {
@@ -590,7 +590,6 @@ impl fmt::Display for ReasonFlags {
 
 pub(crate) mod parser {
     use crate::extensions::*;
-    use crate::traits::FromDer;
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;

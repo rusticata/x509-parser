@@ -1,3 +1,4 @@
+use asn1_rs::FromDer;
 use der_parser::ber::{ber_read_element_header, BerObjectContent, Tag, MAX_OBJECT_SIZE};
 use der_parser::der::{parse_der_generalizedtime, parse_der_utctime, DerObject};
 use der_parser::error::{BerError, DerResult};
@@ -9,7 +10,6 @@ use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
 
 use crate::error::{X509Error, X509Result};
-use crate::traits::FromDer;
 
 /// An ASN.1 timestamp.
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
@@ -57,7 +57,7 @@ impl ASN1Time {
     }
 }
 
-impl<'a> FromDer<'a> for ASN1Time {
+impl<'a> FromDer<'a, X509Error> for ASN1Time {
     fn from_der(i: &[u8]) -> X509Result<Self> {
         map_res(parse_choice_of_time, der_to_utctime)(i).map_err(|_| X509Error::InvalidDate.into())
     }

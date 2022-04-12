@@ -1,5 +1,5 @@
-use crate::error::X509Result;
-use crate::traits::FromDer;
+use crate::error::{X509Error, X509Result};
+use asn1_rs::FromDer;
 use der_parser::der::*;
 use der_parser::error::BerError;
 use der_parser::oid::Oid;
@@ -11,7 +11,7 @@ pub struct PolicyMappings<'a> {
     pub mappings: Vec<PolicyMapping<'a>>,
 }
 
-impl<'a> FromDer<'a> for PolicyMappings<'a> {
+impl<'a> FromDer<'a, X509Error> for PolicyMappings<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_policymappings(i).map_err(Err::convert)
     }

@@ -14,4 +14,5 @@ pub use crate::utils::*;
 pub use crate::validate::*;
 pub use crate::x509::*;
 pub use crate::*;
-pub use traits::*;
+
+pub use asn1_rs::FromDer;

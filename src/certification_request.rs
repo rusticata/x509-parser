@@ -1,12 +1,11 @@
 use crate::cri_attributes::*;
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
-use crate::traits::FromDer;
 use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };
 
-use asn1_rs::FromDer as Asn1FromDer;
+use asn1_rs::FromDer;
 use der_parser::ber::BitStringObject;
 use der_parser::der::*;
 use der_parser::oid::Oid;
@@ -81,7 +80,7 @@ impl<'a> X509CertificationRequest<'a> {
 ///     signature          BIT STRING
 /// }
 /// </pre>
-impl<'a> FromDer<'a> for X509CertificationRequest<'a> {
+impl<'a> FromDer<'a, X509Error> for X509CertificationRequest<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
@@ -167,7 +166,7 @@ impl<'a> X509CertificationRequestInfo<'a> {
 ///      attributes    [0] Attributes{{ CRIAttributes }}
 /// }
 /// </pre>
-impl<'a> FromDer<'a> for X509CertificationRequestInfo<'a> {
+impl<'a> FromDer<'a, X509Error> for X509CertificationRequestInfo<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {

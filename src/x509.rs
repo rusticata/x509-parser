@@ -6,10 +6,9 @@
 use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
-use crate::traits::FromDer;
 
 use self::asn1_rs::Oid;
-use asn1_rs::{Any, DerSequence, FromDer as Asn1FromDer};
+use asn1_rs::{Any, DerSequence, FromDer};
 use data_encoding::HEXUPPER;
 use der_parser::ber::{parse_ber_integer, BitStringObject, MAX_OBJECT_SIZE};
 use der_parser::der::*;
@@ -52,7 +51,7 @@ impl X509Version {
 }
 
 // Parse [0] EXPLICIT Version DEFAULT v1
-impl<'a> FromDer<'a> for X509Version {
+impl<'a> FromDer<'a, X509Error> for X509Version {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let (rem, hdr) =
             der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
@@ -146,7 +145,7 @@ impl<'a> TryFrom<AttributeTypeAndValue<'a>> for &'a [u8] {
 // AttributeTypeAndValue   ::= SEQUENCE {
 //     type    AttributeType,
 //     value   AttributeValue }
-impl<'a> FromDer<'a> for AttributeTypeAndValue<'a> {
+impl<'a> FromDer<'a, X509Error> for AttributeTypeAndValue<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
@@ -213,7 +212,7 @@ impl<'a> FromIterator<AttributeTypeAndValue<'a>> for RelativeDistinguishedName<'
     }
 }
 
-impl<'a> FromDer<'a> for RelativeDistinguishedName<'a> {
+impl<'a> FromDer<'a, X509Error> for RelativeDistinguishedName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         parse_der_set_defined_g(|i, _| {
             let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
@@ -266,7 +265,7 @@ impl<'a> SubjectPublicKeyInfo<'a> {
     }
 }
 
-impl<'a> FromDer<'a> for SubjectPublicKeyInfo<'a> {
+impl<'a> FromDer<'a, X509Error> for SubjectPublicKeyInfo<'a> {
     /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
@@ -460,7 +459,7 @@ impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
     }
 }
 
-impl<'a> FromDer<'a> for X509Name<'a> {
+impl<'a> FromDer<'a, X509Error> for X509Name<'a> {
     /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;

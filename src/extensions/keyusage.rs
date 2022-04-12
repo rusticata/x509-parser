@@ -1,5 +1,5 @@
-use crate::error::X509Result;
-use crate::traits::FromDer;
+use crate::error::{X509Error, X509Result};
+use asn1_rs::FromDer;
 use der_parser::der::*;
 use der_parser::error::BerError;
 use der_parser::{oid, oid::Oid};
@@ -72,7 +72,7 @@ impl fmt::Display for KeyUsage {
     }
 }
 
-impl<'a> FromDer<'a> for KeyUsage {
+impl<'a> FromDer<'a, X509Error> for KeyUsage {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_keyusage(i).map_err(Err::convert)
     }
@@ -90,7 +90,7 @@ pub struct ExtendedKeyUsage<'a> {
     pub other: Vec<Oid<'a>>,
 }
 
-impl<'a> FromDer<'a> for ExtendedKeyUsage<'a> {
+impl<'a> FromDer<'a, X509Error> for ExtendedKeyUsage<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_extendedkeyusage(i).map_err(Err::convert)
     }

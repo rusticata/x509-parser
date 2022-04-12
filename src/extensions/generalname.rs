@@ -1,8 +1,8 @@
 use super::UnparsedObject;
-use crate::error::X509Result;
+use crate::error::{X509Error, X509Result};
 use crate::prelude::format_serial;
-use crate::traits::FromDer;
 use crate::x509::X509Name;
+use asn1_rs::FromDer;
 use der_parser::der::*;
 use der_parser::error::BerError;
 use der_parser::oid::Oid;
@@ -36,7 +36,7 @@ pub enum GeneralName<'a> {
     RegisteredID(Oid<'a>),
 }
 
-impl<'a> FromDer<'a> for GeneralName<'a> {
+impl<'a> FromDer<'a, X509Error> for GeneralName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_generalname(i).map_err(Err::convert)
     }

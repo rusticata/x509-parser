@@ -142,7 +142,6 @@ pub mod prelude;
 pub mod public_key;
 pub mod revocation_list;
 pub mod time;
-pub mod traits;
 pub mod utils;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
@@ -155,10 +154,10 @@ pub use der_parser::num_bigint;
 pub use nom;
 pub use oid_registry;
 
+use asn1_rs::FromDer;
 use certificate::X509Certificate;
 use error::X509Result;
 use revocation_list::CertificateRevocationList;
-use traits::FromDer;
 
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
 /// object.

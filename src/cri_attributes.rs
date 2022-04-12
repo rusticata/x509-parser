@@ -1,9 +1,9 @@
 use crate::{
     error::{X509Error, X509Result},
     extensions::X509Extension,
-    traits::FromDer,
 };
 
+use asn1_rs::FromDer;
 use der_parser::der::{der_read_element_header, parse_der_oid, parse_der_sequence_defined_g, Tag};
 use der_parser::error::BerError;
 use der_parser::oid::Oid;
@@ -20,7 +20,7 @@ pub struct X509CriAttribute<'a> {
     pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
 }
 
-impl<'a> FromDer<'a> for X509CriAttribute<'a> {
+impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
@@ -48,7 +48,7 @@ pub struct ExtensionRequest<'a> {
     pub extensions: Vec<X509Extension<'a>>,
 }
 
-impl<'a> FromDer<'a> for ExtensionRequest<'a> {
+impl<'a> FromDer<'a, X509Error> for ExtensionRequest<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parser::parse_extension_request(i).map_err(Err::convert)
     }
