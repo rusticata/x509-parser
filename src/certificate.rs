@@ -12,6 +12,7 @@ use crate::x509::{
     X509Version,
 };
 
+use asn1_rs::FromDer as Asn1FromDer;
 use core::ops::Deref;
 use der_parser::ber::{parse_ber_optional, BitStringObject, Tag};
 use der_parser::der::*;
@@ -128,13 +129,14 @@ impl<'a> X509Certificate<'a> {
     ) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
         use ring::signature;
         let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
-        if curve_oid == &OID_EC_P256 {
+        // let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
+        if curve_oid == OID_EC_P256 {
             match sha_len {
                 256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
                 384 => Some(&signature::ECDSA_P256_SHA384_ASN1),
                 _ => None,
             }
-        } else if curve_oid == &OID_NIST_EC_P384 {
+        } else if curve_oid == OID_NIST_EC_P384 {
             match sha_len {
                 256 => Some(&signature::ECDSA_P384_SHA256_ASN1),
                 384 => Some(&signature::ECDSA_P384_SHA384_ASN1),

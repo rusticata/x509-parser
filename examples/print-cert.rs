@@ -139,14 +139,13 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
         let s = match parameter.tag() {
             Tag::Oid => {
                 let oid = parameter.as_oid().unwrap();
-                format_oid(oid)
+                format_oid(&oid)
             }
             _ => format!("{}", parameter.tag()),
         };
         println!("{:indent$}Parameter: <PRESENT> {}", "", s, indent = level);
-        if let Ok(bytes) = parameter.as_slice() {
-            print_hex_dump(bytes, 32);
-        }
+        let bytes = parameter.as_bytes();
+        print_hex_dump(bytes, 32);
     } else {
         println!("{:indent$}Parameter: <ABSENT>", "", indent = level);
     }

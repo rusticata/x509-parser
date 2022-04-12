@@ -9,6 +9,7 @@ use crate::public_key::*;
 use crate::traits::FromDer;
 
 use self::asn1_rs::Oid;
+use asn1_rs::{Any, DerSequence, FromDer as Asn1FromDer};
 use data_encoding::HEXUPPER;
 use der_parser::ber::{parse_ber_integer, BitStringObject, MAX_OBJECT_SIZE};
 use der_parser::der::*;
@@ -17,7 +18,7 @@ use der_parser::num_bigint::BigUint;
 use der_parser::*;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::{complete, map, map_opt, map_res, opt};
+use nom::combinator::{complete, map, map_opt, map_res};
 use nom::multi::{many0, many1};
 use nom::{Err, Offset};
 use oid_registry::*;
@@ -304,28 +305,13 @@ impl<'a> FromDer<'a> for SubjectPublicKeyInfo<'a> {
 /// algorithm.  The OBJECT IDENTIFIER component identifies the algorithm
 /// (such as DSA with SHA-1).  The contents of the optional parameters
 /// field will vary according to the algorithm identified.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, DerSequence)]
+#[error(X509Error)]
 pub struct AlgorithmIdentifier<'a> {
+    #[map_err(|_| X509Error::InvalidAlgorithmIdentifier)]
     pub algorithm: Oid<'a>,
-    pub parameters: Option<DerObject<'a>>,
-}
-
-impl<'a> FromDer<'a> for AlgorithmIdentifier<'a> {
-    #[allow(clippy::needless_lifetimes)]
-    fn from_der(i: &[u8]) -> X509Result<AlgorithmIdentifier> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, algorithm) = map_res(parse_der_oid, |x| x.as_oid_val())(i)
-                .or(Err(X509Error::InvalidAlgorithmIdentifier))?;
-            let (i, parameters) =
-                opt(complete(parse_der))(i).or(Err(X509Error::InvalidAlgorithmIdentifier))?;
-
-            let alg = AlgorithmIdentifier {
-                algorithm,
-                parameters,
-            };
-            Ok((i, alg))
-        })(i)
-    }
+    #[optional]
+    pub parameters: Option<Any<'a>>,
 }
 
 /// X.509 Name (as used in `Issuer` and `Subject` fields)

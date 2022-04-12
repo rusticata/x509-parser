@@ -6,6 +6,7 @@ use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };
 
+use asn1_rs::FromDer as Asn1FromDer;
 use der_parser::ber::BitStringObject;
 use der_parser::der::*;
 use der_parser::oid::Oid;

@@ -81,9 +81,8 @@ fn print_x509_digest_algorithm(alg: &AlgorithmIdentifier, level: usize) {
             parameter.tag(),
             indent = level
         );
-        if let Ok(bytes) = parameter.as_slice() {
-            print_hex_dump(bytes, 32);
-        }
+        let bytes = parameter.as_bytes();
+        print_hex_dump(bytes, 32);
     } else {
         println!("{:indent$}Parameter: <ABSENT>", "", indent = level);
     }

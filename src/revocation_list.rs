@@ -7,6 +7,7 @@ use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
 
+use asn1_rs::FromDer as Asn1FromDer;
 use der_parser::ber::{BitStringObject, Tag};
 use der_parser::der::*;
 use der_parser::num_bigint::BigUint;
