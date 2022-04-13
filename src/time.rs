@@ -48,7 +48,7 @@ impl ASN1Time {
     /// Conversion to RFC2822 date can fail if date cannot be represented in this format,
     /// for example if year < 1900.
     ///
-    /// For a non-faillible conversion to string, use `.to_string()`.
+    /// For an infallible conversion to string, use `.to_string()`.
     #[inline]
     pub fn to_rfc2822(self) -> Result<String, String> {
         self.0
@@ -171,10 +171,7 @@ mod tests {
     fn test_time_to_string() {
         let d = datetime!(1 - 1 - 1 12:34:56 UTC);
         let t = ASN1Time::from(d);
-        assert_eq!(
-            t.to_string(),
-            "Jan  1 12:34:56 1 +00:00".to_string()
-        );
+        assert_eq!(t.to_string(), "Jan  1 12:34:56 1 +00:00".to_string());
     }
 
     #[test]

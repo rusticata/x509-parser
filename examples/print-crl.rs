@@ -47,12 +47,7 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension, level: usize) {
             );
         }
         ParsedExtension::InvalidityDate(date) => {
-            println!(
-                "{:indent$}Invalidity Date: {}",
-                "",
-                date.to_rfc2822().unwrap_or_else(|e| e),
-                indent = level
-            );
+            println!("{:indent$}Invalidity Date: {}", "", date, indent = level);
         }
         ParsedExtension::AuthorityKeyIdentifier(aki) => {
             println!(
@@ -104,7 +99,7 @@ fn print_revoked_certificate(revoked: &RevokedCertificate, level: usize) {
     println!(
         "{:indent$}Revocation Date: {}",
         "",
-        revoked.revocation_date.to_rfc2822().unwrap_or_else(|e| e),
+        revoked.revocation_date,
         indent = level + 2
     );
     println!("{:indent$}CRL Extensions:", "", indent = level + 2);
@@ -120,14 +115,11 @@ fn print_crl_info(crl: &CertificateRevocationList) {
     print_x509_digest_algorithm(&crl.signature_algorithm, 4);
     println!("  Issuer: {}", crl.issuer());
     // println!("  Serial: {}", crl.tbs_certificate.raw_serial_as_string());
-    println!(
-        "  Last Update: {}",
-        crl.last_update().to_rfc2822().unwrap_or_else(|e| e)
-    );
+    println!("  Last Update: {}", crl.last_update());
     println!(
         "  Next Update: {}",
         crl.next_update()
-            .map_or("NONE".to_owned(), |d| d.to_rfc2822().unwrap_or_else(|e| e))
+            .map_or_else(|| "NONE".to_string(), |d| d.to_string())
     );
     println!("{:indent$}CRL Extensions:", "", indent = 2);
     for ext in crl.extensions() {
