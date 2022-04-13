@@ -42,11 +42,13 @@ impl ASN1Time {
     }
 
     /// Returns an RFC 2822 date and time string such as `Tue, 1 Jul 2003 10:52:37 +0200`.
+    ///
+    /// Note: this will fail if year < 1900
     #[inline]
     pub fn to_rfc2822(self) -> String {
         self.0
             .format(&time::format_description::well_known::Rfc2822)
-            .unwrap()
+            .unwrap_or_else(|e| format!("Invalid date: {}", e))
     }
 }
 
@@ -140,5 +142,20 @@ impl Sub<ASN1Time> for ASN1Time {
 impl From<OffsetDateTime> for ASN1Time {
     fn from(dt: OffsetDateTime) -> Self {
         ASN1Time(dt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use time::macros::datetime;
+
+    use super::ASN1Time;
+
+    #[test]
+    fn test_nonrfc2822_date() {
+        // test year < 1900
+        let d = datetime!(1 - 1 - 1 00:00:00 UTC);
+        let t = ASN1Time::from(d);
+        assert!(t.to_rfc2822().contains("Invalid"));
     }
 }
