@@ -3,7 +3,9 @@ use der_parser::der::{parse_der_generalizedtime, parse_der_utctime, DerObject};
 use der_parser::error::{BerError, DerResult};
 use nom::branch::alt;
 use nom::combinator::{complete, map_res, opt};
+use std::fmt;
 use std::ops::{Add, Sub};
+use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
 
 use crate::error::{X509Error, X509Result};
@@ -45,6 +47,8 @@ impl ASN1Time {
     ///
     /// Conversion to RFC2822 date can fail if date cannot be represented in this format,
     /// for example if year < 1900.
+    ///
+    /// For a non-faillible conversion to string, use `.to_string()`.
     #[inline]
     pub fn to_rfc2822(self) -> Result<String, String> {
         self.0
@@ -94,6 +98,17 @@ fn parse_malformed_date(i: &[u8]) -> DerResult {
             Err(nom::Err::Error(BerError::BerValueError))
         }
         _ => Err(nom::Err::Error(BerError::unexpected_tag(None, hdr.tag()))),
+    }
+}
+
+impl fmt::Display for ASN1Time {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let format = format_description!("[month repr:short] [day padding:space] [hour]:[minute]:[second] [year padding:none] [offset_hour sign:mandatory]:[offset_minute]");
+        let s = self
+            .0
+            .format(format)
+            .unwrap_or_else(|e| format!("Invalid date: {}", e));
+        f.write_str(&s)
     }
 }
 
@@ -151,6 +166,16 @@ mod tests {
     use time::macros::datetime;
 
     use super::ASN1Time;
+
+    #[test]
+    fn test_time_to_string() {
+        let d = datetime!(1 - 1 - 1 12:34:56 UTC);
+        let t = ASN1Time::from(d);
+        assert_eq!(
+            t.to_string(),
+            "Jan  1 12:34:56 1 +00:00".to_string()
+        );
+    }
 
     #[test]
     fn test_nonrfc2822_date() {
