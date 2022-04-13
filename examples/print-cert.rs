@@ -163,8 +163,17 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     println!("  Subject: {}", x509.subject());
     println!("  Issuer: {}", x509.issuer());
     println!("  Validity:");
-    println!("    NotBefore: {}", x509.validity().not_before.to_rfc2822());
-    println!("    NotAfter:  {}", x509.validity().not_after.to_rfc2822());
+    println!(
+        "    NotBefore: {}",
+        x509.validity()
+            .not_before
+            .to_rfc2822()
+            .unwrap_or_else(|e| e)
+    );
+    println!(
+        "    NotAfter:  {}",
+        x509.validity().not_after.to_rfc2822().unwrap_or_else(|e| e)
+    );
     println!("    is_valid:  {}", x509.validity().is_valid());
     println!("  Subject Public Key Info:");
     print_x509_ski(x509.public_key());

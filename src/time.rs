@@ -43,12 +43,13 @@ impl ASN1Time {
 
     /// Returns an RFC 2822 date and time string such as `Tue, 1 Jul 2003 10:52:37 +0200`.
     ///
-    /// Note: this will fail if year < 1900
+    /// Conversion to RFC2822 date can fail if date cannot be represented in this format,
+    /// for example if year < 1900.
     #[inline]
-    pub fn to_rfc2822(self) -> String {
+    pub fn to_rfc2822(self) -> Result<String, String> {
         self.0
             .format(&time::format_description::well_known::Rfc2822)
-            .unwrap_or_else(|e| format!("Invalid date: {}", e))
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -156,6 +157,6 @@ mod tests {
         // test year < 1900
         let d = datetime!(1 - 1 - 1 00:00:00 UTC);
         let t = ASN1Time::from(d);
-        assert!(t.to_rfc2822().contains("Invalid"));
+        assert!(t.to_rfc2822().is_err());
     }
 }
