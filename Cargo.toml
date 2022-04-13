@@ -1,6 +1,6 @@
 [package]
 name = "x509-parser"
-version = "0.13.1"
+version = "0.13.2"
 description = "Parser for the X.509 v3 format (RFC 5280 certificates)"
 license = "MIT/Apache-2.0"
 keywords = ["X509","Certificate","parser","nom"]

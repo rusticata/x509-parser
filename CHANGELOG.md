@@ -6,6 +6,11 @@
 
 ### Thanks
 
+## 0.13.2
+
+### Fixed
+
+- Fix panic in ASN1Time::to_rfc2822() when year is less than 1900
 
 ## 0.13.1
 
