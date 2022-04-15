@@ -6,7 +6,6 @@
 use std::str;
 use nom::{IResult,Err};
 use num_bigint::BigUint;
-use time::{strptime,Tm};
 
 use der_parser::*;
 use der_parser::ber::{BerObjectContent, BerTag};
@@ -105,24 +104,14 @@ fn parse_choice_of_time(i:&[u8]) -> DerResult {
     alt!(i, complete!(parse_der_utctime) | complete!(parse_der_generalizedtime))
 }
 
-fn der_to_utctime(obj:DerObject) -> Result<Tm,X509Error> {
+fn der_to_utctime(obj:DerObject) -> Result<time::OffsetDateTime,X509Error> {
     if let BerObjectContent::UTCTime(s) = obj.content {
         let xs = str::from_utf8(s).or(Err(X509Error::InvalidDate))?;
-        match strptime(xs,"%y%m%d%H%M%S%Z") {
-            Ok(mut tm) => {
-                if tm.tm_year < 50 { tm.tm_year += 100; }
-                // eprintln!("date: {}", tm.rfc822());
-                Ok(tm)
-            },
-            Err(_e) => {
-                // eprintln!("Error: {:?}",_e);
-                Err(X509Error::InvalidDate)
-            },
-        }
+        parse_timestamp(xs, false)
     } else if let BerObjectContent::GeneralizedTime(s) = obj.content {
         let xs = str::from_utf8(s)
             .or(Err(X509Error::InvalidDate))?;
-        strptime(xs,"%Y%m%d%H%M%S%Z").or(Err(X509Error::InvalidDate))
+        parse_timestamp(xs, true)
     } else {
         Err(X509Error::InvalidDate)
     }
@@ -426,3 +415,69 @@ pub fn x509_parser<'a>(i:&'a[u8]) -> IResult<&'a[u8],X509Certificate<'a>,X509Err
     parse_x509_der(i)
 }
 
+fn parse_date_components(s: &str, full_year: bool) -> IResult<&str, (i32, u8, u8, u8, u8, u8)> {
+    use nom::bytes::complete::take;
+    use nom::combinator::map_res;
+    let parser = map_res(take(2usize), |s: &str| s.parse::<u8>());
+    let (s, year) = if full_year {
+        map_res(take(4usize), |s: &str| s.parse::<i32>())(s)?
+    } else {
+        map_res(take(2usize), |s: &str| s.parse::<i32>())(s)?
+    };
+    let (s, m) = parser(s)?;
+    let (s, d) = parser(s)?;
+    let (s, hh) = parser(s)?;
+    let (s, mm) = parser(s)?;
+    let (s, ss) = parser(s)?;
+    Ok((s, (year as i32, m, d, hh, mm, ss)))
+}
+
+fn build_datetime(
+    year: i32,
+    month: u8,
+    day: u8,
+    hour: u8,
+    minute: u8,
+    second: u8,
+) -> Option<time::OffsetDateTime> {
+    let month = match month_from_u8(month) {
+        Some(month) => month,
+        None => return None,
+    };
+    if let Ok(date) = time::Date::from_calendar_date(year as i32, month, day) {
+        if let Ok(time) = time::Time::from_hms(hour, minute, second) {
+            return Some(time::PrimitiveDateTime::new(date, time).assume_utc());
+        }
+    }
+    None
+}
+
+fn month_from_u8(n: u8) -> Option<time::Month> {
+    use time::Month;
+    match n {
+        1 => Some(Month::January),
+        2 => Some(Month::February),
+        3 => Some(Month::March),
+        4 => Some(Month::April),
+        5 => Some(Month::May),
+        6 => Some(Month::June),
+        7 => Some(Month::July),
+        8 => Some(Month::August),
+        9 => Some(Month::September),
+        10 => Some(Month::October),
+        11 => Some(Month::November),
+        12 => Some(Month::December),
+        _ => None,
+    }
+}
+
+fn parse_timestamp(s: &str, full_year: bool) -> Result<time::OffsetDateTime, X509Error> {
+    let (_zone, (year, month, day, hh, mm, ss)) = parse_date_components(s, full_year).map_err(|_| X509Error::InvalidDate)?;
+    let year = if !full_year {
+        if year >= 50 { year + 1900 } else { year + 2000 }
+    } else {
+        year
+    };
+    let dt = build_datetime(year, month, day, hh, mm, ss).ok_or(X509Error::InvalidDate)?;
+    Ok(dt)
+}
