@@ -41,12 +41,12 @@ fn test_x509_parser() {
             //
             let not_before = tbs_cert.validity.not_before;
             let not_after = tbs_cert.validity.not_after;
-            assert_eq!(not_before.tm_year, 102);
-            assert_eq!(not_before.tm_mon, 11);
-            assert_eq!(not_before.tm_mday, 13);
-            assert_eq!(not_after.tm_year, 120);
-            assert_eq!(not_after.tm_mon, 9);
-            assert_eq!(not_after.tm_mday, 17);
+            assert_eq!(not_before.year(), 2002);
+            assert_eq!(not_before.month(), time::Month::December);
+            assert_eq!(not_before.day(), 13);
+            assert_eq!(not_after.year(), 2020);
+            assert_eq!(not_after.month(), time::Month::October);
+            assert_eq!(not_after.day(), 17);
             //
             let expected_extensions = vec![
                 X509Extension {
@@ -141,20 +141,21 @@ fn test_crl_parse() {
 
             let this_update = tbs_cert_list.this_update;
             let next_update = tbs_cert_list.next_update.unwrap();
-            assert_eq!(this_update.tm_year, 113);
-            assert_eq!(this_update.tm_mon, 1);
-            assert_eq!(this_update.tm_mday, 18);
-            assert_eq!(next_update.tm_year, 113);
-            assert_eq!(next_update.tm_mon, 1);
-            assert_eq!(next_update.tm_mday, 18);
+            assert_eq!(this_update.year(), 2013);
+            assert_eq!(this_update.month(), time::Month::February);
+            assert_eq!(this_update.day(), 18);
+            assert_eq!(next_update.year(), 2013);
+            assert_eq!(next_update.month(), time::Month::February);
+            assert_eq!(next_update.day(), 18);
+
+            let expected_date = time::Date::from_calendar_date(2013, time::Month::February, 18).unwrap();
+            let expected_time = time::Time::from_hms(10, 22, 12).unwrap();
+            let expected_datetime = time::PrimitiveDateTime::new(expected_date, expected_time).assume_utc();
 
             let revoked_certs = &tbs_cert_list.revoked_certificates;
             assert_eq!(revoked_certs[0], x509_parser::RevokedCertificate {
                 user_certificate: 1341767u32.into(),
-                revocation_date: time::Tm {
-                    tm_sec: 12, tm_min: 22, tm_hour: 10, tm_mon: 1, tm_mday: 18, tm_year: 113,
-                    tm_wday: 0, tm_yday: 0, tm_isdst: 0, tm_utcoff: 0, tm_nsec: 0,
-                },
+                revocation_date: expected_datetime,
                 extensions: vec![
                     X509Extension {
                         oid: Oid::from(&[2, 5, 29, 21]),
@@ -227,10 +228,7 @@ fn test_crl_parse_minimal() {
             let expected_revocations = &[
                 x509_parser::RevokedCertificate {
                     user_certificate: 42u32.into(),
-                    revocation_date: time::Tm {
-                        tm_nsec: 0, tm_sec: 0, tm_min: 0, tm_hour: 0, tm_mon: 0, tm_year: 70,
-                        tm_wday: 0, tm_mday: 1, tm_yday: 0, tm_isdst: 0, tm_utcoff: 0,
-                    },
+                    revocation_date: time::OffsetDateTime::UNIX_EPOCH,
                     extensions: vec![]
                 }
             ];
