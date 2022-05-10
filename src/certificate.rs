@@ -99,10 +99,10 @@ impl<'a> X509Certificate<'a> {
             } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
                 &signature::RSA_PKCS1_2048_8192_SHA512
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
-                self.get_ec_curve_sha(&self.public_key().algorithm, 256)
+                self.get_ec_curve_sha(&spki.algorithm, 256)
                     .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
             } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
-                self.get_ec_curve_sha(&self.public_key().algorithm, 384)
+                self.get_ec_curve_sha(&spki.algorithm, 384)
                     .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
             } else if *signature_alg == OID_SIG_ED25519 {
                 &signature::ED25519
