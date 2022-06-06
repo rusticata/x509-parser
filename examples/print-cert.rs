@@ -335,10 +335,16 @@ pub fn main() -> io::Result<()> {
         } else {
             // try as PEM
             for (n, pem) in Pem::iter_from_buffer(&data).enumerate() {
-                let pem = pem.expect("Could not decode the PEM file");
-                let data = &pem.contents;
-                println!("Certificate [{}]", n);
-                handle_certificate(&file_name, data)?;
+                match pem {
+                    Ok(pem) => {
+                        let data = &pem.contents;
+                        println!("Certificate [{}]", n);
+                        handle_certificate(&file_name, data)?;
+                    }
+                    Err(e) => {
+                        eprintln!("Error while decoding PEM entry {}: {}", n, e);
+                    }
+                }
             }
         }
     }
