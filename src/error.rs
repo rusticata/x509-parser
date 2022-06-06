@@ -70,6 +70,21 @@ pub enum X509Error {
     NomError(ErrorKind),
 }
 
+impl From<nom::Err<BerError>> for X509Error {
+    fn from(e: nom::Err<BerError>) -> Self {
+        Self::Der(BerError::from(e))
+    }
+}
+
+impl From<nom::Err<X509Error>> for X509Error {
+    fn from(e: nom::Err<X509Error>) -> Self {
+        match e {
+            nom::Err::Error(e) | nom::Err::Failure(e) => e,
+            nom::Err::Incomplete(i) => Self::Der(BerError::Incomplete(i)),
+        }
+    }
+}
+
 impl From<X509Error> for nom::Err<X509Error> {
     fn from(e: X509Error) -> nom::Err<X509Error> {
         nom::Err::Error(e)
