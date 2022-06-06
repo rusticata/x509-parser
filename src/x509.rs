@@ -313,6 +313,26 @@ pub struct AlgorithmIdentifier<'a> {
     pub parameters: Option<Any<'a>>,
 }
 
+impl<'a> AlgorithmIdentifier<'a> {
+    /// Create a new `AlgorithmIdentifier`
+    pub const fn new(algorithm: Oid<'a>, parameters: Option<Any<'a>>) -> Self {
+        Self {
+            algorithm,
+            parameters,
+        }
+    }
+
+    /// Get the algorithm OID
+    pub const fn oid(&'a self) -> &'a Oid {
+        &self.algorithm
+    }
+
+    /// Get a reference to the algorithm parameters, if present
+    pub const fn parameters(&'a self) -> Option<&'a Any> {
+        self.parameters.as_ref()
+    }
+}
+
 /// X.509 Name (as used in `Issuer` and `Subject` fields)
 ///
 /// The Name describes a hierarchical name composed of attributes, such
