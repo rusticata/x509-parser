@@ -6,8 +6,8 @@ use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
 
-use asn1_rs::FromDer;
-use der_parser::ber::{BitStringObject, Tag};
+use asn1_rs::{BitString, FromDer};
+use der_parser::ber::Tag;
 use der_parser::der::*;
 use der_parser::num_bigint::BigUint;
 use der_parser::oid::Oid;
@@ -48,7 +48,7 @@ use std::collections::HashMap;
 pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitStringObject<'a>,
+    pub signature_value: BitString<'a>,
 }
 
 impl<'a> CertificateRevocationList<'a> {

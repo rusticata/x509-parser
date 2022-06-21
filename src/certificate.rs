@@ -11,9 +11,9 @@ use crate::x509::{
     X509Version,
 };
 
-use asn1_rs::FromDer;
+use asn1_rs::{BitString, FromDer, OptTaggedExplicit};
 use core::ops::Deref;
-use der_parser::ber::{parse_ber_optional, BitStringObject, Tag};
+use der_parser::ber::Tag;
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
@@ -65,7 +65,7 @@ use time::Duration;
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitStringObject<'a>,
+    pub signature_value: BitString<'a>,
 }
 
 impl<'a> X509Certificate<'a> {
@@ -110,9 +110,10 @@ impl<'a> X509Certificate<'a> {
                 return Err(X509Error::SignatureUnsupportedAlgorithm);
             };
         // get public key
-        let key = signature::UnparsedPublicKey::new(verification_alg, spki.subject_public_key.data);
+        let key =
+            signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
         // verify signature
-        let sig = self.signature_value.data;
+        let sig = &self.signature_value.data;
         key.verify(self.tbs_certificate.raw, sig)
             .or(Err(X509Error::SignatureVerificationError))
     }
@@ -770,35 +771,25 @@ impl<'a> FromDer<'a, X509Error> for Validity {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct UniqueIdentifier<'a>(pub BitStringObject<'a>);
+pub struct UniqueIdentifier<'a>(pub BitString<'a>);
 
 impl<'a> UniqueIdentifier<'a> {
     // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
     fn from_der_issuer(i: &'a [u8]) -> X509Result<Option<Self>> {
-        Self::parse(i, 1).map_err(|_| X509Error::InvalidIssuerUID.into())
+        Self::parse::<1>(i).map_err(|_| X509Error::InvalidIssuerUID.into())
     }
 
     // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
     fn from_der_subject(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
-        Self::parse(i, 2).map_err(|_| X509Error::InvalidSubjectUID.into())
+        Self::parse::<2>(i).map_err(|_| X509Error::InvalidSubjectUID.into())
     }
 
     // Parse a [tag] UniqueIdentifier OPTIONAL
     //
     // UniqueIdentifier  ::=  BIT STRING
-    fn parse(i: &[u8], tag: u32) -> BerResult<Option<UniqueIdentifier>> {
-        let (rem, obj) = parse_ber_optional(parse_der_tagged_implicit(
-            tag,
-            parse_der_content(Tag::BitString),
-        ))(i)?;
-        let unique_id = match obj.content {
-            DerObjectContent::Optional(None) => Ok(None),
-            DerObjectContent::Optional(Some(o)) => match o.content {
-                DerObjectContent::BitString(_, b) => Ok(Some(UniqueIdentifier(b.to_owned()))),
-                _ => Err(BerError::BerTypeError),
-            },
-            _ => Err(BerError::BerTypeError),
-        }?;
+    fn parse<const TAG: u32>(i: &[u8]) -> BerResult<Option<UniqueIdentifier>> {
+        let (rem, unique_id) = OptTaggedExplicit::<BitString, Error, TAG>::from_der(i)?;
+        let unique_id = unique_id.map(|u| UniqueIdentifier(u.into_inner()));
         Ok((rem, unique_id))
     }
 }

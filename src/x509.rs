@@ -7,10 +7,9 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
 
-use self::asn1_rs::Oid;
-use asn1_rs::{Any, DerSequence, FromDer};
+use asn1_rs::{Any, BitString, DerSequence, FromDer, Oid};
 use data_encoding::HEXUPPER;
-use der_parser::ber::{parse_ber_integer, BitStringObject, MAX_OBJECT_SIZE};
+use der_parser::ber::{parse_ber_integer, MAX_OBJECT_SIZE};
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
@@ -225,7 +224,7 @@ impl<'a> FromDer<'a, X509Error> for RelativeDistinguishedName<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
-    pub subject_public_key: BitStringObject<'a>,
+    pub subject_public_key: BitString<'a>,
     /// A raw unparsed PKIX, ASN.1 DER form (see RFC 5280, Section 4.1).
     ///
     /// Note: use the [`Self::parsed()`] function to parse this object.
@@ -235,32 +234,32 @@ pub struct SubjectPublicKeyInfo<'a> {
 impl<'a> SubjectPublicKeyInfo<'a> {
     /// Attempt to parse the public key, and return the parsed version or an error
     pub fn parsed(&self) -> Result<PublicKey, X509Error> {
-        let b = self.subject_public_key.data;
+        let b = &self.subject_public_key.data;
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
-            let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
+            let (_, key) = RSAPublicKey::from_der(&b).map_err(|_| X509Error::InvalidSPKI)?;
             Ok(PublicKey::RSA(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_EC_PUBLIC_KEY {
-            let key = ECPoint::from(b);
+            let key = ECPoint::from(b.as_ref());
             Ok(PublicKey::EC(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_DSA {
-            let s = parse_der_integer(b)
+            let s = parse_der_integer(&b)
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::DSA(s))
         } else if self.algorithm.algorithm == OID_GOST_R3410_2001 {
-            let s = parse_der_octetstring(b)
+            let s = parse_der_octetstring(&b)
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::GostR3410(s))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_GOST_R3410_2012_256
             || self.algorithm.algorithm == OID_KEY_TYPE_GOST_R3410_2012_512
         {
-            let s = parse_der_octetstring(b)
+            let s = parse_der_octetstring(&b)
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::GostR3410_2012(s))
         } else {
-            Ok(PublicKey::Unknown(b))
+            Ok(PublicKey::Unknown(&b))
         }
     }
 }
@@ -271,13 +270,7 @@ impl<'a> FromDer<'a, X509Error> for SubjectPublicKeyInfo<'a> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, subject_public_key) = map_res(parse_der_bitstring, |x: DerObject<'a>| {
-                match x.content {
-                    DerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
-                    _ => Err(BerError::BerTypeError),
-                }
-            })(i)
-            .or(Err(X509Error::InvalidSPKI))?;
+            let (i, subject_public_key) = BitString::from_der(i).or(Err(X509Error::InvalidSPKI))?;
             let len = start_i.offset(i);
             let raw = &start_i[..len];
             let spki = SubjectPublicKeyInfo {
@@ -574,14 +567,8 @@ fn x509name_to_string(
     })
 }
 
-pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitStringObject> {
-    map_res(parse_der_bitstring, |x: DerObject| {
-        match x.content {
-            DerObjectContent::BitString(_, ref b) => Ok(b.to_owned()), // XXX padding ignored
-            _ => Err(BerError::BerTypeError),
-        }
-    })(i)
-    .or(Err(Err::Error(X509Error::InvalidSignatureValue)))
+pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitString> {
+    BitString::from_der(i).or(Err(Err::Error(X509Error::InvalidSignatureValue)))
 }
 
 pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {

@@ -5,8 +5,7 @@ use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };
 
-use asn1_rs::FromDer;
-use der_parser::ber::BitStringObject;
+use asn1_rs::{BitString, FromDer};
 use der_parser::der::*;
 use der_parser::oid::Oid;
 use der_parser::*;
@@ -20,7 +19,7 @@ use std::collections::HashMap;
 pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitStringObject<'a>,
+    pub signature_value: BitString<'a>,
 }
 
 impl<'a> X509CertificationRequest<'a> {
@@ -65,10 +64,11 @@ impl<'a> X509CertificationRequest<'a> {
                 return Err(X509Error::SignatureUnsupportedAlgorithm);
             };
         // get public key
-        let key = signature::UnparsedPublicKey::new(verification_alg, spki.subject_public_key.data);
+        let key =
+            signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
         // verify signature
-        let sig = self.signature_value.data;
-        key.verify(self.certification_request_info.raw, sig)
+        let sig = &self.signature_value.data;
+        key.verify(self.certification_request_info.raw, &sig)
             .or(Err(X509Error::SignatureVerificationError))
     }
 }
