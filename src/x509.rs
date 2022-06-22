@@ -7,7 +7,7 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
 
-use asn1_rs::{Any, BitString, DerSequence, FromDer, Oid};
+use asn1_rs::{Any, BitString, DerSequence, FromDer, Oid, ParseResult};
 use data_encoding::HEXUPPER;
 use der_parser::ber::{parse_ber_integer, MAX_OBJECT_SIZE};
 use der_parser::der::*;
@@ -16,12 +16,11 @@ use der_parser::num_bigint::BigUint;
 use der_parser::*;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::{complete, map, map_opt, map_res};
+use nom::combinator::{complete, map, map_opt};
 use nom::multi::{many0, many1};
 use nom::{Err, Offset};
 use oid_registry::*;
 use rusticata_macros::newtype_enum;
-use std::convert::TryFrom;
 use std::fmt;
 use std::iter::FromIterator;
 
@@ -77,13 +76,13 @@ newtype_enum! {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AttributeTypeAndValue<'a> {
     attr_type: Oid<'a>,
-    attr_value: DerObject<'a>, // ANY -- DEFINED BY AttributeType
+    attr_value: Any<'a>, // ANY -- DEFINED BY AttributeType
 }
 
 impl<'a> AttributeTypeAndValue<'a> {
     /// Builds a new `AttributeTypeAndValue`
     #[inline]
-    pub const fn new(attr_type: Oid<'a>, attr_value: DerObject<'a>) -> Self {
+    pub const fn new(attr_type: Oid<'a>, attr_value: Any<'a>) -> Self {
         AttributeTypeAndValue {
             attr_type,
             attr_value,
@@ -98,7 +97,7 @@ impl<'a> AttributeTypeAndValue<'a> {
 
     /// Returns the attribute value, as raw `DerObject`
     #[inline]
-    pub const fn attr_value(&self) -> &DerObject {
+    pub const fn attr_value(&self) -> &Any {
         &self.attr_value
     }
 
@@ -110,34 +109,36 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// Only NumericString, PrintableString, UTF8String and IA5String
     /// are considered here. Other string types can be read using `as_slice`.
     #[inline]
-    pub fn as_str(&self) -> Result<&'a str, X509Error> {
-        self.attr_value.as_str().map_err(|e| e.into())
+    pub fn as_str(&'a self) -> Result<&'a str, X509Error> {
+        // TODO: replace this with helper function, when it is added to asn1-rs
+        match self.attr_value.tag() {
+            Tag::NumericString | Tag::PrintableString | Tag::Utf8String | Tag::Ia5String => {
+                let s = core::str::from_utf8(self.attr_value.data)
+                    .map_err(|_| X509Error::InvalidAttributes)?;
+                Ok(s)
+            }
+            t => Err(X509Error::Der(Error::unexpected_tag(None, t))),
+        }
     }
 
-    /// Attempt to get the content as a slice.
-    /// This can fail if the object does not contain a type directly equivalent to a slice (e.g a
-    /// sequence).
-    ///
-    /// Note: the [`TryFrom`] trait is implemented for `&[u8]`, so this is equivalent to `attr.try_into()`.
+    /// Get the content as a slice.
     #[inline]
-    pub fn as_slice(&self) -> Result<&'a [u8], X509Error> {
-        self.attr_value.as_slice().map_err(|e| e.into())
+    pub fn as_slice(&'a self) -> &'a [u8] {
+        self.attr_value.as_bytes()
     }
 }
 
-impl<'a> TryFrom<AttributeTypeAndValue<'a>> for &'a str {
+impl<'a, 'b> core::convert::TryFrom<&'a AttributeTypeAndValue<'b>> for &'a str {
     type Error = X509Error;
 
-    fn try_from(value: AttributeTypeAndValue<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: &'a AttributeTypeAndValue<'b>) -> Result<Self, Self::Error> {
         value.attr_value.as_str().map_err(|e| e.into())
     }
 }
 
-impl<'a> TryFrom<AttributeTypeAndValue<'a>> for &'a [u8] {
-    type Error = X509Error;
-
-    fn try_from(value: AttributeTypeAndValue<'a>) -> Result<Self, Self::Error> {
-        value.attr_value.as_slice().map_err(|e| e.into())
+impl<'a, 'b> From<&'a AttributeTypeAndValue<'b>> for &'a [u8] {
+    fn from(value: &'a AttributeTypeAndValue<'b>) -> Self {
+        value.as_slice()
     }
 }
 
@@ -147,8 +148,7 @@ impl<'a> TryFrom<AttributeTypeAndValue<'a>> for &'a [u8] {
 impl<'a> FromDer<'a, X509Error> for AttributeTypeAndValue<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|i, _| {
-            let (i, attr_type) = map_res(parse_der_oid, |x: DerObject<'a>| x.as_oid_val())(i)
-                .or(Err(X509Error::InvalidX509Name))?;
+            let (i, attr_type) = Oid::from_der(i).or(Err(X509Error::InvalidX509Name))?;
             let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
             let attr = AttributeTypeAndValue::new(attr_type, attr_value);
             Ok((i, attr))
@@ -158,15 +158,15 @@ impl<'a> FromDer<'a, X509Error> for AttributeTypeAndValue<'a> {
 
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
-fn parse_attribute_value(i: &[u8]) -> DerResult {
-    alt((parse_der, parse_malformed_string))(i)
+fn parse_attribute_value(i: &[u8]) -> ParseResult<Any, Error> {
+    alt((Any::from_der, parse_malformed_string))(i)
 }
 
-fn parse_malformed_string(i: &[u8]) -> DerResult {
-    let (rem, hdr) = der_read_element_header(i)?;
+fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {
+    let (rem, hdr) = Header::from_der(i)?;
     let len = hdr.length().definite()?;
     if len > MAX_OBJECT_SIZE {
-        return Err(nom::Err::Error(BerError::InvalidLength));
+        return Err(nom::Err::Error(Error::InvalidLength));
     }
     match hdr.tag() {
         Tag::PrintableString => {
@@ -174,12 +174,15 @@ fn parse_malformed_string(i: &[u8]) -> DerResult {
             // Accept it without validating charset, because some tools do not respect the charset
             // restrictions (for ex. they use '*' while explicingly disallowed)
             let (rem, data) = take(len as usize)(rem)?;
-            let s = std::str::from_utf8(data).map_err(|_| BerError::BerValueError)?;
-            let content = DerObjectContent::PrintableString(s);
-            let obj = DerObject::from_header_and_content(hdr, content);
+            // check valid encoding
+            let _ = std::str::from_utf8(data).map_err(|_| Error::BerValueError)?;
+            let obj = Any::new(hdr, data);
             Ok((rem, obj))
         }
-        _ => Err(nom::Err::Error(BerError::InvalidTag)),
+        t => Err(nom::Err::Error(Error::unexpected_tag(
+            Some(Tag::PrintableString),
+            t,
+        ))),
     }
 }
 
@@ -236,30 +239,30 @@ impl<'a> SubjectPublicKeyInfo<'a> {
     pub fn parsed(&self) -> Result<PublicKey, X509Error> {
         let b = &self.subject_public_key.data;
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
-            let (_, key) = RSAPublicKey::from_der(&b).map_err(|_| X509Error::InvalidSPKI)?;
+            let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
             Ok(PublicKey::RSA(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_EC_PUBLIC_KEY {
             let key = ECPoint::from(b.as_ref());
             Ok(PublicKey::EC(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_DSA {
-            let s = parse_der_integer(&b)
+            let s = parse_der_integer(b)
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::DSA(s))
         } else if self.algorithm.algorithm == OID_GOST_R3410_2001 {
-            let s = parse_der_octetstring(&b)
+            let s = parse_der_octetstring(b)
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::GostR3410(s))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_GOST_R3410_2012_256
             || self.algorithm.algorithm == OID_KEY_TYPE_GOST_R3410_2012_512
         {
-            let s = parse_der_octetstring(&b)
+            let s = parse_der_octetstring(b)
                 .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
                 .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::GostR3410_2012(s))
         } else {
-            Ok(PublicKey::Unknown(&b))
+            Ok(PublicKey::Unknown(b))
         }
     }
 }
@@ -515,17 +518,26 @@ impl Default for ReasonCode {
 
 // Attempt to convert attribute to string. If type is not a string, return value is the hex
 // encoding of the attribute value
-fn attribute_value_to_string(attr: &DerObject, _attr_type: &Oid) -> Result<String, X509Error> {
-    match attr.content {
-        DerObjectContent::NumericString(s)
-        | DerObjectContent::PrintableString(s)
-        | DerObjectContent::UTF8String(s)
-        | DerObjectContent::IA5String(s) => Ok(s.to_owned()),
+fn attribute_value_to_string(attr: &Any, _attr_type: &Oid) -> Result<String, X509Error> {
+    // TODO: replace this with helper function, when it is added to asn1-rs
+    match attr.tag() {
+        Tag::NumericString
+        | Tag::BmpString
+        | Tag::VisibleString
+        | Tag::PrintableString
+        | Tag::GeneralString
+        | Tag::ObjectDescriptor
+        | Tag::GraphicString
+        | Tag::T61String
+        | Tag::VideotexString
+        | Tag::Utf8String
+        | Tag::Ia5String => {
+            let s = core::str::from_utf8(attr.data).map_err(|_| X509Error::InvalidAttributes)?;
+            Ok(s.to_owned())
+        }
         _ => {
             // type is not a string, get slice and convert it to base64
-            attr.as_slice()
-                .map(|s| HEXUPPER.encode(s))
-                .or(Err(X509Error::InvalidX509Name))
+            Ok(HEXUPPER.encode(attr.as_bytes()))
         }
     }
 }
@@ -589,8 +601,6 @@ fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use der_parser::ber::BerObjectContent;
-    use der_parser::oid;
 
     #[test]
     fn test_x509_name() {
@@ -598,39 +608,34 @@ mod tests {
             rdn_seq: vec![
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: oid!(2.5.4 .6), // countryName
-                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString("FR")),
+                        attr_type: oid! {2.5.4.6}, // countryName
+                        attr_value: Any::from_tag_and_data(Tag::PrintableString, b"FR"),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: oid!(2.5.4 .8), // stateOrProvinceName
-                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                            "Some-State",
-                        )),
+                        attr_type: oid! {2.5.4.8}, // stateOrProvinceName
+                        attr_value: Any::from_tag_and_data(Tag::PrintableString, b"Some-State"),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
-                        attr_type: oid!(2.5.4 .10), // organizationName
-                        attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                            "Internet Widgits Pty Ltd",
-                        )),
+                        attr_type: oid! {2.5.4.10}, // organizationName
+                        attr_value: Any::from_tag_and_data(
+                            Tag::PrintableString,
+                            b"Internet Widgits Pty Ltd",
+                        ),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![
                         AttributeTypeAndValue {
-                            attr_type: oid!(2.5.4 .3), // CN
-                            attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                                "Test1",
-                            )),
+                            attr_type: oid! {2.5.4.3}, // CN
+                            attr_value: Any::from_tag_and_data(Tag::PrintableString, b"Test1"),
                         },
                         AttributeTypeAndValue {
-                            attr_type: oid!(2.5.4 .3), // CN
-                            attr_value: DerObject::from_obj(BerObjectContent::PrintableString(
-                                "Test2",
-                            )),
+                            attr_type: oid! {2.5.4.3}, // CN
+                            attr_value: Any::from_tag_and_data(Tag::PrintableString, b"Test2"),
                         },
                     ],
                 },
