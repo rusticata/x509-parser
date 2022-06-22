@@ -37,8 +37,9 @@ impl ASN1Time {
     }
 
     /// Makes a new `ASN1Time` from the number of non-leap seconds since Epoch
-    pub fn from_timestamp(secs: i64) -> Self {
-        ASN1Time(OffsetDateTime::from_unix_timestamp(secs).unwrap())
+    pub fn from_timestamp(secs: i64) -> Result<Self, X509Error> {
+        let dt = OffsetDateTime::from_unix_timestamp(secs).map_err(|_| X509Error::InvalidDate)?;
+        Ok(ASN1Time(dt))
     }
 
     /// Returns the number of non-leap seconds since January 1, 1970 0:00:00 UTC (aka "UNIX timestamp").
