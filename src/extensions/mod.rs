@@ -1,7 +1,7 @@
 //! X.509 Extensions objects and types
 
 use crate::error::{X509Error, X509Result};
-use crate::time::{der_to_utctime, ASN1Time};
+use crate::time::ASN1Time;
 use crate::utils::format_serial;
 use crate::x509::{ReasonCode, RelativeDistinguishedName};
 
@@ -590,6 +590,8 @@ impl fmt::Display for ReasonFlags {
 
 pub(crate) mod parser {
     use crate::extensions::*;
+    use crate::time::ASN1Time;
+    use asn1_rs::{GeneralizedTime, ParseResult};
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
@@ -1103,9 +1105,10 @@ pub(crate) mod parser {
     }
 
     // invalidityDate ::=  GeneralizedTime
-    fn parse_invalidity_date<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
-        let (rest, date) = map_res(parse_der_generalizedtime, der_to_utctime)(i)?;
-        Ok((rest, ParsedExtension::InvalidityDate(date)))
+    fn parse_invalidity_date<'a>(i: &'a [u8]) -> ParseResult<'a, ParsedExtension> {
+        let (rest, t) = GeneralizedTime::from_der(i)?;
+        let dt = t.utc_datetime()?;
+        Ok((rest, ParsedExtension::InvalidityDate(ASN1Time::new(dt))))
     }
 
     // CRLNumber ::= INTEGER (0..MAX)

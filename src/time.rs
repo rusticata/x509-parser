@@ -1,13 +1,10 @@
-use asn1_rs::FromDer;
-use der_parser::ber::{ber_read_element_header, BerObjectContent, Tag, MAX_OBJECT_SIZE};
-use der_parser::der::{parse_der_generalizedtime, parse_der_utctime, DerObject};
-use der_parser::error::{BerError, DerResult};
-use nom::branch::alt;
-use nom::combinator::{complete, map_res, opt};
+use asn1_rs::nom::Err;
+use asn1_rs::{Error, FromDer, GeneralizedTime, Header, ParseResult, UtcTime};
+use der_parser::ber::{Tag, MAX_OBJECT_SIZE};
 use std::fmt;
 use std::ops::{Add, Sub};
 use time::macros::format_description;
-use time::{Date, Duration, OffsetDateTime};
+use time::{Duration, OffsetDateTime};
 
 use crate::error::{X509Error, X509Result};
 
@@ -17,8 +14,21 @@ pub struct ASN1Time(OffsetDateTime);
 
 impl ASN1Time {
     pub(crate) fn from_der_opt(i: &[u8]) -> X509Result<Option<Self>> {
-        opt(map_res(parse_choice_of_time, der_to_utctime))(i)
-            .map_err(|_| X509Error::InvalidDate.into())
+        if i.is_empty() {
+            return Ok((i, None));
+        }
+        match parse_choice_of_time(i) {
+            Ok((rem, dt)) => Ok((rem, Some(ASN1Time(dt)))),
+            Err(Err::Error(Error::InvalidTag)) | Err(Err::Error(Error::UnexpectedTag { .. })) => {
+                Ok((i, None))
+            }
+            Err(_) => Err(Err::Error(X509Error::InvalidDate)),
+        }
+    }
+
+    #[inline]
+    pub const fn new(dt: OffsetDateTime) -> Self {
+        Self(dt)
     }
 
     #[inline]
@@ -59,28 +69,33 @@ impl ASN1Time {
 
 impl<'a> FromDer<'a, X509Error> for ASN1Time {
     fn from_der(i: &[u8]) -> X509Result<Self> {
-        map_res(parse_choice_of_time, der_to_utctime)(i).map_err(|_| X509Error::InvalidDate.into())
+        let (rem, dt) = parse_choice_of_time(i).map_err(|_| X509Error::InvalidDate)?;
+        Ok((rem, ASN1Time(dt)))
     }
 }
 
-fn parse_choice_of_time(i: &[u8]) -> DerResult {
-    alt((
-        complete(parse_der_utctime),
-        complete(parse_der_generalizedtime),
-        complete(parse_malformed_date),
-    ))(i)
+pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<OffsetDateTime> {
+    if let Ok((rem, t)) = UtcTime::from_der(i) {
+        let dt = t.utc_adjusted_datetime()?;
+        return Ok((rem, dt));
+    }
+    if let Ok((rem, t)) = GeneralizedTime::from_der(i) {
+        let dt = t.utc_datetime()?;
+        return Ok((rem, dt));
+    }
+    parse_malformed_date(i)
 }
 
 // allow relaxed parsing of UTCTime (ex: 370116130016+0000)
-fn parse_malformed_date(i: &[u8]) -> DerResult {
+fn parse_malformed_date(i: &[u8]) -> ParseResult<OffsetDateTime> {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     // fn check_char(b: &u8) -> bool {
     //     (0x20 <= *b && *b <= 0x7f) || (*b == b'+')
     // }
-    let (_rem, hdr) = ber_read_element_header(i)?;
+    let (_rem, hdr) = Header::from_der(i)?;
     let len = hdr.length().definite()?;
     if len > MAX_OBJECT_SIZE {
-        return Err(nom::Err::Error(BerError::InvalidLength));
+        return Err(nom::Err::Error(Error::InvalidLength));
     }
     match hdr.tag() {
         Tag::UtcTime => {
@@ -95,9 +110,9 @@ fn parse_malformed_date(i: &[u8]) -> DerResult {
             // let content = BerObjectContent::UTCTime(s);
             // let obj = DerObject::from_header_and_content(hdr, content);
             // Ok((rem, obj))
-            Err(nom::Err::Error(BerError::BerValueError))
+            Err(nom::Err::Error(Error::BerValueError))
         }
-        _ => Err(nom::Err::Error(BerError::unexpected_tag(None, hdr.tag()))),
+        _ => Err(nom::Err::Error(Error::unexpected_tag(None, hdr.tag()))),
     }
 }
 
@@ -109,27 +124,6 @@ impl fmt::Display for ASN1Time {
             .format(format)
             .unwrap_or_else(|e| format!("Invalid date: {}", e));
         f.write_str(&s)
-    }
-}
-
-pub(crate) fn der_to_utctime(obj: DerObject) -> Result<ASN1Time, X509Error> {
-    match obj.content {
-        BerObjectContent::UTCTime(s) => {
-            let dt = s.to_datetime().map_err(|_| X509Error::InvalidDate)?;
-            let year = dt.year();
-            // RFC 5280 rules for interpreting the year
-            let year = if year >= 50 { year + 1900 } else { year + 2000 };
-            let date = Date::from_calendar_date(year, dt.month(), dt.day())
-                .map_err(|_| X509Error::InvalidDate)?;
-            let dt = dt.replace_date(date);
-
-            Ok(ASN1Time(dt))
-        }
-        BerObjectContent::GeneralizedTime(s) => {
-            let dt = s.to_datetime().map_err(|_| X509Error::InvalidDate)?;
-            Ok(ASN1Time(dt))
-        }
-        _ => Err(X509Error::InvalidDate),
     }
 }
 
