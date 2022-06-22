@@ -111,7 +111,7 @@ pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, BerError> {
 }
 
 pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage, BerError> {
-    let (ret, seq) = parse_der_sequence_of(parse_der_oid)(i)?;
+    let (ret, seq) = <Vec<Oid>>::from_der(i)?;
     let mut seen = std::collections::HashSet::new();
     let mut eku = ExtendedKeyUsage {
         any: false,
@@ -123,8 +123,7 @@ pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsag
         ocsp_signing: false,
         other: Vec::new(),
     };
-    for oid in seq.as_sequence().map_err(nom::Err::Failure)?.iter() {
-        let oid = oid.as_oid_val().map_err(nom::Err::Failure)?;
+    for oid in &seq {
         if !seen.insert(oid.clone()) {
             continue;
         }
@@ -144,7 +143,7 @@ pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsag
         } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.9) {
             eku.ocsp_signing = true;
         } else {
-            eku.other.push(oid);
+            eku.other.push(oid.clone());
         }
     }
     Ok((ret, eku))

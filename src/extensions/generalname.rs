@@ -77,8 +77,7 @@ pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralNam
     let name = match hdr.tag().0 {
         0 => {
             // otherName SEQUENCE { OID, [0] explicit any defined by oid }
-            let (any, oid) = parse_der_oid(rest)?;
-            let oid = oid.as_oid_val().map_err(nom::Err::Failure)?;
+            let (any, oid) = Oid::from_der(rest)?;
             GeneralName::OtherName(oid, any)
         }
         1 => GeneralName::RFC822Name(ia5str(rest, hdr)?),

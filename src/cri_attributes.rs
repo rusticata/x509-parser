@@ -4,10 +4,9 @@ use crate::{
 };
 
 use asn1_rs::FromDer;
-use der_parser::der::{der_read_element_header, parse_der_oid, parse_der_sequence_defined_g, Tag};
+use der_parser::der::{der_read_element_header, parse_der_sequence_defined_g, Tag};
 use der_parser::error::BerError;
 use der_parser::oid::Oid;
-use nom::combinator::map_res;
 use nom::Err;
 use oid_registry::*;
 use std::collections::HashMap;
@@ -23,7 +22,7 @@ pub struct X509CriAttribute<'a> {
 impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
         parse_der_sequence_defined_g(|i, _| {
-            let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
+            let (i, oid) = Oid::from_der(i)?;
             let value_start = i;
             let (i, hdr) = der_read_element_header(i)?;
             if hdr.tag() != Tag::Set {

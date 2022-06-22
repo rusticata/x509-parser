@@ -154,7 +154,7 @@ impl X509ExtensionParser {
 impl<'a> Parser<&'a [u8], X509Extension<'a>, X509Error> for X509ExtensionParser {
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Extension<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
-            let (i, oid) = map_res(parse_der_oid, |x| x.as_oid_val())(i)?;
+            let (i, oid) = Oid::from_der(i)?;
             let (i, critical) = der_read_critical(i)?;
             let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
             let (i, parsed_extension) = if self.deep_parse_extensions {
@@ -922,7 +922,7 @@ pub(crate) mod parser {
         fn parse_aia(i: &[u8]) -> IResult<&[u8], AccessDescription, BerError> {
             parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
-                let (gn, oid) = map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
+                let (gn, oid) = Oid::from_der(content)?;
                 // Parse second element
                 let (rest, gn) = parse_generalname(gn)?;
                 Ok((rest, AccessDescription::new(oid, gn)))
@@ -1056,8 +1056,7 @@ pub(crate) mod parser {
     ) -> IResult<&[u8], Vec<PolicyInformation>, BerError> {
         fn parse_policy_qualifier_info(i: &[u8]) -> IResult<&[u8], PolicyQualifierInfo, BerError> {
             parse_der_sequence_defined_g(|content, _| {
-                let (rem, policy_qualifier_id) =
-                    map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
+                let (rem, policy_qualifier_id) = Oid::from_der(content)?;
                 let info = PolicyQualifierInfo {
                     policy_qualifier_id,
                     qualifier: rem,
@@ -1067,8 +1066,7 @@ pub(crate) mod parser {
         }
         fn parse_policy_information(i: &[u8]) -> IResult<&[u8], PolicyInformation, BerError> {
             parse_der_sequence_defined_g(|content, _| {
-                let (rem, policy_id) =
-                    map_res(parse_der_oid, |x: DerObject| x.as_oid_val())(content)?;
+                let (rem, policy_id) = Oid::from_der(content)?;
                 let (rem, policy_qualifiers) =
                     opt(complete(parse_der_sequence_defined_g(|content, _| {
                         many1(complete(parse_policy_qualifier_info))(content)
