@@ -7,16 +7,16 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
 
-use asn1_rs::{Any, BitString, DerSequence, FromDer, Oid, ParseResult};
+use asn1_rs::{Any, BitString, DerSequence, FromBer, FromDer, Oid, ParseResult};
 use data_encoding::HEXUPPER;
-use der_parser::ber::{parse_ber_integer, MAX_OBJECT_SIZE};
+use der_parser::ber::MAX_OBJECT_SIZE;
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
 use der_parser::*;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::{complete, map, map_opt};
+use nom::combinator::{complete, map};
 use nom::multi::{many0, many1};
 use nom::{Err, Offset};
 use oid_registry::*;
@@ -95,7 +95,7 @@ impl<'a> AttributeTypeAndValue<'a> {
         &self.attr_type
     }
 
-    /// Returns the attribute value, as raw `DerObject`
+    /// Returns the attribute value, as `ANY`
     #[inline]
     pub const fn attr_value(&self) -> &Any {
         &self.attr_value
@@ -584,18 +584,16 @@ pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitString> {
 }
 
 pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
-    // This should be parse_der_integer, but some certificates encode leading zeroes
-    map_opt(parse_ber_integer, get_serial_info)(i).map_err(|_| X509Error::InvalidSerial.into())
-}
-
-fn get_serial_info(o: DerObject) -> Option<(&[u8], BigUint)> {
+    let (rem, any) = Any::from_ber(i).map_err(|_| X509Error::InvalidSerial)?;
     // RFC 5280 4.1.2.2: "The serial number MUST be a positive integer"
     // however, many CAs do not respect this and send integers with MSB set,
     // so we do not use `as_biguint()`
-    let slice = o.as_slice().ok()?;
+    any.tag()
+        .assert_eq(Tag::Integer)
+        .map_err(|_| X509Error::InvalidSerial)?;
+    let slice = any.data;
     let big = BigUint::from_bytes_be(slice);
-
-    Some((slice, big))
+    Ok((rem, (slice, big)))
 }
 
 #[cfg(test)]
