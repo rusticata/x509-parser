@@ -1,8 +1,5 @@
 use crate::error::{X509Error, X509Result};
-use asn1_rs::FromDer;
-use der_parser::der::*;
-use der_parser::error::BerError;
-use der_parser::oid::Oid;
+use asn1_rs::{DerSequence, Error, FromDer, Oid};
 use nom::{Err, IResult};
 use std::collections::HashMap;
 
@@ -60,7 +57,7 @@ impl<'a> PolicyMappings<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, DerSequence)]
 pub struct PolicyMapping<'a> {
     pub issuer_domain_policy: Oid<'a>,
     pub subject_domain_policy: Oid<'a>,
@@ -78,26 +75,18 @@ impl<'a> PolicyMapping<'a> {
 // PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
 //  issuerDomainPolicy      CertPolicyId,
 //  subjectDomainPolicy     CertPolicyId }
-pub(crate) fn parse_policymappings(i: &[u8]) -> IResult<&[u8], PolicyMappings, BerError> {
-    fn parse_oid_pair(i: &[u8]) -> IResult<&[u8], Vec<DerObject<'_>>, BerError> {
-        // read 2 OID as a SEQUENCE OF OID - length will be checked later
-        parse_der_sequence_of_v(parse_der_oid)(i)
-    }
-    let (ret, pairs) = parse_der_sequence_of_v(parse_oid_pair)(i)?;
-    let mut mappings = Vec::new();
+pub(crate) fn parse_policymappings(i: &[u8]) -> IResult<&[u8], PolicyMappings, Error> {
+    let (ret, pairs) = <Vec<PolicyMapping>>::from_der(i)?;
     // let mut mappings: HashMap<Oid, Vec<Oid>> = HashMap::new();
-    for pair in pairs.iter() {
-        if pair.len() != 2 {
-            return Err(Err::Failure(BerError::BerValueError));
-        }
-        let left = pair[0].as_oid_val().map_err(nom::Err::Failure)?;
-        let right = pair[1].as_oid_val().map_err(nom::Err::Failure)?;
-        // XXX this should go to Validate
-        // if left.bytes() == oid!(raw 2.5.29.32.0) || right.bytes() == oid!(raw 2.5.29.32.0) {
-        //     // mapping to or from anyPolicy is not allowed
-        //     return Err(Err::Failure(BerError::InvalidTag));
-        // }
-        mappings.push(PolicyMapping::new(left, right));
-    }
+    let mappings = pairs;
+    // let mut mappings = Vec::new();
+    // for pair in pairs.iter() {
+    //     // XXX this should go to Validate
+    //     // if left.bytes() == oid!(raw 2.5.29.32.0) || right.bytes() == oid!(raw 2.5.29.32.0) {
+    //     //     // mapping to or from anyPolicy is not allowed
+    //     //     return Err(Err::Failure(BerError::InvalidTag));
+    //     // }
+    //     mappings.push(PolicyMapping::new(left, right));
+    // }
     Ok((ret, PolicyMappings { mappings }))
 }
