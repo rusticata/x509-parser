@@ -4,7 +4,7 @@
 
 use std::convert::TryInto;
 
-use der_parser::der::parse_der_octetstring;
+use asn1_rs::FromDer;
 use der_parser::error::BerError;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, map_parser};
@@ -55,8 +55,7 @@ pub fn parse_ct_signed_certificate_timestamp_list(
 ) -> IResult<&[u8], Vec<SignedCertificateTimestamp>, BerError> {
     // use nom::HexDisplay;
     // eprintln!("{}", i.to_hex(16));
-    let (rem, obj) = parse_der_octetstring(i)?;
-    let b = obj.as_slice()?;
+    let (rem, b) = <&[u8]>::from_der(i)?;
     let (b, sct_len) = be_u16(b)?;
     let (_, sct_list) = map_parser(
         take(sct_len as usize),

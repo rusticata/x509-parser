@@ -156,7 +156,7 @@ impl<'a> Parser<&'a [u8], X509Extension<'a>, X509Error> for X509ExtensionParser 
         parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = Oid::from_der(i)?;
             let (i, critical) = der_read_critical(i)?;
-            let (i, value) = map_res(parse_der_octetstring, |x| x.as_slice())(i)?;
+            let (i, value) = <&[u8]>::from_der(i)?;
             let (i, parsed_extension) = if self.deep_parse_extensions {
                 parser::parse_extension(i, value, &oid)?
             } else {
@@ -981,11 +981,7 @@ pub(crate) mod parser {
     pub(super) fn parse_keyidentifier<'a>(
         i: &'a [u8],
     ) -> IResult<&'a [u8], KeyIdentifier, BerError> {
-        let (rest, obj) = parse_der_octetstring(i)?;
-        let id = obj
-            .content
-            .as_slice()
-            .or(Err(Err::Error(BerError::BerTypeError)))?;
+        let (rest, id) = <&[u8]>::from_der(i)?;
         let ki = KeyIdentifier(id);
         Ok((rest, ki))
     }
