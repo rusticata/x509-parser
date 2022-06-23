@@ -2,13 +2,10 @@ use super::UnparsedObject;
 use crate::error::{X509Error, X509Result};
 use crate::prelude::format_serial;
 use crate::x509::X509Name;
-use asn1_rs::FromDer;
-use der_parser::der::*;
-use der_parser::error::BerError;
-use der_parser::oid::Oid;
-use nom::bytes::streaming::take;
-use nom::combinator::{all_consuming, verify};
-use nom::{Err, IResult, Needed};
+use asn1_rs::{Any, CheckDerConstraints, Class, Error, FromDer, Oid, Sequence};
+use core::convert::TryFrom;
+use nom::combinator::all_consuming;
+use nom::{Err, IResult};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]

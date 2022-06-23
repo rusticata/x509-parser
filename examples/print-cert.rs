@@ -8,6 +8,7 @@ use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use x509_parser::prelude::*;
 use x509_parser::public_key::PublicKey;
+use x509_parser::signature_algorithm::SignatureAlgorithm;
 
 const PARSE_ERRORS_FATAL: bool = false;
 #[cfg(feature = "validate")]
@@ -167,9 +168,10 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     println!("    is_valid:  {}", x509.validity().is_valid());
     println!("  Subject Public Key Info:");
     print_x509_ski(x509.public_key());
-    println!("  Signature Algorithm:");
-    print_x509_digest_algorithm(&x509.signature_algorithm, 4);
-    for l in format_number_to_hex_with_colon(x509.signature_value.data, 16) {
+    print_x509_signature_algorithm(&x509.signature_algorithm, 4);
+
+    println!("  Signature Value:");
+    for l in format_number_to_hex_with_colon(&x509.signature_value.data, 16) {
         println!("      {}", l);
     }
     println!("  Extensions:");
@@ -222,6 +224,69 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+fn print_x509_signature_algorithm(signature_algorithm: &AlgorithmIdentifier, indent: usize) {
+    match SignatureAlgorithm::try_from(signature_algorithm) {
+        Ok(sig_alg) => {
+            print!("  Signature Algorithm: ");
+            match sig_alg {
+                SignatureAlgorithm::DSA => println!("DSA"),
+                SignatureAlgorithm::ECDSA => println!("ECDSA"),
+                SignatureAlgorithm::ED25519 => println!("ED25519"),
+                SignatureAlgorithm::RSA => println!("RSA"),
+                SignatureAlgorithm::RSASSA_PSS(params) => {
+                    println!("RSASSA-PSS");
+                    let indent_s = format!("{:indent$}", "", indent = indent + 2);
+                    println!(
+                        "{}Hash Algorithm: {}",
+                        indent_s,
+                        format_oid(params.hash_algorithm_oid()),
+                    );
+                    print!("{}Mask Generation Function: ", indent_s);
+                    if let Ok(mask_gen) = params.mask_gen_algorithm() {
+                        println!(
+                            "{}/{}",
+                            format_oid(&mask_gen.mgf),
+                            format_oid(&mask_gen.hash),
+                        );
+                    } else {
+                        println!("INVALID");
+                    }
+                    println!("{}Salt Length: {}", indent_s, params.salt_length());
+                }
+                SignatureAlgorithm::RSAAES_OAEP(params) => {
+                    println!("RSAAES-OAEP");
+                    let indent_s = format!("{:indent$}", "", indent = indent + 2);
+                    println!(
+                        "{}Hash Algorithm: {}",
+                        indent_s,
+                        format_oid(params.hash_algorithm_oid()),
+                    );
+                    print!("{}Mask Generation Function: ", indent_s);
+                    if let Ok(mask_gen) = params.mask_gen_algorithm() {
+                        println!(
+                            "{}/{}",
+                            format_oid(&mask_gen.mgf),
+                            format_oid(&mask_gen.hash),
+                        );
+                    } else {
+                        println!("INVALID");
+                    }
+                    println!(
+                        "{}pSourceFunc: {}",
+                        indent_s,
+                        format_oid(&params.p_source_alg().algorithm),
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Could not parse signature algorithm: {}", e);
+            println!("  Signature Algorithm:");
+            print_x509_digest_algorithm(signature_algorithm, indent);
+        }
+    }
 }
 
 fn print_x509_ski(public_key: &SubjectPublicKeyInfo) {

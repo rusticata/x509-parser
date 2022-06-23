@@ -19,15 +19,17 @@
 //! ```
 
 use crate::error::NidError;
-use der_parser::oid::Oid;
+use asn1_rs::{oid, Oid};
 use lazy_static::lazy_static;
 use oid_registry::*;
 use std::collections::HashMap;
 
 lazy_static! {
     static ref OID_REGISTRY: OidRegistry<'static> = {
-        let reg = OidRegistry::default().with_all_crypto().with_x509();
+        let mut reg = OidRegistry::default().with_all_crypto().with_x509();
         // OIDs not in the default registry can be added here
+        let entry = OidEntry::new("id-mgf1", "Mask Generator Function 1 (MGF1)");
+        reg.insert(oid! {1.2.840.113549.1.1.8}, entry);
         reg
     };
     static ref ABBREV_MAP: HashMap<Oid<'static>, &'static str> = {

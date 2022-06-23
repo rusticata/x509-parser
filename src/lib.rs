@@ -141,6 +141,8 @@ pub mod pem;
 pub mod prelude;
 pub mod public_key;
 pub mod revocation_list;
+pub mod signature_algorithm;
+pub mod signature_value;
 pub mod time;
 pub mod utils;
 #[cfg(feature = "validate")]

@@ -45,7 +45,7 @@ base64 = "0.13"
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "7.0"
-oid-registry = { version="0.6", features=["crypto", "x509"] }
+oid-registry = { version="0.6", features=["crypto", "x509", "x962"] }
 rusticata-macros = "4.0"
 ring = { version="0.16.11", optional=true }
 der-parser = { version = "8.1.0", features=["bigint"] }
