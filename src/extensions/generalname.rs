@@ -33,6 +33,68 @@ pub enum GeneralName<'a> {
     RegisteredID(Oid<'a>),
 }
 
+impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
+    type Error = Error;
+
+    fn try_from(any: Any<'a>) -> Result<Self, Self::Error> {
+        any.class().assert_eq(Class::ContextSpecific)?;
+        fn ia5str(any: Any) -> Result<&str, Err<Error>> {
+            // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
+            // are using unicode characters
+            std::str::from_utf8(any.data).map_err(|_| nom::Err::Failure(Error::BerValueError))
+        }
+        let name = match any.tag().0 {
+            0 => {
+                // otherName SEQUENCE { OID, [0] explicit any defined by oid }
+                let (rest, oid) = Oid::from_der(any.data)?;
+                GeneralName::OtherName(oid, rest)
+            }
+            1 => GeneralName::RFC822Name(ia5str(any)?),
+            2 => GeneralName::DNSName(ia5str(any)?),
+            3 => {
+                // XXX Not yet implemented
+                let obj = UnparsedObject {
+                    header: any.header,
+                    data: any.data,
+                };
+                GeneralName::X400Address(obj)
+            }
+            4 => {
+                // directoryName, name
+                let (_, name) = all_consuming(X509Name::from_der)(any.data)
+                    .or(Err(Error::Unsupported)) // XXX remove me
+                    ?;
+                GeneralName::DirectoryName(name)
+            }
+            5 => {
+                // XXX Not yet implemented
+                let obj = UnparsedObject {
+                    header: any.header,
+                    data: any.data,
+                };
+                GeneralName::EDIPartyName(obj)
+            }
+            6 => GeneralName::URI(ia5str(any)?),
+            7 => {
+                // IPAddress, OctetString
+                GeneralName::IPAddress(any.data)
+            }
+            8 => {
+                let oid = Oid::new(any.data.into());
+                GeneralName::RegisteredID(oid)
+            }
+            _ => return Err(Error::unexpected_tag(None, any.tag())),
+        };
+        Ok(name)
+    }
+}
+
+impl CheckDerConstraints for GeneralName<'_> {
+    fn check_constraints(any: &Any) -> asn1_rs::Result<()> {
+        Sequence::check_constraints(any)
+    }
+}
+
 impl<'a> FromDer<'a, X509Error> for GeneralName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_generalname(i).map_err(Err::convert)
@@ -55,73 +117,8 @@ impl<'a> fmt::Display for GeneralName<'a> {
     }
 }
 
-pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, BerError> {
-    let (rest, hdr) = verify(der_read_element_header, |hdr| hdr.is_contextspecific())(i)?;
-    let len = hdr.length().definite()?;
-    if len > rest.len() {
-        let needed = Needed::new(len - rest.len());
-        return Err(nom::Err::Failure(BerError::Incomplete(needed)));
-    }
-    fn ia5str<'a>(i: &'a [u8], hdr: Header) -> Result<&'a str, Err<BerError>> {
-        // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
-        // are using unicode characters
-        der_read_element_content_as(i, Tag::Utf8String, hdr.length(), hdr.is_constructed(), 1)?
-            .1
-            .as_slice()
-            .and_then(|s| std::str::from_utf8(s).map_err(|_| BerError::BerValueError))
-            .map_err(nom::Err::Failure)
-    }
-    let name = match hdr.tag().0 {
-        0 => {
-            // otherName SEQUENCE { OID, [0] explicit any defined by oid }
-            let (any, oid) = Oid::from_der(rest)?;
-            GeneralName::OtherName(oid, any)
-        }
-        1 => GeneralName::RFC822Name(ia5str(rest, hdr)?),
-        2 => GeneralName::DNSName(ia5str(rest, hdr)?),
-        3 => {
-            // XXX Not yet implemented
-            let (_, data) = take(len)(rest)?;
-            let obj = UnparsedObject { header: hdr, data };
-            GeneralName::X400Address(obj)
-        }
-        4 => {
-            // directoryName, name
-            let (_, name) = all_consuming(X509Name::from_der)(&rest[..len])
-                .or(Err(BerError::Unsupported)) // XXX remove me
-                ?;
-            GeneralName::DirectoryName(name)
-        }
-        5 => {
-            // XXX Not yet implemented
-            let (_, data) = take(len)(rest)?;
-            let obj = UnparsedObject { header: hdr, data };
-            GeneralName::EDIPartyName(obj)
-        }
-        6 => GeneralName::URI(ia5str(rest, hdr)?),
-        7 => {
-            // IPAddress, OctetString
-            let ip = der_read_element_content_as(
-                rest,
-                Tag::OctetString,
-                hdr.length(),
-                hdr.is_constructed(),
-                1,
-            )?
-            .1
-            .as_slice()
-            .map_err(nom::Err::Failure)?;
-            GeneralName::IPAddress(ip)
-        }
-        8 => {
-            let oid =
-                der_read_element_content_as(rest, Tag::Oid, hdr.length(), hdr.is_constructed(), 1)?
-                    .1
-                    .as_oid_val()
-                    .map_err(nom::Err::Failure)?;
-            GeneralName::RegisteredID(oid)
-        }
-        _ => return Err(Err::Failure(BerError::unexpected_tag(None, hdr.tag()))),
-    };
-    Ok((&rest[len..], name))
+pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, Error> {
+    let (rest, any) = Any::from_der(i)?;
+    let gn = GeneralName::try_from(any)?;
+    Ok((rest, gn))
 }
