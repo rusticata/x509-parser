@@ -501,12 +501,6 @@ impl<'a> FromDer<'a, X509Error> for IssuerAlternativeName<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct UnparsedObject<'a> {
-    pub header: Header<'a>,
-    pub data: &'a [u8],
-}
-
 pub type CRLDistributionPoints<'a> = Vec<CRLDistributionPoint<'a>>;
 
 // impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {

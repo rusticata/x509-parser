@@ -1,4 +1,3 @@
-use super::UnparsedObject;
 use crate::error::{X509Error, X509Result};
 use crate::prelude::format_serial;
 use crate::x509::X509Name;
@@ -20,12 +19,12 @@ pub enum GeneralName<'a> {
     /// A hostname, format is not checked.
     DNSName(&'a str),
     /// X400Address,
-    X400Address(UnparsedObject<'a>),
+    X400Address(Any<'a>),
     /// RFC5280 defines several string types, we always try to parse as utf-8
     /// which is more or less a superset of the string types.
     DirectoryName(X509Name<'a>),
     /// EDIPartyName
-    EDIPartyName(UnparsedObject<'a>),
+    EDIPartyName(Any<'a>),
     /// An uniform resource identifier. The format is not checked.
     URI(&'a str),
     /// An ip address, provided as encoded.
@@ -53,11 +52,7 @@ impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
             2 => GeneralName::DNSName(ia5str(any)?),
             3 => {
                 // XXX Not yet implemented
-                let obj = UnparsedObject {
-                    header: any.header,
-                    data: any.data,
-                };
-                GeneralName::X400Address(obj)
+                GeneralName::X400Address(any)
             }
             4 => {
                 // directoryName, name
@@ -68,11 +63,7 @@ impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
             }
             5 => {
                 // XXX Not yet implemented
-                let obj = UnparsedObject {
-                    header: any.header,
-                    data: any.data,
-                };
-                GeneralName::EDIPartyName(obj)
+                GeneralName::EDIPartyName(any)
             }
             6 => GeneralName::URI(ia5str(any)?),
             7 => {
