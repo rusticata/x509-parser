@@ -1,6 +1,6 @@
-//! Certificate transparency (RFC6962)[https://datatracker.ietf.org/doc/html/rfc6962]
+//! Certificate transparency [RFC6962](https://datatracker.ietf.org/doc/html/rfc6962)
 //!
-//! Code borrowed from tls-parser crate (file https://github.com/rusticata/tls-parser/blob/tls-parser-0.11.0/src/certificate_transparency.rs)
+//! Code borrowed from tls-parser crate (file <https://github.com/rusticata/tls-parser/blob/tls-parser-0.11.0/src/certificate_transparency.rs>)
 
 use std::convert::TryInto;
 
@@ -21,8 +21,8 @@ pub struct SignedCertificateTimestamp<'a> {
     pub signature: DigitallySigned<'a>,
 }
 
-/// Certificate Transparency Version as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// Certificate Transparency Version as defined in
+/// [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CtVersion(pub u8);
 
@@ -30,15 +30,15 @@ impl CtVersion {
     pub const V1: CtVersion = CtVersion(0);
 }
 
-/// LogID as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// LogID as defined in
+/// [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Debug, PartialEq)]
 pub struct CtLogID<'a> {
     pub key_id: &'a [u8; 32],
 }
 
-/// CtExtensions as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// CtExtensions as defined in
+/// [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Debug, PartialEq)]
 pub struct CtExtensions<'a>(pub &'a [u8]);
 
