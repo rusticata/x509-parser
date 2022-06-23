@@ -106,6 +106,10 @@ pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>)
 `x509-parser` requires **Rustc version 1.53 or greater**, based on der-parser
 dependencies and for proc-macro attributes support.
 
+Note that due to breaking changes in the `time` crate, a specific version of this
+crate must be specified for compiler versions <= 1.57:
+`cargo update -p time --precise 0.3.9`
+
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 <!-- cargo-sync-readme end -->
 
