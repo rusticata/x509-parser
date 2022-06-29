@@ -3,10 +3,7 @@ use crate::{
     extensions::X509Extension,
 };
 
-use asn1_rs::FromDer;
-use der_parser::der::{der_read_element_header, parse_der_sequence_defined_g, Tag};
-use der_parser::error::BerError;
-use der_parser::oid::Oid;
+use asn1_rs::{Error, FromDer, Header, Oid, Sequence, Tag};
 use nom::Err;
 use oid_registry::*;
 use std::collections::HashMap;
@@ -21,22 +18,23 @@ pub struct X509CriAttribute<'a> {
 
 impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
-        parse_der_sequence_defined_g(|i, _| {
+        Sequence::from_ber_and_then(i, |i| {
             let (i, oid) = Oid::from_der(i)?;
             let value_start = i;
-            let (i, hdr) = der_read_element_header(i)?;
+            let (i, hdr) = Header::from_der(i)?;
             if hdr.tag() != Tag::Set {
-                return Err(Err::Error(BerError::BerTypeError));
+                return Err(Err::Error(Error::BerTypeError));
             };
 
-            let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)?;
+            let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)
+                .map_err(|_| Err::Error(Error::BerValueError))?;
             let ext = X509CriAttribute {
                 oid,
                 value: &value_start[..value_start.len() - i.len()],
                 parsed_attribute,
             };
             Ok((i, ext))
-        })(i)
+        })
         .map_err(|_| X509Error::InvalidAttributes.into())
     }
 }
@@ -62,13 +60,10 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
-    use der_parser::error::BerError;
-    use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
     use nom::combinator::map;
-    use nom::{Err, IResult};
 
-    type AttrParser = fn(&[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError>;
+    type AttrParser = fn(&[u8]) -> X509Result<ParsedCriAttribute>;
 
     lazy_static! {
         static ref ATTRIBUTE_PARSERS: HashMap<Oid<'static>, AttrParser> = {
@@ -89,7 +84,7 @@ pub(crate) mod parser {
     pub(crate) fn parse_attribute<'a>(
         i: &'a [u8],
         oid: &Oid,
-    ) -> IResult<&'a [u8], ParsedCriAttribute<'a>, BerError> {
+    ) -> X509Result<'a, ParsedCriAttribute<'a>> {
         if let Some(parser) = ATTRIBUTE_PARSERS.get(oid) {
             parser(i)
         } else {
@@ -97,13 +92,12 @@ pub(crate) mod parser {
         }
     }
 
-    pub(super) fn parse_extension_request(i: &[u8]) -> IResult<&[u8], ExtensionRequest, BerError> {
+    pub(super) fn parse_extension_request(i: &[u8]) -> X509Result<ExtensionRequest> {
         crate::extensions::parse_extension_sequence(i)
             .map(|(i, extensions)| (i, ExtensionRequest { extensions }))
-            .map_err(|_| Err::Error(BerError::BerTypeError))
     }
 
-    fn parse_extension_request_ext(i: &[u8]) -> IResult<&[u8], ParsedCriAttribute, BerError> {
+    fn parse_extension_request_ext(i: &[u8]) -> X509Result<ParsedCriAttribute> {
         map(
             parse_extension_request,
             ParsedCriAttribute::ExtensionRequest,
@@ -112,7 +106,7 @@ pub(crate) mod parser {
 }
 
 pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<Vec<X509CriAttribute>> {
-    let (i, hdr) = der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidAttributes)))?;
+    let (i, hdr) = Header::from_der(i).map_err(|_| Err::Error(X509Error::InvalidAttributes))?;
     if i.is_empty() {
         return Ok((i, Vec::new()));
     }
