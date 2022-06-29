@@ -1,11 +1,43 @@
 # Change Log
 
-## [Unreleased][unreleased] 
+## [Unreleased][unreleased]
 
 ### Added/Changed/Fixed
 
 ### Thanks
 
+## 0.14.0
+
+### Added/Changed
+
+- Add support for parsing signature parameters and value (closes #94)
+
+- Change `ASN1Time::to_rfc2822()` to return a Result
+- ASN1Time: modify `from_timestamp` to return a Result
+- ASN1Time: implement Display
+- Upgrade versions of asn1-rs, oid-registry and der-parser
+- AlgorithmIdentifier: add const methods to create object/access fields
+- Globally: start using `asn1-rs` types, simplify parsers:
+  - AlgorithmIdentifier: automatically derive struct, use type ANY
+  - Merge old FromDer trait into `asn1_rs::FromDer` (using X509Error)
+  - Replace BitStringObject with BitString
+  - AttributeTypeAndValue: use Any instead of DerObject
+  - Extensions: replace UnparsedObject with Any
+  - X509Error: add methods to simplify conversions
+  - CRI Attributes: rewrite and simplify parsers
+  - Simplify parsers for multiple types and extensions
+
+### Fixed
+
+- Fix ECDSA signature verification when CA and certificate use different curves
+
+### Thanks
+
+## 0.13.2
+
+### Fixed
+
+- Fix panic in ASN1Time::to_rfc2822() when year is less than 1900
 
 ## 0.13.1
 
