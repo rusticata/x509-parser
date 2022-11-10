@@ -51,15 +51,21 @@ impl<'a> FromDer<'a, X509Error> for ExtensionRequest<'a> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChallengePassword(String);
+
 /// Attributes for Certification Request
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParsedCriAttribute<'a> {
+    ChallengePassword(ChallengePassword),
     ExtensionRequest(ExtensionRequest<'a>),
     UnsupportedAttribute,
 }
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
+    use der_parser::ber::BerObjectContent;
+    use der_parser::der::{parse_der_printablestring, parse_der_utf8string};
     use lazy_static::lazy_static;
     use nom::combinator::map;
 
@@ -74,7 +80,12 @@ pub(crate) mod parser {
             }
 
             let mut m = HashMap::new();
-            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_ext);
+            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_attr);
+            add!(
+                m,
+                OID_PKCS9_CHALLENGE_PASSWORD,
+                parse_challenge_password_attr
+            );
             m
         };
     }
@@ -97,10 +108,37 @@ pub(crate) mod parser {
             .map(|(i, extensions)| (i, ExtensionRequest { extensions }))
     }
 
-    fn parse_extension_request_ext(i: &[u8]) -> X509Result<ParsedCriAttribute> {
+    fn parse_extension_request_attr(i: &[u8]) -> X509Result<ParsedCriAttribute> {
         map(
             parse_extension_request,
             ParsedCriAttribute::ExtensionRequest,
+        )(i)
+    }
+
+    pub(super) fn parse_challenge_password(i: &[u8]) -> X509Result<ChallengePassword> {
+        // I'm sure, there is a more elegant way to try multiple parsers until the first succeeds,
+        // but I don't know nom well enough to implement it.
+        let (rem, obj) = {
+            if let Ok((rem, obj)) = parse_der_utf8string(i) {
+                (rem, obj)
+            } else if let Ok((rem, obj)) = parse_der_printablestring(i) {
+                (rem, obj)
+            } else {
+                return Err(Err::Error(X509Error::InvalidAttributes));
+            }
+        };
+        match obj.content {
+            BerObjectContent::PrintableString(s) | BerObjectContent::UTF8String(s) => {
+                Ok((rem, ChallengePassword { 0: s.to_string() }))
+            }
+            _ => Err(Err::Error(X509Error::InvalidAttributes)),
+        }
+    }
+
+    fn parse_challenge_password_attr(i: &[u8]) -> X509Result<ParsedCriAttribute> {
+        map(
+            parse_challenge_password,
+            ParsedCriAttribute::ChallengePassword,
         )(i)
     }
 }
