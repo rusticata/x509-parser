@@ -55,5 +55,5 @@ time = { version="0.3.7", features=["formatting"] }
 
 # TODO remove before pull request
 [patch.crates-io]
-oid-registry = { git = "https://code.rsint.net/krietens/oid-registry", rev="13539b21ae3af939526d8691fd111a925a9a8890" }
+oid-registry = { git = "https://code.rsint.net/krietens/oid-registry", rev="865d29fe66d1246e9798a1e65f82de1a7313f182" }
 
