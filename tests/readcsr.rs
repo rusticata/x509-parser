@@ -1,9 +1,13 @@
-use oid_registry::{OID_PKCS1_SHA256WITHRSA, OID_SIG_ECDSA_WITH_SHA256, OID_X509_COMMON_NAME};
+use asn1_rs::Set;
+use oid_registry::{
+    OID_PKCS1_SHA256WITHRSA, OID_PKCS9_CHALLENGE_PASSWORD, OID_SIG_ECDSA_WITH_SHA256,
+    OID_X509_COMMON_NAME,
+};
 use x509_parser::prelude::*;
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 const CSR_DATA: &[u8] = include_bytes!("../assets/test.csr");
-
+const CSR_CHALLENGE_PASSWORD: &[u8] = include_bytes!("../assets/csr-challenge-password.pem");
 #[test]
 fn read_csr_empty_attrib() {
     let (rem, csr) =
@@ -50,6 +54,30 @@ fn read_csr_with_san() {
         }
         _ => unreachable!(),
     }
+}
+
+#[test]
+fn read_csr_with_challenge_password() {
+    let der = pem::parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
+    let (rem, csr) = X509CertificationRequest::from_der(&der.contents)
+        .expect("Could not parse CSR with challenge password");
+
+    assert!(rem.is_empty());
+    let cri = &csr.certification_request_info;
+    assert_eq!(cri.version, X509Version(0));
+    assert_eq!(cri.attributes().len(), 1);
+
+    let challenge_password_attr_der = csr
+        .certification_request_info
+        .find_attribute(&OID_PKCS9_CHALLENGE_PASSWORD)
+        .expect("Challenge password not found in CSR");
+    let (rem, challenge_password) =
+        Set::from_der_and_then(challenge_password_attr_der.value, |i| {
+            let (i, challenge_password) = String::from_der(i)?;
+            Ok((i, challenge_password))
+        }).expect("Error parsing challenge password attribute");
+    assert_eq!(challenge_password, "A challenge password");
+    assert!(rem.is_empty())
 }
 
 #[cfg(feature = "verify")]
