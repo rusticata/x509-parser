@@ -67,17 +67,32 @@ fn read_csr_with_challenge_password() {
     assert_eq!(cri.version, X509Version(0));
     assert_eq!(cri.attributes().len(), 1);
 
-    let challenge_password_attr_der = csr
+    let challenge_password_attr = csr
         .certification_request_info
         .find_attribute(&OID_PKCS9_CHALLENGE_PASSWORD)
         .expect("Challenge password not found in CSR");
-    let (rem, challenge_password) =
-        Set::from_der_and_then(challenge_password_attr_der.value, |i| {
+
+    // 1. Check: Parse value
+    let (rem, challenge_password_from_value) =
+        Set::from_der_and_then(challenge_password_attr.value, |i| {
             let (i, challenge_password) = String::from_der(i)?;
             Ok((i, challenge_password))
-        }).expect("Error parsing challenge password attribute");
-    assert_eq!(challenge_password, "A challenge password");
-    assert!(rem.is_empty())
+        })
+        .expect("Error parsing challenge password attribute");
+    assert_eq!(challenge_password_from_value, "A challenge password");
+    assert!(rem.is_empty());
+
+    // 2. Check: Get value directly from parsed attribute
+    if let ParsedCriAttribute::ChallengePassword(challenge_password_from_parsed_attribute) =
+        challenge_password_attr.parsed_attribute()
+    {
+        assert_eq!(
+            challenge_password_from_parsed_attribute.0,
+            "A challenge password"
+        );
+    } else {
+        panic!("Parsed attribute is not a challenge password");
+    }
 }
 
 #[cfg(feature = "verify")]

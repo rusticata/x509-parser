@@ -39,6 +39,14 @@ impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
     }
 }
 
+impl<'a> X509CriAttribute<'a> {
+    /// Return the attribute type or `UnsupportedAttribute` if the attribute is unknown.
+    #[inline]
+    pub fn parsed_attribute(&self) -> &ParsedCriAttribute<'a> {
+        &self.parsed_attribute
+    }
+}
+
 /// Section 3.1 of rfc 5272
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtensionRequest<'a> {
@@ -52,7 +60,7 @@ impl<'a> FromDer<'a, X509Error> for ExtensionRequest<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ChallengePassword(String);
+pub struct ChallengePassword(pub String);
 
 /// Attributes for Certification Request
 #[derive(Clone, Debug, PartialEq)]
