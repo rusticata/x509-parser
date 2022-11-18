@@ -21,6 +21,9 @@ def main():
     ca.set_pubkey(pkey)
     ca.sign(pkey, 'sha256')
 
+    with open(osp.join(osp.dirname(__file__), 'ca_minimalcrl.der'), 'wb') as f_ca:
+        f_ca.write(crypto.dump_certificate(crypto.FILETYPE_ASN1, ca))
+
     revoked = crypto.Revoked()
     revoked.set_serial(b'2a')
     revoked.set_rev_date(b'19700101000000Z')

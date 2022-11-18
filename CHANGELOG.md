@@ -4,6 +4,8 @@
 
 ### Added/Changed/Fixed
 
+- Add `verify` feature to verify a certificate revocation list by a public key
+
 ### Thanks
 
 ## 0.14.0

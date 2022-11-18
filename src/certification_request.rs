@@ -5,13 +5,13 @@ use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };
 
+#[cfg(feature = "verify")]
+use crate::verify::verify_signature;
 use asn1_rs::{BitString, FromDer};
 use der_parser::der::*;
 use der_parser::oid::Oid;
 use der_parser::*;
 use nom::Offset;
-#[cfg(feature = "verify")]
-use oid_registry::*;
 use std::collections::HashMap;
 
 /// Certification Signing Request (CSR)
@@ -41,35 +41,13 @@ impl<'a> X509CertificationRequest<'a> {
     /// requesting the certification for this verification to succeed.
     #[cfg(feature = "verify")]
     pub fn verify_signature(&self) -> Result<(), X509Error> {
-        use ring::signature;
         let spki = &self.certification_request_info.subject_pki;
-        let signature_alg = &self.signature_algorithm.algorithm;
-        // identify verification algorithm
-        let verification_alg: &dyn signature::VerificationAlgorithm =
-            if *signature_alg == OID_PKCS1_SHA1WITHRSA {
-                &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
-            } else if *signature_alg == OID_PKCS1_SHA256WITHRSA {
-                &signature::RSA_PKCS1_2048_8192_SHA256
-            } else if *signature_alg == OID_PKCS1_SHA384WITHRSA {
-                &signature::RSA_PKCS1_2048_8192_SHA384
-            } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
-                &signature::RSA_PKCS1_2048_8192_SHA512
-            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
-                &signature::ECDSA_P256_SHA256_ASN1
-            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
-                &signature::ECDSA_P384_SHA384_ASN1
-            } else if *signature_alg == OID_SIG_ED25519 {
-                &signature::ED25519
-            } else {
-                return Err(X509Error::SignatureUnsupportedAlgorithm);
-            };
-        // get public key
-        let key =
-            signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
-        // verify signature
-        let sig = &self.signature_value.data;
-        key.verify(self.certification_request_info.raw, sig)
-            .or(Err(X509Error::SignatureVerificationError))
+        verify_signature(
+            spki,
+            &self.signature_algorithm,
+            &self.signature_value,
+            self.certification_request_info.raw,
+        )
     }
 }
 

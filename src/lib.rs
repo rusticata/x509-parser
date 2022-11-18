@@ -152,6 +152,9 @@ pub mod utils;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
+#[cfg(feature = "verify")]
+#[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
+pub mod verify;
 pub mod x509;
 
 // reexports
