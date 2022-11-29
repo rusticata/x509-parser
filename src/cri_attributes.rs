@@ -7,6 +7,8 @@ use asn1_rs::{Error, FromDer, Header, Oid, Sequence, Tag};
 use nom::Err;
 use oid_registry::*;
 use std::collections::HashMap;
+use nom::combinator::{all_consuming, complete};
+use nom::multi::many0;
 
 /// Attributes for Certification Request
 #[derive(Clone, Debug, PartialEq)]
@@ -107,15 +109,9 @@ pub(crate) mod parser {
 
 pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<Vec<X509CriAttribute>> {
     let (i, hdr) = Header::from_der(i).map_err(|_| Err::Error(X509Error::InvalidAttributes))?;
-    if i.is_empty() {
-        return Ok((i, Vec::new()));
+    if hdr.is_contextspecific() && hdr.tag().0 == 0 {
+        all_consuming(many0(complete(X509CriAttribute::from_der)))(i)
+    } else {
+        Err(Err::Error(X509Error::InvalidAttributes))
     }
-    let constructed = if hdr.constructed() { 1 } else { 0 };
-    (0..constructed)
-        .into_iter()
-        .try_fold((i, Vec::new()), |(i, mut attrs), _| {
-            let (rem, attr) = X509CriAttribute::from_der(i)?;
-            attrs.push(attr);
-            Ok((rem, attrs))
-        })
 }
