@@ -3,6 +3,7 @@ use x509_parser::prelude::*;
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 const CSR_DATA: &[u8] = include_bytes!("../assets/test.csr");
+const CSR_CHALLENGE_PASSWORD: &[u8] = include_bytes!("../assets/csr-challenge-password.pem");
 
 #[test]
 fn read_csr_empty_attrib() {
@@ -50,6 +51,34 @@ fn read_csr_with_san() {
         }
         _ => unreachable!(),
     }
+}
+
+#[test]
+fn read_csr_with_challenge_password() {
+    let der = pem::parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
+    let (rem, csr) = X509CertificationRequest::from_der(&der.contents)
+        .expect("Could not parse CSR with challenge password");
+
+    assert!(rem.is_empty());
+    let cri = &csr.certification_request_info;
+    assert_eq!(cri.version, X509Version(0));
+    // CSR contains 2 attributes: challenge password and extensions
+    assert_eq!(cri.attributes().len(), 2);
+
+    // Make sure we can read requested extensions
+    let extensions = csr.requested_extensions().expect("Didn't find requested extensions in CSR");
+    let mut found_san = false;
+    for extension in extensions {
+        match extension {
+            ParsedExtension::SubjectAlternativeName(san) => {
+                let name = san.general_names.get(2).unwrap();
+                assert!(matches!(name, GeneralName::DNSName("localhost")));
+                found_san = true;
+            }
+            _ => {},
+        }
+    }
+    assert!(found_san);
 }
 
 #[cfg(feature = "verify")]
