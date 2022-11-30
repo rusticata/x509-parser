@@ -71,13 +71,10 @@ fn read_csr_with_challenge_password() {
         .expect("Didn't find requested extensions in CSR");
     let mut found_san = false;
     for extension in extensions {
-        match extension {
-            ParsedExtension::SubjectAlternativeName(san) => {
-                let name = san.general_names.get(2).unwrap();
-                assert!(matches!(name, GeneralName::DNSName("localhost")));
-                found_san = true;
-            }
-            _ => {}
+        if let ParsedExtension::SubjectAlternativeName(san) = extension {
+            let name = san.general_names.get(2).unwrap();
+            assert!(matches!(name, GeneralName::DNSName("localhost")));
+            found_san = true;
         }
     }
     assert!(found_san);

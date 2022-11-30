@@ -184,7 +184,7 @@ impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
 /// }
 /// # }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct X509CertificateParser {
     deep_parse_extensions: bool,
     // strict: bool,
@@ -584,7 +584,7 @@ impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
 }
 
 /// `TbsCertificate` parser builder
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct TbsCertificateParser {
     deep_parse_extensions: bool,
 }
@@ -658,7 +658,7 @@ impl Validate for TbsCertificate<'_> {
 }
 
 /// Basic extension structure, used in search results
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BasicExtension<T> {
     pub critical: bool,
     pub value: T,
@@ -670,7 +670,7 @@ impl<T> BasicExtension<T> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Validity {
     pub not_before: ASN1Time,
     pub not_after: ASN1Time,
@@ -719,7 +719,7 @@ impl<'a> FromDer<'a, X509Error> for Validity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UniqueIdentifier<'a>(pub BitString<'a>);
 
 impl<'a> UniqueIdentifier<'a> {

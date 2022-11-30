@@ -29,10 +29,8 @@ pub struct GeneralSubtree<'a> {
     // maximum: Option<u32>,
 }
 
-pub(crate) fn parse_nameconstraints<'a>(
-    i: &'a [u8],
-) -> IResult<&'a [u8], NameConstraints, BerError> {
-    fn parse_subtree<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralSubtree, BerError> {
+pub(crate) fn parse_nameconstraints(i: &[u8]) -> IResult<&[u8], NameConstraints, BerError> {
+    fn parse_subtree(i: &[u8]) -> IResult<&[u8], GeneralSubtree, BerError> {
         parse_der_sequence_defined_g(|input, _| {
             map(parse_generalname, |base| GeneralSubtree { base })(input)
         })(i)

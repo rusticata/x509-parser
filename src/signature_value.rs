@@ -4,7 +4,7 @@ use asn1_rs::{DerSequence, Integer};
 // Ecdsa-Sig-Value  ::=  SEQUENCE  {
 //     r     INTEGER,
 //     s     INTEGER  }
-#[derive(Debug, PartialEq, DerSequence)]
+#[derive(Debug, PartialEq, Eq, DerSequence)]
 pub struct EcdsaSigValue<'a> {
     pub r: Integer<'a>,
     pub s: Integer<'a>,

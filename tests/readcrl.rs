@@ -1,3 +1,7 @@
+// Currently, this file is only used to test 'verify' features, so we guard it to this feature
+// To be removed if other test functions with different features are added
+#![cfg(feature = "verify")]
+
 use x509_parser::prelude::*;
 
 const CA_DATA: &[u8] = include_bytes!("../assets/ca_minimalcrl.der");

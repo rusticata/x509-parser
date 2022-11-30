@@ -6,7 +6,7 @@ use der_parser::{oid, oid::Oid};
 use nom::{Err, IResult};
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct KeyUsage {
     pub flags: u16,
 }
@@ -78,7 +78,7 @@ impl<'a> FromDer<'a, X509Error> for KeyUsage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExtendedKeyUsage<'a> {
     pub any: bool,
     pub server_auth: bool,

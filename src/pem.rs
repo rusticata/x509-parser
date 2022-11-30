@@ -64,7 +64,7 @@ use nom::{Err, IResult};
 use std::io::{BufRead, Cursor, Seek, SeekFrom};
 
 /// Representation of PEM data
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Pem {
     /// The PEM label
     pub label: String,

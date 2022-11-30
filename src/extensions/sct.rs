@@ -12,7 +12,7 @@ use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u64, be_u8};
 use nom::IResult;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignedCertificateTimestamp<'a> {
     pub version: CtVersion,
     pub id: CtLogID<'a>,
@@ -32,17 +32,17 @@ impl CtVersion {
 
 /// LogID as defined in
 /// [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CtLogID<'a> {
     pub key_id: &'a [u8; 32],
 }
 
 /// CtExtensions as defined in
 /// [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CtExtensions<'a>(pub &'a [u8]);
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DigitallySigned<'a> {
     pub hash_alg_id: u8,
     pub sign_alg_id: u8,
@@ -74,9 +74,9 @@ pub fn parse_ct_signed_certificate_timestamp(
     )(i)
 }
 
-pub(crate) fn parse_ct_signed_certificate_timestamp_content<'a>(
-    i: &'a [u8],
-) -> IResult<&'a [u8], SignedCertificateTimestamp, BerError> {
+pub(crate) fn parse_ct_signed_certificate_timestamp_content(
+    i: &[u8],
+) -> IResult<&[u8], SignedCertificateTimestamp, BerError> {
     let (i, version) = be_u8(i)?;
     let (i, id) = parse_log_id(i)?;
     let (i, timestamp) = be_u64(i)?;
