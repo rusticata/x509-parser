@@ -753,7 +753,7 @@ pub(crate) mod parser {
         map(parse_basicconstraints, ParsedExtension::BasicConstraints)(i)
     }
 
-    fn parse_nameconstraints_ext(i: &'_ [u8]) -> IResult<&'_ [u8], ParsedExtension, BerError> {
+    fn parse_nameconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         map(parse_nameconstraints, ParsedExtension::NameConstraints)(i)
     }
 

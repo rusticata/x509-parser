@@ -1,9 +1,18 @@
-# Change Log
+# ChangeLog
 
 ## [Unreleased][unreleased]
 
 ### Added/Changed/Fixed
 
+- Add `verify` feature to verify a certificate revocation list by a public key
+
+### Thanks
+
+## 0.15.0
+
+### Added/Changed/Fixed
+
+- Set MSRV to 1.57 (due to `ring`/`once_cell`)
 - Add `verify` feature to verify a certificate revocation list by a public key
 
 ### Thanks
