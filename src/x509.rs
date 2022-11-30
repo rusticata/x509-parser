@@ -7,7 +7,7 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
 
-use asn1_rs::{Any, BitString, DerSequence, FromBer, FromDer, Oid, ParseResult};
+use asn1_rs::{Any, BitString, DerSequence, FromBer, FromDer, Oid, OptTaggedParser, ParseResult};
 use data_encoding::HEXUPPER;
 use der_parser::ber::MAX_OBJECT_SIZE;
 use der_parser::der::*;
@@ -36,29 +36,20 @@ use std::iter::FromIterator;
 pub struct X509Version(pub u32);
 
 impl X509Version {
-    pub(crate) fn from_der_required(i: &[u8]) -> X509Result<X509Version> {
-        let (rem, hdr) =
-            der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag().0 {
-            0 => {
-                map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
-            }
-            _ => Ok((&rem[1..], X509Version::V1)),
-        }
+    /// Parse [0] EXPLICIT Version DEFAULT v1
+    pub(crate) fn from_der_tagged_0(i: &[u8]) -> X509Result<X509Version> {
+        let (rem, opt_version) = OptTaggedParser::from(0)
+            .parse_der(i, |_, data| Self::from_der(data))
+            .map_err(Err::convert)?;
+        let version = opt_version.unwrap_or(X509Version::V1);
+        Ok((rem, version))
     }
 }
 
-// Parse [0] EXPLICIT Version DEFAULT v1
+// Version  ::=  INTEGER  {  v1(0), v2(1), v3(2)  }
 impl<'a> FromDer<'a, X509Error> for X509Version {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        let (rem, hdr) =
-            der_read_element_header(i).or(Err(Err::Error(X509Error::InvalidVersion)))?;
-        match hdr.tag().0 {
-            0 => {
-                map(parse_der_u32, X509Version)(rem).or(Err(Err::Error(X509Error::InvalidVersion)))
-            }
-            _ => Ok((i, X509Version::V1)),
-        }
+        map(<u32>::from_der, X509Version)(i).map_err(|_| Err::Error(X509Error::InvalidVersion))
     }
 }
 

@@ -552,7 +552,7 @@ impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der(i)?;
+            let (i, version) = X509Version::from_der_tagged_0(i)?;
             let (i, serial) = parse_serial(i)?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
             let (i, issuer) = X509Name::from_der(i)?;
@@ -609,7 +609,7 @@ impl<'a> Parser<&'a [u8], TbsCertificate<'a>, X509Error> for TbsCertificateParse
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], TbsCertificate<'a>, X509Error> {
         let start_i = input;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der(i)?;
+            let (i, version) = X509Version::from_der_tagged_0(i)?;
             let (i, serial) = parse_serial(i)?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
             let (i, issuer) = X509Name::from_der(i)?;

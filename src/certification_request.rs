@@ -148,7 +148,7 @@ impl<'a> FromDer<'a, X509Error> for X509CertificationRequestInfo<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der_required(i)?;
+            let (i, version) = X509Version::from_der(i)?;
             let (i, subject) = X509Name::from_der(i)?;
             let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
             let (i, attributes) = parse_cri_attributes(i)?;
