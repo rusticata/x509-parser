@@ -7,9 +7,9 @@ use crate::x509::{
 };
 
 #[cfg(feature = "verify")]
-use crate::x509::SubjectPublicKeyInfo;
-#[cfg(feature = "verify")]
 use crate::verify::verify_signature;
+#[cfg(feature = "verify")]
+use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::{BitString, FromDer};
 use der_parser::ber::Tag;
 use der_parser::der::*;

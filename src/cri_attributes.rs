@@ -4,11 +4,11 @@ use crate::{
 };
 
 use asn1_rs::{Error, FromDer, Header, Oid, Sequence, Tag};
+use nom::combinator::{all_consuming, complete};
+use nom::multi::many0;
 use nom::Err;
 use oid_registry::*;
 use std::collections::HashMap;
-use nom::combinator::{all_consuming, complete};
-use nom::multi::many0;
 
 /// Attributes for Certification Request
 #[derive(Clone, Debug, PartialEq)]

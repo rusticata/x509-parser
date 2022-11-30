@@ -66,7 +66,9 @@ fn read_csr_with_challenge_password() {
     assert_eq!(cri.attributes().len(), 2);
 
     // Make sure we can read requested extensions
-    let extensions = csr.requested_extensions().expect("Didn't find requested extensions in CSR");
+    let extensions = csr
+        .requested_extensions()
+        .expect("Didn't find requested extensions in CSR");
     let mut found_san = false;
     for extension in extensions {
         match extension {
@@ -75,7 +77,7 @@ fn read_csr_with_challenge_password() {
                 assert!(matches!(name, GeneralName::DNSName("localhost")));
                 found_san = true;
             }
-            _ => {},
+            _ => {}
         }
     }
     assert!(found_san);
