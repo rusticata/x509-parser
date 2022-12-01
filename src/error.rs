@@ -5,7 +5,7 @@ use nom::error::{ErrorKind, ParseError};
 use nom::IResult;
 
 /// An error that can occur while converting an OID to a Nid.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct NidError;
 
 /// Holds the result of parsing functions (X.509)

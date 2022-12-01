@@ -65,7 +65,7 @@ fn read_csr_with_challenge_password() {
     assert!(rem.is_empty());
     let cri = &csr.certification_request_info;
     assert_eq!(cri.version, X509Version(0));
-    assert_eq!(cri.attributes().len(), 1);
+    assert_eq!(cri.attributes().len(), 2);
 
     let challenge_password_attr = csr
         .certification_request_info
@@ -93,6 +93,20 @@ fn read_csr_with_challenge_password() {
     } else {
         panic!("Parsed attribute is not a challenge password");
     }
+
+    // Make sure we can read requested extensions
+    let extensions = csr
+        .requested_extensions()
+        .expect("Didn't find requested extensions in CSR");
+    let mut found_san = false;
+    for extension in extensions {
+        if let ParsedExtension::SubjectAlternativeName(san) = extension {
+            let name = san.general_names.get(2).unwrap();
+            assert!(matches!(name, GeneralName::DNSName("localhost")));
+            found_san = true;
+        }
+    }
+    assert!(found_san);
 }
 
 #[cfg(feature = "verify")]

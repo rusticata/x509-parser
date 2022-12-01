@@ -4,7 +4,7 @@
 //! [![crates.io](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Download numbers](https://img.shields.io/crates/d/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
-//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.53.0+-lightgray.svg)](#rust-version-requirements)
+//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.57.0+-lightgray.svg)](#rust-version-requirements)
 //!
 //! # X.509 Parser
 //!
@@ -109,7 +109,7 @@
 //!
 //! ## Rust version requirements
 //!
-//! `x509-parser` requires **Rustc version 1.53 or greater**, based on der-parser
+//! `x509-parser` requires **Rustc version 1.57 or greater**, based on der-parser
 //! dependencies and for proc-macro attributes support.
 //!
 //! Note that due to breaking changes in the `time` crate, a specific version of this
@@ -128,7 +128,7 @@
     unreachable_pub
 )]
 #![forbid(unsafe_code)]
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![doc(test(
     no_crate_inject,
     attr(deny(warnings, rust_2018_idioms), allow(dead_code, unused_variables))
@@ -152,6 +152,9 @@ pub mod utils;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
+#[cfg(feature = "verify")]
+#[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
+pub mod verify;
 pub mod x509;
 
 // reexports
@@ -174,7 +177,7 @@ use revocation_list::CertificateRevocationList;
 ///
 /// For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
 #[inline]
-pub fn parse_x509_certificate<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
+pub fn parse_x509_certificate(i: &[u8]) -> X509Result<X509Certificate> {
     X509Certificate::from_der(i)
 }
 
@@ -194,7 +197,7 @@ pub fn parse_x509_crl(i: &[u8]) -> X509Result<CertificateRevocationList> {
     note = "please use `parse_x509_certificate` or `X509Certificate::from_der` instead"
 )]
 #[inline]
-pub fn parse_x509_der<'a>(i: &'a [u8]) -> X509Result<X509Certificate<'a>> {
+pub fn parse_x509_der(i: &[u8]) -> X509Result<X509Certificate> {
     X509Certificate::from_der(i)
 }
 

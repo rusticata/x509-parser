@@ -108,7 +108,7 @@ impl<'a> fmt::Display for GeneralName<'a> {
     }
 }
 
-pub(crate) fn parse_generalname<'a>(i: &'a [u8]) -> IResult<&'a [u8], GeneralName, Error> {
+pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName, Error> {
     let (rest, any) = Any::from_der(i)?;
     let gn = GeneralName::try_from(any)?;
     Ok((rest, gn))

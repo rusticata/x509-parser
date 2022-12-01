@@ -130,7 +130,7 @@ impl<'a> FromDer<'a, X509Error> for X509Extension<'a> {
 }
 
 /// `X509Extension` parser builder
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct X509ExtensionParser {
     deep_parse_extensions: bool,
 }
@@ -263,20 +263,20 @@ pub type CertificatePolicies<'a> = Vec<PolicyInformation<'a>>;
 //     }
 // }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyInformation<'a> {
     pub policy_id: Oid<'a>,
     pub policy_qualifiers: Option<Vec<PolicyQualifierInfo<'a>>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyQualifierInfo<'a> {
     pub policy_qualifier_id: Oid<'a>,
     pub qualifier: &'a [u8],
 }
 
 /// Identifies whether the subject of the certificate is a CA, and the max validation depth.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BasicConstraints {
     pub ca: bool,
     pub path_len_constraint: Option<u32>,
@@ -288,7 +288,7 @@ impl<'a> FromDer<'a, X509Error> for BasicConstraints {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KeyIdentifier<'a>(pub &'a [u8]);
 
 impl<'a> FromDer<'a, X509Error> for KeyIdentifier<'a> {
@@ -448,7 +448,7 @@ impl<'a> AccessDescription<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InhibitAnyPolicy {
     pub skip_certs: u32,
 }
@@ -459,7 +459,7 @@ impl<'a> FromDer<'a, X509Error> for InhibitAnyPolicy {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyConstraints {
     pub require_explicit_policy: Option<u32>,
     pub inhibit_policy_mapping: Option<u32>,
@@ -522,7 +522,7 @@ pub enum DistributionPointName<'a> {
     NameRelativeToCRLIssuer(RelativeDistinguishedName<'a>),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReasonFlags {
     pub flags: u16,
 }
@@ -753,13 +753,13 @@ pub(crate) mod parser {
         map(parse_basicconstraints, ParsedExtension::BasicConstraints)(i)
     }
 
-    fn parse_nameconstraints_ext<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    fn parse_nameconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         map(parse_nameconstraints, ParsedExtension::NameConstraints)(i)
     }
 
-    pub(super) fn parse_subjectalternativename_ext<'a>(
-        i: &'a [u8],
-    ) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    pub(super) fn parse_subjectalternativename_ext(
+        i: &[u8],
+    ) -> IResult<&[u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) = all_consuming(many0(complete(cut(parse_generalname))))(input)?;
             Ok((
@@ -769,9 +769,9 @@ pub(crate) mod parser {
         })(i)
     }
 
-    pub(super) fn parse_issueralternativename_ext<'a>(
-        i: &'a [u8],
-    ) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    pub(super) fn parse_issueralternativename_ext(
+        i: &[u8],
+    ) -> IResult<&[u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) = all_consuming(many0(complete(cut(parse_generalname))))(input)?;
             Ok((
@@ -972,15 +972,13 @@ pub(crate) mod parser {
         )(i)
     }
 
-    pub(super) fn parse_keyidentifier<'a>(
-        i: &'a [u8],
-    ) -> IResult<&'a [u8], KeyIdentifier, BerError> {
+    pub(super) fn parse_keyidentifier(i: &[u8]) -> IResult<&[u8], KeyIdentifier, BerError> {
         let (rest, id) = <&[u8]>::from_der(i)?;
         let ki = KeyIdentifier(id);
         Ok((rest, ki))
     }
 
-    fn parse_keyidentifier_ext<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    fn parse_keyidentifier_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         map(parse_keyidentifier, ParsedExtension::SubjectKeyIdentifier)(i)
     }
 
@@ -1079,7 +1077,7 @@ pub(crate) mod parser {
     }
 
     // CRLReason ::= ENUMERATED { ...
-    fn parse_reason_code<'a>(i: &'a [u8]) -> IResult<&'a [u8], ParsedExtension, BerError> {
+    fn parse_reason_code(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
         let (rest, obj) = parse_der_enum(i)?;
         let code = obj
             .content
@@ -1093,7 +1091,7 @@ pub(crate) mod parser {
     }
 
     // invalidityDate ::=  GeneralizedTime
-    fn parse_invalidity_date<'a>(i: &'a [u8]) -> ParseResult<'a, ParsedExtension> {
+    fn parse_invalidity_date(i: &[u8]) -> ParseResult<ParsedExtension> {
         let (rest, t) = GeneralizedTime::from_der(i)?;
         let dt = t.utc_datetime()?;
         Ok((rest, ParsedExtension::InvalidityDate(ASN1Time::new(dt))))

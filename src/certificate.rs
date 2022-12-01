@@ -11,6 +11,8 @@ use crate::x509::{
     X509Version,
 };
 
+#[cfg(feature = "verify")]
+use crate::verify::verify_signature;
 use asn1_rs::{BitString, FromDer, OptTaggedExplicit};
 use core::ops::Deref;
 use der_parser::ber::Tag;
@@ -85,66 +87,13 @@ impl<'a> X509Certificate<'a> {
         &self,
         public_key: Option<&SubjectPublicKeyInfo>,
     ) -> Result<(), X509Error> {
-        use ring::signature;
         let spki = public_key.unwrap_or_else(|| self.public_key());
-        let signature_alg = &self.signature_algorithm.algorithm;
-        // identify verification algorithm
-        let verification_alg: &dyn signature::VerificationAlgorithm =
-            if *signature_alg == OID_PKCS1_SHA1WITHRSA || *signature_alg == OID_SHA1_WITH_RSA {
-                &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY
-            } else if *signature_alg == OID_PKCS1_SHA256WITHRSA {
-                &signature::RSA_PKCS1_2048_8192_SHA256
-            } else if *signature_alg == OID_PKCS1_SHA384WITHRSA {
-                &signature::RSA_PKCS1_2048_8192_SHA384
-            } else if *signature_alg == OID_PKCS1_SHA512WITHRSA {
-                &signature::RSA_PKCS1_2048_8192_SHA512
-            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA256 {
-                self.get_ec_curve_sha(&spki.algorithm, 256)
-                    .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
-            } else if *signature_alg == OID_SIG_ECDSA_WITH_SHA384 {
-                self.get_ec_curve_sha(&spki.algorithm, 384)
-                    .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
-            } else if *signature_alg == OID_SIG_ED25519 {
-                &signature::ED25519
-            } else {
-                return Err(X509Error::SignatureUnsupportedAlgorithm);
-            };
-        // get public key
-        let key =
-            signature::UnparsedPublicKey::new(verification_alg, &spki.subject_public_key.data);
-        // verify signature
-        let sig = &self.signature_value.data;
-        key.verify(self.tbs_certificate.raw, sig)
-            .or(Err(X509Error::SignatureVerificationError))
-    }
-
-    /// Find the verification algorithm for the given EC curve and SHA digest size
-    ///
-    /// Not all algorithms are supported, we are limited to what `ring` supports.
-    #[cfg(feature = "verify")]
-    fn get_ec_curve_sha(
-        &self,
-        pubkey_alg: &AlgorithmIdentifier,
-        sha_len: usize,
-    ) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
-        use ring::signature;
-        let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
-        // let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
-        if curve_oid == OID_EC_P256 {
-            match sha_len {
-                256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
-                384 => Some(&signature::ECDSA_P256_SHA384_ASN1),
-                _ => None,
-            }
-        } else if curve_oid == OID_NIST_EC_P384 {
-            match sha_len {
-                256 => Some(&signature::ECDSA_P384_SHA256_ASN1),
-                384 => Some(&signature::ECDSA_P384_SHA384_ASN1),
-                _ => None,
-            }
-        } else {
-            None
-        }
+        verify_signature(
+            spki,
+            &self.signature_algorithm,
+            &self.signature_value,
+            self.tbs_certificate.raw,
+        )
     }
 }
 
@@ -235,7 +184,7 @@ impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
 /// }
 /// # }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct X509CertificateParser {
     deep_parse_extensions: bool,
     // strict: bool,
@@ -603,7 +552,7 @@ impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der(i)?;
+            let (i, version) = X509Version::from_der_tagged_0(i)?;
             let (i, serial) = parse_serial(i)?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
             let (i, issuer) = X509Name::from_der(i)?;
@@ -635,7 +584,7 @@ impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
 }
 
 /// `TbsCertificate` parser builder
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct TbsCertificateParser {
     deep_parse_extensions: bool,
 }
@@ -660,7 +609,7 @@ impl<'a> Parser<&'a [u8], TbsCertificate<'a>, X509Error> for TbsCertificateParse
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], TbsCertificate<'a>, X509Error> {
         let start_i = input;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der(i)?;
+            let (i, version) = X509Version::from_der_tagged_0(i)?;
             let (i, serial) = parse_serial(i)?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
             let (i, issuer) = X509Name::from_der(i)?;
@@ -709,7 +658,7 @@ impl Validate for TbsCertificate<'_> {
 }
 
 /// Basic extension structure, used in search results
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BasicExtension<T> {
     pub critical: bool,
     pub value: T,
@@ -721,7 +670,7 @@ impl<T> BasicExtension<T> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Validity {
     pub not_before: ASN1Time,
     pub not_after: ASN1Time,
@@ -770,7 +719,7 @@ impl<'a> FromDer<'a, X509Error> for Validity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UniqueIdentifier<'a>(pub BitString<'a>);
 
 impl<'a> UniqueIdentifier<'a> {

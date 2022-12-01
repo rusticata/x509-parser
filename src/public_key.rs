@@ -6,7 +6,7 @@ use der_parser::{
 };
 
 /// Public Key value
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PublicKey<'a> {
     RSA(RSAPublicKey<'a>),
     EC(ECPoint<'a>),
@@ -34,7 +34,7 @@ impl<'a> PublicKey<'a> {
 }
 
 /// RSA public Key, defined in rfc3279
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RSAPublicKey<'a> {
     /// Raw bytes of the modulus
     ///
@@ -91,7 +91,7 @@ impl<'a> FromDer<'a, X509Error> for RSAPublicKey<'a> {
 }
 
 /// Elliptic Curve point, as defined in [RFC5480](https://datatracker.ietf.org/doc/html/rfc5480)
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ECPoint<'a> {
     data: &'a [u8],
 }

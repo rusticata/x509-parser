@@ -3,7 +3,7 @@ use asn1_rs::{DerSequence, Error, FromDer, Oid};
 use nom::{Err, IResult};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyMappings<'a> {
     pub mappings: Vec<PolicyMapping<'a>>,
 }
@@ -57,7 +57,7 @@ impl<'a> PolicyMappings<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DerSequence)]
+#[derive(Clone, Debug, PartialEq, Eq, DerSequence)]
 pub struct PolicyMapping<'a> {
     pub issuer_domain_policy: Oid<'a>,
     pub subject_domain_policy: Oid<'a>,

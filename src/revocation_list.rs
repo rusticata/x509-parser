@@ -6,6 +6,10 @@ use crate::x509::{
     parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
 
+#[cfg(feature = "verify")]
+use crate::verify::verify_signature;
+#[cfg(feature = "verify")]
+use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::{BitString, FromDer};
 use der_parser::ber::Tag;
 use der_parser::der::*;
@@ -102,6 +106,22 @@ impl<'a> CertificateRevocationList<'a> {
                 ParsedExtension::CRLNumber(ref num) => Some(num),
                 _ => None,
             })
+    }
+
+    /// Verify the cryptographic signature of this certificate revocation list
+    ///
+    /// `public_key` is the public key of the **signer**.
+    ///
+    /// Not all algorithms are supported, this function is limited to what `ring` supports.
+    #[cfg(feature = "verify")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
+    pub fn verify_signature(&self, public_key: &SubjectPublicKeyInfo) -> Result<(), X509Error> {
+        verify_signature(
+            public_key,
+            &self.signature_algorithm,
+            &self.signature_value,
+            self.tbs_cert_list.raw,
+        )
     }
 }
 

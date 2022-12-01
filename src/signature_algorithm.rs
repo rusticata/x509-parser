@@ -182,7 +182,7 @@ impl CheckDerConstraints for RsaSsaPssParams<'_> {
 
 impl DerAutoDerive for RsaSsaPssParams<'_> {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct MaskGenAlgorithm<'a, 'b> {
     pub mgf: Oid<'a>,
     pub hash: Oid<'b>,
