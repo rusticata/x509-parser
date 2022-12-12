@@ -74,9 +74,9 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
-    use der_parser::ber::BerObjectContent;
-    use der_parser::der::{parse_der_printablestring, parse_der_utf8string};
+    use der_parser::der::{parse_der_bmpstring, parse_der_generalstring, parse_der_graphicstring, parse_der_ia5string, parse_der_numericstring, parse_der_objectdescriptor, parse_der_printablestring, parse_der_t61string, parse_der_utf8string, parse_der_videotexstring, visiblestring};
     use lazy_static::lazy_static;
+    use nom::branch::alt;
     use nom::combinator::map;
 
     type AttrParser = fn(&[u8]) -> X509Result<ParsedCriAttribute>;
@@ -126,22 +126,25 @@ pub(crate) mod parser {
     }
 
     pub(super) fn parse_challenge_password(i: &[u8]) -> X509Result<ChallengePassword> {
-        // I'm sure, there is a more elegant way to try multiple parsers until the first succeeds,
-        // but I don't know nom well enough to implement it.
-        let (rem, obj) = {
-            if let Ok((rem, obj)) = parse_der_utf8string(i) {
-                (rem, obj)
-            } else if let Ok((rem, obj)) = parse_der_printablestring(i) {
-                (rem, obj)
-            } else {
-                return Err(Err::Error(X509Error::InvalidAttributes));
-            }
+        let (rem, obj) = match alt((
+            parse_der_utf8string,
+            parse_der_printablestring,
+            parse_der_numericstring,
+            parse_der_bmpstring,
+            visiblestring,
+            parse_der_generalstring,
+            parse_der_objectdescriptor,
+            parse_der_graphicstring,
+            parse_der_t61string,
+            parse_der_videotexstring,
+            parse_der_ia5string,
+        ))(i) {
+            Ok((rem, obj)) => (rem, obj),
+            Err(_) => return Err(Err::Error(X509Error::InvalidAttributes)),
         };
-        match obj.content {
-            BerObjectContent::PrintableString(s) | BerObjectContent::UTF8String(s) => {
-                Ok((rem, ChallengePassword { 0: s.to_string() }))
-            }
-            _ => Err(Err::Error(X509Error::InvalidAttributes)),
+        match obj.content.as_str() {
+            Ok(s) => Ok((rem, ChallengePassword { 0: s.to_string() })),
+            Err(_) => Err(Err::Error(X509Error::InvalidAttributes)),
         }
     }
 

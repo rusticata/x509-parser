@@ -74,11 +74,8 @@ fn read_csr_with_challenge_password() {
 
     // 1. Check: Parse value
     let (rem, challenge_password_from_value) =
-        Set::from_der_and_then(challenge_password_attr.value, |i| {
-            let (i, challenge_password) = String::from_der(i)?;
-            Ok((i, challenge_password))
-        })
-        .expect("Error parsing challenge password attribute");
+        Set::from_der_and_then(challenge_password_attr.value, |i| String::from_der(i))
+            .expect("Error parsing challenge password attribute");
     assert_eq!(challenge_password_from_value, "A challenge password");
     assert!(rem.is_empty());
 
