@@ -74,7 +74,11 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
-    use der_parser::der::{parse_der_bmpstring, parse_der_generalstring, parse_der_graphicstring, parse_der_ia5string, parse_der_numericstring, parse_der_objectdescriptor, parse_der_printablestring, parse_der_t61string, parse_der_utf8string, parse_der_videotexstring, visiblestring};
+    use der_parser::der::{
+        parse_der_bmpstring, parse_der_generalstring, parse_der_graphicstring, parse_der_ia5string,
+        parse_der_numericstring, parse_der_objectdescriptor, parse_der_printablestring,
+        parse_der_t61string, parse_der_utf8string, parse_der_videotexstring, visiblestring,
+    };
     use lazy_static::lazy_static;
     use nom::branch::alt;
     use nom::combinator::map;
@@ -138,7 +142,8 @@ pub(crate) mod parser {
             parse_der_t61string,
             parse_der_videotexstring,
             parse_der_ia5string,
-        ))(i) {
+        ))(i)
+        {
             Ok((rem, obj)) => (rem, obj),
             Err(_) => return Err(Err::Error(X509Error::InvalidAttributes)),
         };
