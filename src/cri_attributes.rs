@@ -61,7 +61,7 @@ impl<'a> FromDer<'a, X509Error> for ExtensionRequest<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChallengePassword(pub String);
 
 /// Attributes for Certification Request
@@ -143,7 +143,7 @@ pub(crate) mod parser {
             Err(_) => return Err(Err::Error(X509Error::InvalidAttributes)),
         };
         match obj.content.as_str() {
-            Ok(s) => Ok((rem, ChallengePassword { 0: s.to_string() })),
+            Ok(s) => Ok((rem, ChallengePassword(s.to_string()))),
             Err(_) => Err(Err::Error(X509Error::InvalidAttributes)),
         }
     }
