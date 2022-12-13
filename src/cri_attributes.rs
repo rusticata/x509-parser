@@ -74,11 +74,7 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
-    use der_parser::der::{
-        parse_der_bmpstring, parse_der_generalstring, parse_der_graphicstring, parse_der_ia5string,
-        parse_der_numericstring, parse_der_objectdescriptor, parse_der_printablestring,
-        parse_der_t61string, parse_der_utf8string, parse_der_videotexstring, visiblestring,
-    };
+    use der_parser::der::{parse_der_bmpstring, parse_der_generalstring, parse_der_graphicstring, parse_der_ia5string, parse_der_numericstring, parse_der_objectdescriptor, parse_der_printablestring, parse_der_t61string, parse_der_universalstring, parse_der_utf8string, parse_der_videotexstring, visiblestring};
     use lazy_static::lazy_static;
     use nom::branch::alt;
     use nom::combinator::map;
@@ -129,19 +125,28 @@ pub(crate) mod parser {
         )(i)
     }
 
+    // RFC 2985, 5.4.1 Challenge password
+    //    challengePassword ATTRIBUTE ::= {
+    //            WITH SYNTAX DirectoryString {pkcs-9-ub-challengePassword}
+    //            EQUALITY MATCHING RULE caseExactMatch
+    //            SINGLE VALUE TRUE
+    //            ID pkcs-9-at-challengePassword
+    //    }
+    // RFC 5280, 4.1.2.4.  Issuer
+    //    DirectoryString ::= CHOICE {
+    //          teletexString           TeletexString (SIZE (1..MAX)),
+    //          printableString         PrintableString (SIZE (1..MAX)),
+    //          universalString         UniversalString (SIZE (1..MAX)),
+    //          utf8String              UTF8String (SIZE (1..MAX)),
+    //          bmpString               BMPString (SIZE (1..MAX))
+    //    }
     pub(super) fn parse_challenge_password(i: &[u8]) -> X509Result<ChallengePassword> {
         let (rem, obj) = match alt((
             parse_der_utf8string,
             parse_der_printablestring,
-            parse_der_numericstring,
+            parse_der_universalstring,
             parse_der_bmpstring,
-            visiblestring,
-            parse_der_generalstring,
-            parse_der_objectdescriptor,
-            parse_der_graphicstring,
-            parse_der_t61string,
-            parse_der_videotexstring,
-            parse_der_ia5string,
+            parse_der_t61string, // == teletexString
         ))(i)
         {
             Ok((rem, obj)) => (rem, obj),
