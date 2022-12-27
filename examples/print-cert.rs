@@ -70,7 +70,7 @@ fn print_x509_extension(oid: &Oid, ext: &X509Extension) {
         }
         ParsedExtension::CRLDistributionPoints(points) => {
             println!("      X509v3 CRL Distribution Points:");
-            for point in points {
+            for point in points.iter() {
                 if let Some(name) = &point.distribution_point {
                     println!("        Full Name: {:?}", name);
                 }
