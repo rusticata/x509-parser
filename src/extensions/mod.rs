@@ -501,13 +501,24 @@ impl<'a> FromDer<'a, X509Error> for IssuerAlternativeName<'a> {
     }
 }
 
-pub type CRLDistributionPoints<'a> = Vec<CRLDistributionPoint<'a>>;
+#[derive(Clone, Debug, PartialEq)]
+pub struct CRLDistributionPoints<'a> {
+    pub points: Vec<CRLDistributionPoint<'a>>,
+}
 
-// impl<'a> FromDer<'a> for CRLDistributionPoints<'a> {
-//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-//         parser::parse_crldistributionpoints(i).map_err(Err::convert)
-//     }
-// }
+impl<'a> std::ops::Deref for CRLDistributionPoints<'a> {
+    type Target = Vec<CRLDistributionPoint<'a>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.points
+    }
+}
+
+impl<'a> FromDer<'a, X509Error> for CRLDistributionPoints<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_crldistributionpoints(i).map_err(Err::convert)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CRLDistributionPoint<'a> {
@@ -894,7 +905,8 @@ pub(crate) mod parser {
     pub(super) fn parse_crldistributionpoints(
         i: &[u8],
     ) -> IResult<&[u8], CRLDistributionPoints, BerError> {
-        parse_der_sequence_of_v(parse_crldistributionpoint)(i)
+        let (ret, crldps) = parse_der_sequence_of_v(parse_crldistributionpoint)(i)?;
+        Ok((ret, CRLDistributionPoints { points: crldps }))
     }
 
     fn parse_crldistributionpoints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
