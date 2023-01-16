@@ -60,7 +60,6 @@
 use crate::certificate::X509Certificate;
 use crate::error::{PEMError, X509Error};
 use crate::parse_x509_certificate;
-use base64::Engine as _;
 use nom::{Err, IResult};
 use std::io::{BufRead, Cursor, Seek};
 
@@ -151,8 +150,8 @@ impl Pem {
             s.push_str(l.trim_end());
         }
 
-        let contents = base64::engine::general_purpose::STANDARD
-            .decode(&s)
+        let contents = data_encoding::BASE64
+            .decode(s.as_bytes())
             .or(Err(PEMError::Base64DecodeError))?;
         let pem = Pem {
             label: label.to_string(),
