@@ -2,7 +2,7 @@
 name = "x509-parser"
 version = "0.14.0"
 description = "Parser for the X.509 v3 format (RFC 5280 certificates)"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 keywords = ["X509","Certificate","parser","nom"]
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 homepage = "https://github.com/rusticata/x509-parser"
