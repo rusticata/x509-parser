@@ -25,8 +25,8 @@ DER.  A PEM-encoded certificate is a container, storing a DER object. See the
 [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module for more documentation.
 
 To decode a DER-encoded certificate, the main parsing method is
-[`X509Certificate::from_der`] (
-part of the [`FromDer`](https://docs.rs/x509-parser/latest/x509_parser/traits/trait.FromDer.html) trait
+`X509Certificate::from_der` (
+part of the [`FromDer`](https://docs.rs/x509-parser/latest/x509_parser/prelude/trait.FromDer.html) trait
 ), which builds a
 [`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html) object.
 
