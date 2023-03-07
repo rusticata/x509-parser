@@ -165,7 +165,7 @@ fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {
             // if we are in this function, the PrintableString could not be validated.
             // Accept it without validating charset, because some tools do not respect the charset
             // restrictions (for ex. they use '*' while explicingly disallowed)
-            let (rem, data) = take(len as usize)(rem)?;
+            let (rem, data) = take(len)(rem)?;
             // check valid encoding
             let _ = std::str::from_utf8(data).map_err(|_| Error::BerValueError)?;
             let obj = Any::new(hdr, data);

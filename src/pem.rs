@@ -61,7 +61,7 @@ use crate::certificate::X509Certificate;
 use crate::error::{PEMError, X509Error};
 use crate::parse_x509_certificate;
 use nom::{Err, IResult};
-use std::io::{BufRead, Cursor, Seek, SeekFrom};
+use std::io::{BufRead, Cursor, Seek};
 
 /// Representation of PEM data
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -152,7 +152,7 @@ impl Pem {
             label: label.to_string(),
             contents,
         };
-        Ok((pem, r.seek(SeekFrom::Current(0))? as usize))
+        Ok((pem, r.stream_position()? as usize))
     }
 
     /// Decode the PEM contents into a X.509 object
