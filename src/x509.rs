@@ -589,6 +589,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_x509_version() {
+        // correct version
+        let data: &[u8] = &[0xa0, 0x03, 0x02, 0x01, 0x00];
+        let r = X509Version::from_der_tagged_0(data);
+        assert!(r.is_ok());
+
+        // wrong tag
+        let data: &[u8] = &[0xa1, 0x03, 0x02, 0x01, 0x00];
+        let r = X509Version::from_der_tagged_0(data);
+        assert!(r.is_ok());
+
+        // short read
+        let data: &[u8] = &[0xa0, 0x01];
+        let r = X509Version::from_der_tagged_0(data);
+        assert!(r.is_err());
+
+        // short read with wrong tag
+        let data: &[u8] = &[0xa1, 0x01];
+        let r = X509Version::from_der_tagged_0(data);
+        assert!(r.is_err());
+    }
+
+    #[test]
     fn test_x509_name() {
         let name = X509Name {
             rdn_seq: vec![
