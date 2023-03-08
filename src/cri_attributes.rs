@@ -30,14 +30,22 @@ impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
 
             let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)
                 .map_err(|_| Err::Error(Error::BerValueError))?;
-            let ext = X509CriAttribute {
+            let attribute = X509CriAttribute {
                 oid,
                 value: &value_start[..value_start.len() - i.len()],
                 parsed_attribute,
             };
-            Ok((i, ext))
+            Ok((i, attribute))
         })
         .map_err(|_| X509Error::InvalidAttributes.into())
+    }
+}
+
+impl<'a> X509CriAttribute<'a> {
+    /// Return the attribute type or `UnsupportedAttribute` if the attribute is unknown.
+    #[inline]
+    pub fn parsed_attribute(&self) -> &ParsedCriAttribute<'a> {
+        &self.parsed_attribute
     }
 }
 
@@ -53,16 +61,25 @@ impl<'a> FromDer<'a, X509Error> for ExtensionRequest<'a> {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ChallengePassword(pub String);
+
 /// Attributes for Certification Request
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParsedCriAttribute<'a> {
+    ChallengePassword(ChallengePassword),
     ExtensionRequest(ExtensionRequest<'a>),
     UnsupportedAttribute,
 }
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
+    use der_parser::der::{
+        parse_der_bmpstring, parse_der_printablestring, parse_der_t61string,
+        parse_der_universalstring, parse_der_utf8string,
+    };
     use lazy_static::lazy_static;
+    use nom::branch::alt;
     use nom::combinator::map;
 
     type AttrParser = fn(&[u8]) -> X509Result<ParsedCriAttribute>;
@@ -76,7 +93,12 @@ pub(crate) mod parser {
             }
 
             let mut m = HashMap::new();
-            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_ext);
+            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_attr);
+            add!(
+                m,
+                OID_PKCS9_CHALLENGE_PASSWORD,
+                parse_challenge_password_attr
+            );
             m
         };
     }
@@ -99,10 +121,50 @@ pub(crate) mod parser {
             .map(|(i, extensions)| (i, ExtensionRequest { extensions }))
     }
 
-    fn parse_extension_request_ext(i: &[u8]) -> X509Result<ParsedCriAttribute> {
+    fn parse_extension_request_attr(i: &[u8]) -> X509Result<ParsedCriAttribute> {
         map(
             parse_extension_request,
             ParsedCriAttribute::ExtensionRequest,
+        )(i)
+    }
+
+    // RFC 2985, 5.4.1 Challenge password
+    //    challengePassword ATTRIBUTE ::= {
+    //            WITH SYNTAX DirectoryString {pkcs-9-ub-challengePassword}
+    //            EQUALITY MATCHING RULE caseExactMatch
+    //            SINGLE VALUE TRUE
+    //            ID pkcs-9-at-challengePassword
+    //    }
+    // RFC 5280, 4.1.2.4.  Issuer
+    //    DirectoryString ::= CHOICE {
+    //          teletexString           TeletexString (SIZE (1..MAX)),
+    //          printableString         PrintableString (SIZE (1..MAX)),
+    //          universalString         UniversalString (SIZE (1..MAX)),
+    //          utf8String              UTF8String (SIZE (1..MAX)),
+    //          bmpString               BMPString (SIZE (1..MAX))
+    //    }
+    pub(super) fn parse_challenge_password(i: &[u8]) -> X509Result<ChallengePassword> {
+        let (rem, obj) = match alt((
+            parse_der_utf8string,
+            parse_der_printablestring,
+            parse_der_universalstring,
+            parse_der_bmpstring,
+            parse_der_t61string, // == teletexString
+        ))(i)
+        {
+            Ok((rem, obj)) => (rem, obj),
+            Err(_) => return Err(Err::Error(X509Error::InvalidAttributes)),
+        };
+        match obj.content.as_str() {
+            Ok(s) => Ok((rem, ChallengePassword(s.to_string()))),
+            Err(_) => Err(Err::Error(X509Error::InvalidAttributes)),
+        }
+    }
+
+    fn parse_challenge_password_attr(i: &[u8]) -> X509Result<ParsedCriAttribute> {
+        map(
+            parse_challenge_password,
+            ParsedCriAttribute::ChallengePassword,
         )(i)
     }
 }
