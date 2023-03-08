@@ -129,8 +129,11 @@ impl Pem {
                 line.clear();
                 continue;
             }
-            let mut iter = line.split_whitespace();
-            let label = iter.nth(1).ok_or(PEMError::InvalidHeader)?;
+            let v: Vec<&str> = line.split("-----").collect();
+            if v.len() < 3 || !v[0].is_empty() {
+                return Err(PEMError::InvalidHeader);
+            }
+            let label = v[1].strip_prefix("BEGIN ").ok_or(PEMError::InvalidHeader)?;
             break label;
         };
         let label = label.split('-').next().ok_or(PEMError::InvalidHeader)?;
@@ -241,5 +244,13 @@ mod tests {
             .subject
             .to_string();
         assert_eq!(subject, "CN=lists.for-our.info");
+    }
+
+    #[test]
+    fn pem_multi_word_label() {
+        const PEM_BYTES: &[u8] =
+            b"-----BEGIN MULTI WORD LABEL-----\n-----END MULTI WORD LABEL-----";
+        let (_, pem) = parse_x509_pem(PEM_BYTES).expect("should parse pem");
+        assert_eq!(pem.label, "MULTI WORD LABEL");
     }
 }
