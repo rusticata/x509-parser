@@ -23,8 +23,8 @@
 //! [`pem`](pem/index.html) module for more documentation.
 //!
 //! To decode a DER-encoded certificate, the main parsing method is
-//! [`X509Certificate::from_der`] (
-//! part of the [`FromDer`](traits/trait.FromDer.html) trait
+//! `X509Certificate::from_der` (
+//! part of the [`FromDer`](prelude/trait.FromDer.html) trait
 //! ), which builds a
 //! [`X509Certificate`](certificate/struct.X509Certificate.html) object.
 //!
