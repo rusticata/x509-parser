@@ -12,10 +12,26 @@
 
 ### Added/Changed/Fixed
 
+Global:
+- Use SPDX license format (#137)
 - Set MSRV to 1.57 (due to `ring`/`once_cell`)
+- Switch base64 decoding to `data-encoding` crate (#136)
+
+Code:
 - Add `verify` feature to verify a certificate revocation list by a public key
+- Fixed CriAttributes parser (#131)
+- Refactor code for parsing X509Version
+- Add verify signature method to revocation list (#130)
+- Add support for parsing challenge password attribute in CSR's (#129)
+- Add support for multi-word PEM labels (C#135)
+
+Docs:
+- Fix broken FromDer trait link in README
 
 ### Thanks
+
+- Bernd Krietenstein, Florian Zipperle, Jean-Baptiste Trystram, Daniel McCarney,
+  Jeff Hiner, Campbell He, Sebastian Dröge
 
 ## 0.14.0
 
