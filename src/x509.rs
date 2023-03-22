@@ -82,13 +82,13 @@ impl<'a> AttributeTypeAndValue<'a> {
 
     /// Returns the attribute type
     #[inline]
-    pub const fn attr_type(&self) -> &Oid {
+    pub const fn attr_type(&self) -> &Oid<'a> {
         &self.attr_type
     }
 
     /// Returns the attribute value, as `ANY`
     #[inline]
-    pub const fn attr_value(&self) -> &Any {
+    pub const fn attr_value(&self) -> &Any<'a> {
         &self.attr_value
     }
 
@@ -101,7 +101,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// Only NumericString, PrintableString, UTF8String and IA5String
     /// are considered here. Other string types can be read using `as_slice`.
     #[inline]
-    pub fn as_str(&'a self) -> Result<&'a str, X509Error> {
+    pub fn as_str(&self) -> Result<&'a str, X509Error> {
         // TODO: replace this with helper function, when it is added to asn1-rs
         match self.attr_value.tag() {
             Tag::NumericString | Tag::PrintableString | Tag::Utf8String | Tag::Ia5String => {
@@ -115,7 +115,7 @@ impl<'a> AttributeTypeAndValue<'a> {
 
     /// Get the content as a slice.
     #[inline]
-    pub fn as_slice(&'a self) -> &'a [u8] {
+    pub fn as_slice(&self) -> &'a [u8] {
         self.attr_value.as_bytes()
     }
 }
