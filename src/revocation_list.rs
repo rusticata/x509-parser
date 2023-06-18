@@ -101,7 +101,7 @@ impl<'a> CertificateRevocationList<'a> {
     pub fn crl_number(&self) -> Option<&BigUint> {
         self.extensions()
             .iter()
-            .find(|&ext| ext.oid == OID_X509_EXT_BASIC_CONSTRAINTS)
+            .find(|&ext| ext.oid == OID_X509_EXT_CRL_NUMBER)
             .and_then(|ext| match ext.parsed_extension {
                 ParsedExtension::CRLNumber(ref num) => Some(num),
                 _ => None,
