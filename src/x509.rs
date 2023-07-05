@@ -7,7 +7,10 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
 
-use asn1_rs::{Any, BitString, DerSequence, FromBer, FromDer, Oid, OptTaggedParser, ParseResult};
+use asn1_rs::{
+    Any, BitString, BmpString, DerSequence, FromBer, FromDer, Oid, OptTaggedParser, ParseResult,
+};
+use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
 use der_parser::ber::MAX_OBJECT_SIZE;
 use der_parser::der::*;
@@ -120,7 +123,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     }
 }
 
-impl<'a, 'b> core::convert::TryFrom<&'a AttributeTypeAndValue<'b>> for &'a str {
+impl<'a, 'b> TryFrom<&'a AttributeTypeAndValue<'b>> for &'a str {
     type Error = X509Error;
 
     fn try_from(value: &'a AttributeTypeAndValue<'b>) -> Result<Self, Self::Error> {
@@ -510,7 +513,6 @@ fn attribute_value_to_string(attr: &Any, _attr_type: &Oid) -> Result<String, X50
     // TODO: replace this with helper function, when it is added to asn1-rs
     match attr.tag() {
         Tag::NumericString
-        | Tag::BmpString
         | Tag::VisibleString
         | Tag::PrintableString
         | Tag::GeneralString
@@ -522,6 +524,12 @@ fn attribute_value_to_string(attr: &Any, _attr_type: &Oid) -> Result<String, X50
         | Tag::Ia5String => {
             let s = core::str::from_utf8(attr.data).map_err(|_| X509Error::InvalidAttributes)?;
             Ok(s.to_owned())
+        }
+        Tag::BmpString => {
+            // TODO: remove this when a new release of asn1-rs removes the need to consume attr in try_from
+            let any = attr.clone();
+            let s = BmpString::try_from(any).map_err(|_| X509Error::InvalidAttributes)?;
+            Ok(s.string())
         }
         _ => {
             // type is not a string, get slice and convert it to base64
