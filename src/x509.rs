@@ -115,7 +115,7 @@ impl<'a> AttributeTypeAndValue<'a> {
 
     /// Get the content as a slice.
     #[inline]
-    pub fn as_slice(&self) -> &'a [u8] {
+    pub fn as_slice(&self) -> &[u8] {
         self.attr_value.as_bytes()
     }
 }
