@@ -4,9 +4,19 @@
 
 ### Added/Changed/Fixed
 
-- Add `verify` feature to verify a certificate revocation list by a public key
+### Thanks
+
+## 0.15.1
+
+### Added/Changed/Fixed
+
+- Attribute: fix parsing of BmpString string type to use UTF-16 (Closes #143)
+- `revocation_list`: use correct OID for CRL number.
+- Fix receiver lifetimes in `AttributeTypeAndValue`
 
 ### Thanks
+
+- Sergio Benitez, Daniel McCarney, Lily Ballard
 
 ## 0.15.0
 
