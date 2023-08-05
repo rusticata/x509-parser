@@ -14,6 +14,7 @@ static EMPTY_CRL_DER: &[u8] = include_bytes!("../assets/empty.crl");
 static MINIMAL_CRL_DER: &[u8] = include_bytes!("../assets/minimal.crl");
 static DUPLICATE_VALUE_IN_AIA: &[u8] =
     include_bytes!("../assets/duplicate_value_in_authority_info_access.der");
+static UNIQUE_IDS_DER: &[u8] = include_bytes!("../assets/unique_ids.der");
 
 #[test]
 fn test_x509_parser() {
@@ -357,4 +358,34 @@ fn test_x509_parser_no_ext() {
     for ext in x509.extensions() {
         assert_eq!(ext.parsed_extension(), &ParsedExtension::Unparsed);
     }
+}
+
+#[test]
+fn test_tbscert_unique_identifiers() {
+    let mut parser = X509CertificateParser::new().with_deep_parse_extensions(false);
+    let (_, x509) = parser.parse(UNIQUE_IDS_DER).expect("parsing failed");
+    assert_eq!(
+        &x509
+            .tbs_certificate
+            .issuer_uid
+            .expect("missing issuer uid")
+            .0
+            .as_ref(),
+        &[
+            0x30, 0x16, 0x80, 0x14, 0xc5, 0x78, 0x84, 0xb8, 0xc, 0x6e, 0x8c, 0x4c, 0xce, 0xb9,
+            0x94, 0x6f, 0x98, 0xfc, 0xf3, 0x8a, 0x54, 0xb1, 0x80, 0xe0
+        ]
+    );
+    assert_eq!(
+        &x509
+            .tbs_certificate
+            .subject_uid
+            .expect("missing subject uid")
+            .0
+            .as_ref(),
+        &[
+            0x4, 0x14, 0xdf, 0x13, 0xac, 0x69, 0x14, 0x90, 0x62, 0xdb, 0x3d, 0xe9, 0xb4, 0x56,
+            0xe6, 0xa6, 0x90, 0x26, 0xbf, 0x2c, 0xef, 0x81
+        ]
+    );
 }

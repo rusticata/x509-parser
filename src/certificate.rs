@@ -13,7 +13,7 @@ use crate::x509::{
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
-use asn1_rs::{BitString, FromDer, OptTaggedExplicit};
+use asn1_rs::{BitString, FromDer, OptTaggedImplicit};
 use core::ops::Deref;
 use der_parser::ber::Tag;
 use der_parser::der::*;
@@ -737,7 +737,7 @@ impl<'a> UniqueIdentifier<'a> {
     //
     // UniqueIdentifier  ::=  BIT STRING
     fn parse<const TAG: u32>(i: &[u8]) -> BerResult<Option<UniqueIdentifier>> {
-        let (rem, unique_id) = OptTaggedExplicit::<BitString, Error, TAG>::from_der(i)?;
+        let (rem, unique_id) = OptTaggedImplicit::<BitString, Error, TAG>::from_der(i)?;
         let unique_id = unique_id.map(|u| UniqueIdentifier(u.into_inner()));
         Ok((rem, unique_id))
     }
