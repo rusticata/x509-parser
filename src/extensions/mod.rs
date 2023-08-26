@@ -215,6 +215,8 @@ pub enum ParsedExtension<'a> {
     NSCertType(NSCertType),
     /// Netscape certificate comment
     NsCertComment(&'a str),
+    /// Section 5.2.5 of rfc 5280
+    IssuingDistributionPoint(IssuingDistributionPoint<'a>),
     /// Section 5.3.1 of rfc 5280
     CRLNumber(BigUint),
     /// Section 5.3.1 of rfc 5280
@@ -593,10 +595,21 @@ impl fmt::Display for ReasonFlags {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct IssuingDistributionPoint<'a> {
+    pub distribution_point: Option<DistributionPointName<'a>>,
+    pub only_contains_user_certs: bool,
+    pub only_contains_ca_certs: bool,
+    pub only_some_reasons: Option<ReasonFlags>,
+    pub indirect_crl: bool,
+    pub only_contains_attribute_certs: bool,
+}
+
 pub(crate) mod parser {
     use crate::extensions::*;
     use crate::time::ASN1Time;
     use asn1_rs::{GeneralizedTime, ParseResult};
+    use der_parser::ber::BerObject;
     use der_parser::error::BerError;
     use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
@@ -678,6 +691,11 @@ pub(crate) mod parser {
             add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
             add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
             add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
+            add!(
+                m,
+                OID_X509_EXT_ISSUER_DISTRIBUTION_POINT,
+                parse_issuingdistributionpoint_ext
+            );
             m
         };
     }
@@ -849,6 +867,13 @@ pub(crate) mod parser {
         }
     }
 
+    fn parse_implicit_tagged_reasons(tag: u32) -> impl Fn(&[u8]) -> BerResult<ReasonFlags> {
+        move |i: &[u8]| {
+            let (rem, obj) = parse_der_tagged_implicit(tag, parse_der_content(Tag::BitString))(i)?;
+            parse_reasons(rem, obj)
+        }
+    }
+
     // ReasonFlags ::= BIT STRING {
     // unused                  (0),
     // keyCompromise           (1),
@@ -859,8 +884,7 @@ pub(crate) mod parser {
     // certificateHold         (6),
     // privilegeWithdrawn      (7),
     // aACompromise            (8) }
-    fn parse_tagged1_reasons(i: &[u8]) -> BerResult<ReasonFlags> {
-        let (rem, obj) = parse_der_tagged_implicit(1, parse_der_content(Tag::BitString))(i)?;
+    fn parse_reasons<'a>(rem: &'a [u8], obj: BerObject<'a>) -> BerResult<'a, ReasonFlags> {
         if let DerObjectContent::BitString(_, b) = obj.content {
             let flags = b
                 .data
@@ -889,7 +913,7 @@ pub(crate) mod parser {
                 opt(complete(parse_der_tagged_explicit_g(0, |b, _| {
                     parse_distributionpointname(b)
                 })))(content)?;
-            let (rem, reasons) = opt(complete(parse_tagged1_reasons))(rem)?;
+            let (rem, reasons) = opt(complete(parse_implicit_tagged_reasons(1)))(rem)?;
             let (rem, crl_issuer) = opt(complete(parse_der_tagged_implicit_g(2, |i, _, _| {
                 parse_crlissuer_content(i)
             })))(rem)?;
@@ -913,6 +937,55 @@ pub(crate) mod parser {
         map(
             parse_crldistributionpoints,
             ParsedExtension::CRLDistributionPoints,
+        )(i)
+    }
+
+    //  IssuingDistributionPoint ::= SEQUENCE {
+    //         distributionPoint          [0] DistributionPointName OPTIONAL,
+    //         onlyContainsUserCerts      [1] BOOLEAN DEFAULT FALSE,
+    //         onlyContainsCACerts        [2] BOOLEAN DEFAULT FALSE,
+    //         onlySomeReasons            [3] ReasonFlags OPTIONAL,
+    //         indirectCRL                [4] BOOLEAN DEFAULT FALSE,
+    //         onlyContainsAttributeCerts [5] BOOLEAN DEFAULT FALSE }
+    pub(super) fn parse_issuingdistributionpoint(
+        i: &[u8],
+    ) -> IResult<&[u8], IssuingDistributionPoint, BerError> {
+        parse_der_sequence_defined_g(|content, _| {
+            let parse_tagged_bool = |tag: u32, rem| -> IResult<&[u8], bool, BerError> {
+                let (rem, value) = opt(complete(|_| {
+                    parse_der_implicit(rem, tag, parse_der_content(Tag::Boolean))
+                        .map(|(res, ob)| (res, ob.as_bool().unwrap_or(false)))
+                }))(rem)?;
+                Ok((rem, value.unwrap_or_default()))
+            };
+
+            let (rem, distribution_point) =
+                opt(complete(parse_der_tagged_explicit_g(0, |b, _| {
+                    parse_distributionpointname(b)
+                })))(content)?;
+
+            let (rem, only_contains_user_certs) = parse_tagged_bool(1, rem)?;
+            let (rem, only_contains_ca_certs) = parse_tagged_bool(2, rem)?;
+            let (rem, only_some_reasons) = opt(complete(parse_implicit_tagged_reasons(3)))(rem)?;
+            let (rem, indirect_crl) = parse_tagged_bool(4, rem)?;
+            let (rem, only_contains_attribute_certs) = parse_tagged_bool(5, rem)?;
+
+            let crl_idp = IssuingDistributionPoint {
+                distribution_point,
+                only_contains_user_certs,
+                only_contains_ca_certs,
+                only_some_reasons,
+                indirect_crl,
+                only_contains_attribute_certs,
+            };
+            Ok((rem, crl_idp))
+        })(i)
+    }
+
+    fn parse_issuingdistributionpoint_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(
+            parse_issuingdistributionpoint,
+            ParsedExtension::IssuingDistributionPoint,
         )(i)
     }
 
