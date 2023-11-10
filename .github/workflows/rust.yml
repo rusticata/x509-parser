@@ -10,7 +10,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.57.0
+          - 1.61.0
           - nightly
     steps:
       - uses: actions/checkout@v2
@@ -22,8 +22,8 @@ jobs:
       - name: Cargo update
         run: cargo update
       - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.9
-        if: matrix.rust == '1.57.0'
+        run: cargo update -p time --precise 0.3.17
+        if: matrix.rust == '1.61.0'
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -35,7 +35,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.57.0
+          - 1.61.0
           - nightly
     steps:
       - uses: actions/checkout@v2
@@ -47,8 +47,8 @@ jobs:
       - name: Cargo update
         run: cargo update
       - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.9
-        if: matrix.rust == '1.57.0'
+        run: cargo update -p time --precise 0.3.17
+        if: matrix.rust == '1.61.0'
       - uses: actions-rs/cargo@v1
         with:
           command: check

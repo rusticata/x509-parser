@@ -4,7 +4,7 @@
 //! [![crates.io](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Download numbers](https://img.shields.io/crates/d/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
-//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.57.0+-lightgray.svg)](#rust-version-requirements)
+//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.61.0+-lightgray.svg)](#rust-version-requirements)
 //!
 //! # X.509 Parser
 //!
@@ -109,12 +109,12 @@
 //!
 //! ## Rust version requirements
 //!
-//! `x509-parser` requires **Rustc version 1.57 or greater**, based on der-parser
+//! `x509-parser` requires **Rustc version 1.61 or greater**, based on der-parser
 //! dependencies and for proc-macro attributes support.
 //!
 //! Note that due to breaking changes in the `time` crate, a specific version of this
-//! crate must be specified for compiler versions <= 1.57:
-//! `cargo update -p time --precise 0.3.9`
+//! crate must be specified for compiler versions <= 1.61:
+//! `cargo update -p time --precise 0.3.17`
 //!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
 
