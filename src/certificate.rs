@@ -461,7 +461,7 @@ impl<'a> TbsCertificate<'a> {
     /// or an error if the extension is invalid, or is present twice or more.
     pub fn subject_alternative_name(
         &self,
-    ) -> Result<Option<BasicExtension<&SubjectAlternativeName>>, X509Error> {
+    ) -> Result<Option<BasicExtension<&SubjectAlternativeName<'a>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_SUBJECT_ALT_NAME)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::SubjectAlternativeName(ref value) => {
