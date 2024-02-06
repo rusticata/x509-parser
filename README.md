@@ -108,7 +108,7 @@ dependencies and for proc-macro attributes support.
 
 Note that due to breaking changes in the `time` crate, a specific version of this
 crate must be specified for compiler versions <= 1.63:
-`cargo update -p time --precise 0.3.34`
+`cargo update -p time --precise 0.3.20`
 
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 <!-- cargo-sync-readme end -->
