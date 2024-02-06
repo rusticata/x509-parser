@@ -22,7 +22,7 @@ jobs:
       - name: Cargo update
         run: cargo update
       - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.34
+        run: cargo update -p time --precise 0.3.20
         if: matrix.rust == '1.63.0'
       - uses: actions-rs/cargo@v1
         with:
@@ -47,7 +47,7 @@ jobs:
       - name: Cargo update
         run: cargo update
       - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.34
+        run: cargo update -p time --precise 0.3.20
         if: matrix.rust == '1.63.0'
       - uses: actions-rs/cargo@v1
         with:
