@@ -39,6 +39,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = []
 verify = ["ring"]
 validate = []
+less-safe-getrandom-custom-or-rdrand = ["ring/less-safe-getrandom-custom-or-rdrand"]
 
 [dependencies]
 asn1-rs = { version = "0.5", features=["datetime"] }
