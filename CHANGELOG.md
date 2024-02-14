@@ -4,7 +4,21 @@
 
 ### Added/Changed/Fixed
 
+Global:
+- Updated `*ring*` to 0.17.7 (#148)
+- Updated `time` to 0.3.20 (#148)
+- Set MSRV to 1.63 (due to `time`/`ring`) (#148)
+
+Code:
+- Added support for parsing CRL `IssuingDistributionPoint` extensions (#146)
+- Fixed lifetime signature on `TbsCertificate::subject_alt_names` function (#151)
+- Fixed parsing of certificate `UniqueIdentifier` fields to use implicit tagging
+  instead of explicit (#145)
+- Fixed `clippy::manual_try_fold` findings (#147)
+
 ### Thanks
+
+- aggstam, Biagio Festa, Daniel McCarney
 
 ## 0.15.1
 
