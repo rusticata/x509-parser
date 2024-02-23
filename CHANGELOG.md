@@ -4,6 +4,12 @@
 
 ### Added/Changed/Fixed
 
+### Thanks
+
+## 0.16.0
+
+### Added/Changed/Fixed
+
 Global:
 - Updated `*ring*` to 0.17.7 (#148)
 - Updated `time` to 0.3.20 (#148)
