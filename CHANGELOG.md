@@ -13,6 +13,7 @@
 Global:
 - Updated `*ring*` to 0.17.7 (#148)
 - Updated `time` to 0.3.20 (#148)
+- Updated asn1-rs to 0.6, der-parser and oid-registry
 - Set MSRV to 1.63 (due to `time`/`ring`) (#148)
 
 Code:
