@@ -98,7 +98,7 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// Attempt to get the content as `str`.
     /// This can fail if the object does not contain a string type.
     ///
-    /// Note: the [`TryFrom`](core::convert::TryFrom) trait is implemented for `&str`, so this is
+    /// Note: the [`TryFrom`] trait is implemented for `&str`, so this is
     /// equivalent to `attr.try_into()`.
     ///
     /// Only NumericString, PrintableString, UTF8String and IA5String
