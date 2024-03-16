@@ -291,7 +291,7 @@ impl<'a> FromDer<'a, X509Error> for SubjectPublicKeyInfo<'a> {
 /// algorithm.  The OBJECT IDENTIFIER component identifies the algorithm
 /// (such as DSA with SHA-1).  The contents of the optional parameters
 /// field will vary according to the algorithm identified.
-#[derive(Clone, Debug, PartialEq, DerSequence)]
+#[derive(Clone, Debug, Eq, PartialEq, DerSequence)]
 #[error(X509Error)]
 pub struct AlgorithmIdentifier<'a> {
     #[map_err(|_| X509Error::InvalidAlgorithmIdentifier)]

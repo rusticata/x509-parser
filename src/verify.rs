@@ -1,10 +1,12 @@
 use crate::prelude::*;
 use asn1_rs::BitString;
 use oid_registry::{
-    OID_EC_P256, OID_NIST_EC_P384, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA,
-    OID_PKCS1_SHA384WITHRSA, OID_PKCS1_SHA512WITHRSA, OID_SHA1_WITH_RSA, OID_SIG_ECDSA_WITH_SHA256,
-    OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ED25519,
+    OID_EC_P256, OID_NIST_EC_P384, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA, OID_PKCS1_SHA384WITHRSA, OID_PKCS1_SHA512WITHRSA, OID_SHA1_WITH_RSA, OID_SIG_ECDSA_WITH_SHA256, OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ED25519
 };
+#[cfg(feature = "verify")]
+use ring::signature;
+#[cfg(feature = "verify-aws-lc")]
+use {aws_lc_rs::signature, oid_registry::{OID_SIG_ECDSA_WITH_SHA512, OID_NIST_EC_P521}};
 
 /// Verify the cryptographic signature of the raw data (can be a certificate, a CRL or a CSR).
 ///
@@ -17,7 +19,6 @@ pub fn verify_signature(
     signature_value: &BitString,
     raw_data: &[u8],
 ) -> Result<(), X509Error> {
-    use ring::signature;
     let signature_algorithm = &signature_algorithm.algorithm;
     // identify verification algorithm
     let verification_alg: &dyn signature::VerificationAlgorithm = if *signature_algorithm
@@ -40,6 +41,14 @@ pub fn verify_signature(
     } else if *signature_algorithm == OID_SIG_ED25519 {
         &signature::ED25519
     } else {
+        #[cfg(feature = "verify-aws-lc")]
+        if *signature_algorithm == OID_SIG_ECDSA_WITH_SHA512 {
+            get_ec_curve_sha(&public_key.algorithm, 512)
+            .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
+        } else {
+            return Err(X509Error::SignatureUnsupportedAlgorithm);
+        }
+        #[cfg(feature = "verify")]
         return Err(X509Error::SignatureUnsupportedAlgorithm);
     };
     // get public key
@@ -56,10 +65,8 @@ pub fn verify_signature(
 fn get_ec_curve_sha(
     pubkey_alg: &AlgorithmIdentifier,
     sha_len: usize,
-) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
-    use ring::signature;
+) -> Option<&'static dyn signature::VerificationAlgorithm> {
     let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
-    // let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
     if curve_oid == OID_EC_P256 {
         match sha_len {
             256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
@@ -73,6 +80,16 @@ fn get_ec_curve_sha(
             _ => None,
         }
     } else {
+        #[cfg(feature = "verify-aws-lc")]
+        if curve_oid == OID_NIST_EC_P521 {
+            match sha_len {
+                512 => Some(&signature::ECDSA_P521_SHA512_ASN1),
+                _ => None,
+            }
+        } else {
+            None
+        }
+        #[cfg(feature = "verify")]
         None
     }
 }

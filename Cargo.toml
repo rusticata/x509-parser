@@ -1,6 +1,6 @@
 [package]
 name = "x509-parser"
-version = "0.16.0"
+version = "0.16.1"
 description = "Parser for the X.509 v3 format (RFC 5280 certificates)"
 license = "MIT OR Apache-2.0"
 keywords = ["X509","Certificate","parser","nom"]
@@ -37,7 +37,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
+all = ["verify", "validate"]
 verify = ["ring"]
+verify-aws-lc = ["aws-lc-rs"]
 validate = []
 
 [dependencies]
@@ -48,6 +50,7 @@ nom = "7.0"
 oid-registry = { version="0.7", features=["crypto", "x509", "x962"] }
 rusticata-macros = "4.0"
 ring = { version="0.17.7", optional=true }
+aws-lc-rs = { version="1.6.2", optional=true}
 der-parser = { version = "9.0", features=["bigint"] }
 thiserror = "1.0.2"
 time = { version="0.3.20", features=["formatting"] }
