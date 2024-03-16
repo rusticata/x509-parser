@@ -152,8 +152,8 @@ pub mod utils;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
-#[cfg(feature = "verify")]
-#[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
+#[cfg(any(all(feature = "verify", not(feature = "verify-aws-lc")), all(not(feature = "verify"), feature = "verify-aws-lc")))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "verify", feature = "verify-aws-lc"))))]
 pub mod verify;
 pub mod x509;
 
