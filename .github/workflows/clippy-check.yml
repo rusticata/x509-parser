@@ -1,4 +1,9 @@
-on: push
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 18 * * *'
+
 name: Clippy check
 jobs:
   clippy_check:
