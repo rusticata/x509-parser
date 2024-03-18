@@ -8,7 +8,7 @@ use crate::objects::*;
 use crate::public_key::*;
 
 use asn1_rs::{
-    Any, BitString, BmpString, DerSequence, FromBer, FromDer, Oid, OptTaggedParser, ParseResult,
+    Any, BitString, BmpString, DerSequence, FromBer, FromDer, OptTaggedParser, ParseResult,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;

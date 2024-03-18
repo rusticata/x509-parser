@@ -15,13 +15,11 @@ use crate::x509::{
 use crate::verify::verify_signature;
 use asn1_rs::{BitString, FromDer, OptTaggedImplicit};
 use core::ops::Deref;
-use der_parser::ber::Tag;
 use der_parser::der::*;
 use der_parser::error::*;
 use der_parser::num_bigint::BigUint;
 use der_parser::*;
 use nom::{Offset, Parser};
-use oid_registry::Oid;
 use oid_registry::*;
 use std::collections::HashMap;
 use time::Duration;

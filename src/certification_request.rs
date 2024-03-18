@@ -9,7 +9,6 @@ use crate::x509::{
 use crate::verify::verify_signature;
 use asn1_rs::{BitString, FromDer};
 use der_parser::der::*;
-use der_parser::oid::Oid;
 use der_parser::*;
 use nom::Offset;
 use std::collections::HashMap;

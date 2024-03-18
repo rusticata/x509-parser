@@ -10,7 +10,6 @@ use der_parser::ber::parse_ber_bool;
 use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
-use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, cut, map, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult, Parser};
@@ -607,14 +606,10 @@ pub struct IssuingDistributionPoint<'a> {
 
 pub(crate) mod parser {
     use crate::extensions::*;
-    use crate::time::ASN1Time;
     use asn1_rs::{GeneralizedTime, ParseResult};
     use der_parser::ber::BerObject;
-    use der_parser::error::BerError;
-    use der_parser::{oid::Oid, *};
+    use der_parser::*;
     use lazy_static::lazy_static;
-    use nom::combinator::{cut, map};
-    use nom::{Err, IResult};
 
     type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, BerError>;
 
