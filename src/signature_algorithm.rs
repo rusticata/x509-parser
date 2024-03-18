@@ -1,7 +1,7 @@
 use crate::error::X509Error;
 use crate::x509::AlgorithmIdentifier;
 use asn1_rs::{
-    oid, Any, CheckDerConstraints, Class, DerAutoDerive, Error, FromDer, Oid, OptTaggedExplicit,
+    oid, Any, CheckDerConstraints, Class, DerAutoDerive, Error, FromDer, OptTaggedExplicit,
     OptTaggedParser, Tag,
 };
 use core::convert::TryFrom;

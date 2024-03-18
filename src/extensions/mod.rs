@@ -10,7 +10,6 @@ use der_parser::ber::parse_ber_bool;
 use der_parser::der::*;
 use der_parser::error::{BerError, BerResult};
 use der_parser::num_bigint::BigUint;
-use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, cut, map, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult, Parser};
@@ -148,6 +147,12 @@ impl X509ExtensionParser {
         X509ExtensionParser {
             deep_parse_extensions,
         }
+    }
+}
+
+impl Default for X509ExtensionParser {
+    fn default() -> Self {
+        X509ExtensionParser::new()
     }
 }
 
@@ -607,14 +612,9 @@ pub struct IssuingDistributionPoint<'a> {
 
 pub(crate) mod parser {
     use crate::extensions::*;
-    use crate::time::ASN1Time;
     use asn1_rs::{GeneralizedTime, ParseResult};
     use der_parser::ber::BerObject;
-    use der_parser::error::BerError;
-    use der_parser::{oid::Oid, *};
     use lazy_static::lazy_static;
-    use nom::combinator::{cut, map};
-    use nom::{Err, IResult};
 
     type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, BerError>;
 
@@ -752,19 +752,19 @@ pub(crate) mod parser {
                     } else if let Ok(u) = seq[0].as_u32() {
                         (false, Some(u))
                     } else {
-                        return Err(nom::Err::Error(BerError::InvalidTag));
+                        return Err(Err::Error(BerError::InvalidTag));
                     }
                 }
                 2 => {
                     let ca = seq[0]
                         .as_bool()
-                        .or(Err(nom::Err::Error(BerError::InvalidLength)))?;
+                        .or(Err(Err::Error(BerError::InvalidLength)))?;
                     let pl = seq[1]
                         .as_u32()
-                        .or(Err(nom::Err::Error(BerError::InvalidLength)))?;
+                        .or(Err(Err::Error(BerError::InvalidLength)))?;
                     (ca, Some(pl))
                 }
-                _ => return Err(nom::Err::Error(BerError::InvalidLength)),
+                _ => return Err(Err::Error(BerError::InvalidLength)),
             };
             Ok((
                 rem,
@@ -774,7 +774,7 @@ pub(crate) mod parser {
                 },
             ))
         } else {
-            Err(nom::Err::Error(BerError::InvalidLength))
+            Err(Err::Error(BerError::InvalidLength))
         }
     }
 
@@ -893,7 +893,7 @@ pub(crate) mod parser {
                 .fold(0, |acc, x| acc << 8 | (x.reverse_bits() as u16));
             Ok((rem, ReasonFlags { flags }))
         } else {
-            Err(nom::Err::Failure(BerError::InvalidTag))
+            Err(Err::Failure(BerError::InvalidTag))
         }
     }
 

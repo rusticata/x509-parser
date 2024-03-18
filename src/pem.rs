@@ -161,7 +161,7 @@ impl Pem {
     }
 
     /// Decode the PEM contents into a X.509 object
-    pub fn parse_x509(&self) -> Result<X509Certificate, ::nom::Err<X509Error>> {
+    pub fn parse_x509(&self) -> Result<X509Certificate, Err<X509Error>> {
         parse_x509_certificate(&self.contents).map(|(_, x509)| x509)
     }
 

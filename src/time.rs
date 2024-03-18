@@ -96,7 +96,7 @@ fn parse_malformed_date(i: &[u8]) -> ParseResult<OffsetDateTime> {
     let (_rem, hdr) = Header::from_der(i)?;
     let len = hdr.length().definite()?;
     if len > MAX_OBJECT_SIZE {
-        return Err(nom::Err::Error(Error::InvalidLength));
+        return Err(Err::Error(Error::InvalidLength));
     }
     match hdr.tag() {
         Tag::UtcTime => {
@@ -111,9 +111,9 @@ fn parse_malformed_date(i: &[u8]) -> ParseResult<OffsetDateTime> {
             // let content = BerObjectContent::UTCTime(s);
             // let obj = DerObject::from_header_and_content(hdr, content);
             // Ok((rem, obj))
-            Err(nom::Err::Error(Error::BerValueError))
+            Err(Err::Error(Error::BerValueError))
         }
-        _ => Err(nom::Err::Error(Error::unexpected_tag(None, hdr.tag()))),
+        _ => Err(Err::Error(Error::unexpected_tag(None, hdr.tag()))),
     }
 }
 

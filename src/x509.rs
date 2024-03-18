@@ -8,7 +8,7 @@ use crate::objects::*;
 use crate::public_key::*;
 
 use asn1_rs::{
-    Any, BitString, BmpString, DerSequence, FromBer, FromDer, Oid, OptTaggedParser, ParseResult,
+    Any, BitString, BmpString, DerSequence, FromBer, FromDer, OptTaggedParser, ParseResult,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -161,7 +161,7 @@ fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {
     let (rem, hdr) = Header::from_der(i)?;
     let len = hdr.length().definite()?;
     if len > MAX_OBJECT_SIZE {
-        return Err(nom::Err::Error(Error::InvalidLength));
+        return Err(Err::Error(Error::InvalidLength));
     }
     match hdr.tag() {
         Tag::PrintableString => {
@@ -174,7 +174,7 @@ fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {
             let obj = Any::new(hdr, data);
             Ok((rem, obj))
         }
-        t => Err(nom::Err::Error(Error::unexpected_tag(
+        t => Err(Err::Error(Error::unexpected_tag(
             Some(Tag::PrintableString),
             t,
         ))),

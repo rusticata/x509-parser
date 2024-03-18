@@ -28,8 +28,8 @@ impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
                 return Err(Err::Error(Error::BerTypeError));
             };
 
-            let (i, parsed_attribute) = crate::cri_attributes::parser::parse_attribute(i, &oid)
-                .map_err(|_| Err::Error(Error::BerValueError))?;
+            let (i, parsed_attribute) =
+                parser::parse_attribute(i, &oid).map_err(|_| Err::Error(Error::BerValueError))?;
             let attribute = X509CriAttribute {
                 oid,
                 value: &value_start[..value_start.len() - i.len()],

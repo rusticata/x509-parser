@@ -40,7 +40,7 @@ impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
         fn ia5str(any: Any) -> Result<&str, Err<Error>> {
             // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
             // are using unicode characters
-            std::str::from_utf8(any.data).map_err(|_| nom::Err::Failure(Error::BerValueError))
+            std::str::from_utf8(any.data).map_err(|_| Err::Failure(Error::BerValueError))
         }
         let name = match any.tag().0 {
             0 => {
