@@ -608,7 +608,6 @@ pub(crate) mod parser {
     use crate::extensions::*;
     use asn1_rs::{GeneralizedTime, ParseResult};
     use der_parser::ber::BerObject;
-    use der_parser::*;
     use lazy_static::lazy_static;
 
     type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, BerError>;
