@@ -204,6 +204,12 @@ impl X509CertificateParser {
     }
 }
 
+impl Default for X509CertificateParser {
+    fn default() -> Self {
+        X509CertificateParser::new()
+    }
+}
+
 impl<'a> Parser<&'a [u8], X509Certificate<'a>, X509Error> for X509CertificateParser {
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
@@ -600,6 +606,12 @@ impl TbsCertificateParser {
         TbsCertificateParser {
             deep_parse_extensions,
         }
+    }
+}
+
+impl Default for TbsCertificateParser {
+    fn default() -> Self {
+        TbsCertificateParser::new()
     }
 }
 

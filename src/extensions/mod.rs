@@ -150,6 +150,12 @@ impl X509ExtensionParser {
     }
 }
 
+impl Default for X509ExtensionParser {
+    fn default() -> Self {
+        X509ExtensionParser::new()
+    }
+}
+
 impl<'a> Parser<&'a [u8], X509Extension<'a>, X509Error> for X509ExtensionParser {
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Extension<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
