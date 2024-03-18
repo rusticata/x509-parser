@@ -11,10 +11,8 @@ use crate::verify::verify_signature;
 #[cfg(feature = "verify")]
 use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::{BitString, FromDer};
-use der_parser::ber::Tag;
 use der_parser::der::*;
 use der_parser::num_bigint::BigUint;
-use der_parser::oid::Oid;
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many0;
 use nom::Offset;
