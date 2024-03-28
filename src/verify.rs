@@ -1,10 +1,13 @@
 use crate::prelude::*;
-use asn1_rs::BitString;
+use crate::signature_algorithm::RsaSsaPssParams;
+use asn1_rs::{Any, BitString};
 use oid_registry::{
-    OID_EC_P256, OID_NIST_EC_P384, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA,
+    OID_EC_P256, OID_NIST_EC_P384, OID_NIST_HASH_SHA256, OID_NIST_HASH_SHA384,
+    OID_NIST_HASH_SHA512, OID_PKCS1_RSASSAPSS, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA,
     OID_PKCS1_SHA384WITHRSA, OID_PKCS1_SHA512WITHRSA, OID_SHA1_WITH_RSA, OID_SIG_ECDSA_WITH_SHA256,
     OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ED25519,
 };
+use std::convert::TryFrom;
 
 /// Verify the cryptographic signature of the raw data (can be a certificate, a CRL or a CSR).
 ///
@@ -18,7 +21,12 @@ pub fn verify_signature(
     raw_data: &[u8],
 ) -> Result<(), X509Error> {
     use ring::signature;
-    let signature_algorithm = &signature_algorithm.algorithm;
+
+    let AlgorithmIdentifier {
+        algorithm: signature_algorithm,
+        parameters: signature_algorithm_parameters,
+    } = &signature_algorithm;
+
     // identify verification algorithm
     let verification_alg: &dyn signature::VerificationAlgorithm = if *signature_algorithm
         == OID_PKCS1_SHA1WITHRSA
@@ -31,6 +39,9 @@ pub fn verify_signature(
         &signature::RSA_PKCS1_2048_8192_SHA384
     } else if *signature_algorithm == OID_PKCS1_SHA512WITHRSA {
         &signature::RSA_PKCS1_2048_8192_SHA512
+    } else if *signature_algorithm == OID_PKCS1_RSASSAPSS {
+        get_rsa_pss_verification_algo(signature_algorithm_parameters)
+            .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
     } else if *signature_algorithm == OID_SIG_ECDSA_WITH_SHA256 {
         get_ec_curve_sha(&public_key.algorithm, 256)
             .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
@@ -72,6 +83,30 @@ fn get_ec_curve_sha(
             384 => Some(&signature::ECDSA_P384_SHA384_ASN1),
             _ => None,
         }
+    } else {
+        None
+    }
+}
+
+/// Find the verification algorithm for the given RSA-PSS parameters
+///
+/// Not all algorithms are supported, we are limited to what `ring` supports.
+/// Notably, the SHA-1 hash algorithm is not supported.
+fn get_rsa_pss_verification_algo(
+    params: &Option<Any>,
+) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
+    use ring::signature;
+
+    let params = params.as_ref()?;
+    let params = RsaSsaPssParams::try_from(params).ok()?;
+    let hash_algo = params.hash_algorithm_oid();
+
+    if *hash_algo == OID_NIST_HASH_SHA256 {
+        Some(&signature::RSA_PSS_2048_8192_SHA256)
+    } else if *hash_algo == OID_NIST_HASH_SHA384 {
+        Some(&signature::RSA_PSS_2048_8192_SHA384)
+    } else if *hash_algo == OID_NIST_HASH_SHA512 {
+        Some(&signature::RSA_PSS_2048_8192_SHA512)
     } else {
         None
     }
