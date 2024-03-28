@@ -33,3 +33,37 @@ fn test_signature_verification_ed25519() {
     eprintln!("Verification: {:?}", res);
     assert!(res.is_ok());
 }
+
+static RSA_PSS_SELF_SIGNED_SHA256: &[u8] =
+    include_bytes!("../assets/rsa-pss/self_signed_sha256.der");
+static RSA_PSS_SELF_SIGNED_SHA384: &[u8] =
+    include_bytes!("../assets/rsa-pss/self_signed_sha384.der");
+static RSA_PSS_SELF_SIGNED_SHA512: &[u8] =
+    include_bytes!("../assets/rsa-pss/self_signed_sha512.der");
+
+#[test]
+fn test_signature_verification_rsa_pss_sha256() {
+    let (_, x509) =
+        parse_x509_certificate(RSA_PSS_SELF_SIGNED_SHA256).expect("could not parse certificate");
+    let res = x509.verify_signature(None);
+    eprintln!("Verification: {:?}", res);
+    assert!(res.is_ok());
+}
+
+#[test]
+fn test_signature_verification_rsa_pss_sha384() {
+    let (_, x509) =
+        parse_x509_certificate(RSA_PSS_SELF_SIGNED_SHA384).expect("could not parse certificate");
+    let res = x509.verify_signature(None);
+    eprintln!("Verification: {:?}", res);
+    assert!(res.is_ok());
+}
+
+#[test]
+fn test_signature_verification_rsa_pss_sha512() {
+    let (_, x509) =
+        parse_x509_certificate(RSA_PSS_SELF_SIGNED_SHA512).expect("could not parse certificate");
+    let res = x509.verify_signature(None);
+    eprintln!("Verification: {:?}", res);
+    assert!(res.is_ok());
+}
