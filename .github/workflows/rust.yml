@@ -27,7 +27,7 @@ jobs:
       - name: Cargo update (fix for MSRV)
         run: cargo update -p time --precise 0.3.20
         if: matrix.rust == '1.63.0'
-      - run: cargo check
+      - run: RUSTFLAGS="-D warnings" cargo check
 
   check-all-features:
     name: Check All Features
@@ -48,7 +48,7 @@ jobs:
       - name: Cargo update (fix for MSRV)
         run: cargo update -p time --precise 0.3.20
         if: matrix.rust == '1.63.0'
-      - run: cargo check --all-targets --all-features
+      - run: RUSTFLAGS="-D warnings" cargo check --all-targets --all-features
 
   test:
     name: Test Suite
