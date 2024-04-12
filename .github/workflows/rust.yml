@@ -59,6 +59,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --all-features
 
+  test_features:
+    name: Test suite (with features)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - --no-default-features
+          - --features=default
+          - --all-features
+          - --features=verify
+          - --features=validate
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - run: cargo test ${{ matrix.features }}
+
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
