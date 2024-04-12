@@ -18,7 +18,7 @@ jobs:
           - 1.63.0
           - nightly
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -43,7 +43,7 @@ jobs:
           - 1.63.0
           - nightly
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -64,7 +64,7 @@ jobs:
     needs: check-all-features
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -79,7 +79,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -96,7 +96,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -115,7 +115,7 @@ jobs:
     env:
       RUSTDOCFLAGS: --cfg docsrs
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
