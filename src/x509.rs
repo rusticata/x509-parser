@@ -39,7 +39,7 @@ use std::iter::FromIterator;
 pub struct X509Version(pub u32);
 
 impl X509Version {
-    /// Parse [0] EXPLICIT Version DEFAULT v1
+    /// Parse `[0]` EXPLICIT Version DEFAULT v1
     pub(crate) fn from_der_tagged_0(i: &[u8]) -> X509Result<X509Version> {
         let (rem, opt_version) = OptTaggedParser::from(0)
             .parse_der(i, |_, data| Self::from_der(data))
