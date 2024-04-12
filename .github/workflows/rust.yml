@@ -52,7 +52,7 @@ jobs:
 
   test:
     name: Test Suite
-    needs: check-all-features
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +61,7 @@ jobs:
 
   test_features:
     name: Test suite (with features)
+    needs: check-all-features
     runs-on: ubuntu-latest
     strategy:
       matrix:
