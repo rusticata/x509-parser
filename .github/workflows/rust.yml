@@ -19,19 +19,15 @@ jobs:
           - nightly
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
       - name: Cargo update
         run: cargo update
       - name: Cargo update (fix for MSRV)
         run: cargo update -p time --precise 0.3.20
         if: matrix.rust == '1.63.0'
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
+      - run: cargo check
 
   check-all-features:
     name: Check All Features
@@ -44,20 +40,15 @@ jobs:
           - nightly
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
       - name: Cargo update
         run: cargo update
       - name: Cargo update (fix for MSRV)
         run: cargo update -p time --precise 0.3.20
         if: matrix.rust == '1.63.0'
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all-targets --all-features
+      - run: cargo check --all-targets --all-features
 
   test:
     name: Test Suite
@@ -65,31 +56,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --all-features
 
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+          components: rustfmt
+      - run: cargo fmt --all -- --check
 
   clippy:
     name: Clippy
@@ -97,16 +75,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features -- -D warnings
+          components: clippy
+      - run: cargo clippy --all-features -- -D warnings
 
   doc:
     name: Build documentation
@@ -116,12 +88,5 @@ jobs:
       RUSTDOCFLAGS: --cfg docsrs
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --workspace --no-deps --all-features
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo doc --workspace --no-deps --all-features
