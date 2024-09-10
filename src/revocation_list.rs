@@ -130,7 +130,7 @@ impl<'a> CertificateRevocationList<'a> {
 ///      signatureValue       BIT STRING  }
 /// </pre>
 impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
@@ -223,7 +223,7 @@ impl<'a> AsRef<[u8]> for TbsCertList<'a> {
 }
 
 impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, version) =
@@ -340,7 +340,7 @@ impl<'a> RevokedCertificate<'a> {
 //                                   -- if present, MUST be v2
 //                          }  OPTIONAL,
 impl<'a> FromDer<'a, X509Error> for RevokedCertificate<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
             let (i, revocation_date) = ASN1Time::from_der(i)?;

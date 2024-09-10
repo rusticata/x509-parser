@@ -262,7 +262,7 @@ impl<'a> RsaAesOaepParams<'a> {
     }
 
     /// Return the pSourceFunc algorithm
-    pub fn p_source_alg(&'a self) -> &'a AlgorithmIdentifier {
+    pub fn p_source_alg(&'a self) -> &'a AlgorithmIdentifier<'a> {
         self.p_source_alg.as_ref().unwrap_or(Self::EMPTY)
     }
 }

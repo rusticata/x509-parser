@@ -210,7 +210,7 @@ impl<'a> FromIterator<AttributeTypeAndValue<'a>> for RelativeDistinguishedName<'
 }
 
 impl<'a> FromDer<'a, X509Error> for RelativeDistinguishedName<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_set_defined_g(|i, _| {
             let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
             let rdn = RelativeDistinguishedName { set };
@@ -260,7 +260,7 @@ impl<'a> SubjectPublicKeyInfo<'a> {
 
 impl<'a> FromDer<'a, X509Error> for SubjectPublicKeyInfo<'a> {
     /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
@@ -310,12 +310,12 @@ impl<'a> AlgorithmIdentifier<'a> {
     }
 
     /// Get the algorithm OID
-    pub const fn oid(&'a self) -> &'a Oid {
+    pub const fn oid(&'a self) -> &'a Oid<'a> {
         &self.algorithm
     }
 
     /// Get a reference to the algorithm parameters, if present
-    pub const fn parameters(&'a self) -> Option<&'a Any> {
+    pub const fn parameters(&'a self) -> Option<&'a Any<'a>> {
         self.parameters.as_ref()
     }
 }
@@ -468,7 +468,7 @@ impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
 
 impl<'a> FromDer<'a, X509Error> for X509Name<'a> {
     /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;

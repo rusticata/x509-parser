@@ -19,7 +19,7 @@ pub struct X509CriAttribute<'a> {
 }
 
 impl<'a> FromDer<'a, X509Error> for X509CriAttribute<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<X509CriAttribute> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, X509CriAttribute<'a>> {
         Sequence::from_ber_and_then(i, |i| {
             let (i, oid) = Oid::from_der(i)?;
             let value_start = i;

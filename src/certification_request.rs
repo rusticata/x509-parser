@@ -144,7 +144,7 @@ impl<'a> X509CertificationRequestInfo<'a> {
 /// }
 /// </pre>
 impl<'a> FromDer<'a, X509Error> for X509CertificationRequestInfo<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, version) = X509Version::from_der(i)?;

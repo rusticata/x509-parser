@@ -123,7 +123,7 @@ impl<'a> X509Extension<'a> {
 ///     extnValue   OCTET STRING  }
 /// </pre>
 impl<'a> FromDer<'a, X509Error> for X509Extension<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         X509ExtensionParser::new().parse(i)
     }
 }

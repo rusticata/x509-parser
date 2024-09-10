@@ -140,7 +140,7 @@ impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
     /// }
     /// # }
     /// ```
-    fn from_der(i: &'a [u8]) -> X509Result<Self> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         // run parser with default options
         X509CertificateParser::new().parse(i)
     }
@@ -553,7 +553,7 @@ impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
     ///      extensions      [3]  Extensions OPTIONAL
     ///                           -- If present, version MUST be v3 --  }
     /// </pre>
-    fn from_der(i: &'a [u8]) -> X509Result<TbsCertificate<'a>> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, TbsCertificate<'a>> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, version) = X509Version::from_der_tagged_0(i)?;
@@ -734,7 +734,7 @@ pub struct UniqueIdentifier<'a>(pub BitString<'a>);
 
 impl<'a> UniqueIdentifier<'a> {
     // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_issuer(i: &'a [u8]) -> X509Result<Option<Self>> {
+    fn from_der_issuer(i: &'a [u8]) -> X509Result<'a, Option<Self>> {
         Self::parse::<1>(i).map_err(|_| X509Error::InvalidIssuerUID.into())
     }
 
