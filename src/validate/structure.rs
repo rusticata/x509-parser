@@ -72,11 +72,6 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
             l.err("Invalid version");
             res = false;
         }
-        // extensions require v3
-        if !item.extensions().is_empty() && item.version != X509Version::V3 {
-            l.err("Extensions present but version is not 3");
-            res = false;
-        }
         let b = item.raw_serial();
         if b.is_empty() {
             l.err("Serial is empty");
@@ -113,6 +108,20 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
             }
         } else if !validity.not_after.is_generalizedtime() {
             l.warn("year >= 2050 should use GeneralizedTime (notAfter)");
+        }
+        if item.version == X509Version::V1 {
+            // unique identifiers: version must 2 or 3
+            if item.issuer_uid.is_some() {
+                l.warn("issuerUniqueID present but version 1");
+            }
+            if item.subject_uid.is_some() {
+                l.warn("subjectUniqueID present but version 1");
+            }
+        }
+        // extensions require v3
+        if !item.extensions().is_empty() && item.version != X509Version::V3 {
+            l.err("Extensions present but version is not 3");
+            res = false;
         }
         // check for parse errors or unsupported extensions
         for ext in item.extensions() {
