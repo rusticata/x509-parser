@@ -96,6 +96,24 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
         res &= X509NameStructureValidator.validate(&item.issuer, l);
         // subject public key
         res &= X509PublicKeyValidator.validate(&item.subject_pki, l);
+        // validity: dates <= 2049 must use UTCTime, >= 2050 must use GeneralizedTime
+        let validity = item.validity();
+        let year_notbefore = validity.not_before.to_datetime().year();
+        if year_notbefore <= 2049 {
+            if !validity.not_before.is_utctime() {
+                l.warn("year <= 2049 should use UTCTime (notBefore)");
+            }
+        } else if !validity.not_before.is_generalizedtime() {
+            l.warn("year >= 2050 should use GeneralizedTime (notBefore)");
+        }
+        let year_notafter = validity.not_after.to_datetime().year();
+        if year_notafter <= 2049 {
+            if !validity.not_after.is_utctime() {
+                l.warn("year <= 2049 should use UTCTime (notAfter)");
+            }
+        } else if !validity.not_after.is_generalizedtime() {
+            l.warn("year >= 2050 should use GeneralizedTime (notAfter)");
+        }
         // check for parse errors or unsupported extensions
         for ext in item.extensions() {
             if let ParsedExtension::UnsupportedExtension { .. } = &ext.parsed_extension {
