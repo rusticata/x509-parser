@@ -49,5 +49,5 @@ oid-registry = { version="0.7", features=["crypto", "x509", "x962"] }
 rusticata-macros = "4.0"
 ring = { version="0.17.7", optional=true }
 der-parser = { version = "9.0", features=["bigint"] }
-thiserror = "1.0.2"
+thiserror = "2.0.3"
 time = { version="0.3.20", features=["formatting"] }
