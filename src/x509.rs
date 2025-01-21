@@ -229,7 +229,7 @@ pub struct SubjectPublicKeyInfo<'a> {
     pub raw: &'a [u8],
 }
 
-impl<'a> SubjectPublicKeyInfo<'a> {
+impl SubjectPublicKeyInfo<'_> {
     /// Attempt to parse the public key, and return the parsed version or an error
     pub fn parsed(&self) -> Result<PublicKey, X509Error> {
         let b = &self.subject_public_key.data;
@@ -332,7 +332,7 @@ pub struct X509Name<'a> {
     pub(crate) raw: &'a [u8],
 }
 
-impl<'a> fmt::Display for X509Name<'a> {
+impl fmt::Display for X509Name<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match x509name_to_string(&self.rdn_seq, oid_registry()) {
             Ok(o) => write!(f, "{}", o),

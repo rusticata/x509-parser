@@ -180,7 +180,7 @@ pub struct TbsCertList<'a> {
     pub(crate) raw: &'a [u8],
 }
 
-impl<'a> TbsCertList<'a> {
+impl TbsCertList<'_> {
     /// Returns the certificate extensions
     #[inline]
     pub fn extensions(&self) -> &[X509Extension] {
@@ -216,7 +216,7 @@ impl<'a> TbsCertList<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for TbsCertList<'a> {
+impl AsRef<[u8]> for TbsCertList<'_> {
     fn as_ref(&self) -> &[u8] {
         self.raw
     }
@@ -261,7 +261,7 @@ pub struct RevokedCertificate<'a> {
     pub(crate) raw_serial: &'a [u8],
 }
 
-impl<'a> RevokedCertificate<'a> {
+impl RevokedCertificate<'_> {
     /// Return the serial number of the revoked certificate
     pub fn serial(&self) -> &BigUint {
         &self.user_certificate

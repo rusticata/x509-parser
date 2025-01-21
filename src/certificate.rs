@@ -68,7 +68,7 @@ pub struct X509Certificate<'a> {
     pub signature_value: BitString<'a>,
 }
 
-impl<'a> X509Certificate<'a> {
+impl X509Certificate<'_> {
     /// Verify the cryptographic signature of this certificate
     ///
     /// `public_key` is the public key of the **signer**. For a self-signed certificate,
@@ -527,7 +527,7 @@ fn get_extension_unique<'a, 'b>(
     Ok(res)
 }
 
-impl<'a> AsRef<[u8]> for TbsCertificate<'a> {
+impl AsRef<[u8]> for TbsCertificate<'_> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.raw
@@ -715,7 +715,7 @@ impl Validity {
     }
 }
 
-impl<'a> FromDer<'a, X509Error> for Validity {
+impl FromDer<'_, X509Error> for Validity {
     fn from_der(i: &[u8]) -> X509Result<Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, not_before) = ASN1Time::from_der(i)?;

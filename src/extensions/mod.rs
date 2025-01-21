@@ -234,7 +234,7 @@ pub enum ParsedExtension<'a> {
     Unparsed,
 }
 
-impl<'a> ParsedExtension<'a> {
+impl ParsedExtension<'_> {
     /// Return `true` if the extension is unsupported
     pub fn unsupported(&self) -> bool {
         matches!(self, &ParsedExtension::UnsupportedExtension { .. })
@@ -304,7 +304,7 @@ impl<'a> FromDer<'a, X509Error> for KeyIdentifier<'a> {
     }
 }
 
-impl<'a> LowerHex for KeyIdentifier<'a> {
+impl LowerHex for KeyIdentifier<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = format_serial(self.0);
         f.write_str(&s)
@@ -1434,12 +1434,11 @@ mod tests {
             ))
             .unwrap()
             .1;
-            assert!(crt
+            assert!(!crt
                 .tbs_certificate
                 .extensions_map()
                 .unwrap()
-                .get(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
-                .is_none());
+                .contains_key(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS));
         }
         // CRLDistributionPoints has 1 entry with 1 URI
         {

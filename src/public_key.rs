@@ -21,7 +21,7 @@ pub enum PublicKey<'a> {
     Unknown(&'a [u8]),
 }
 
-impl<'a> PublicKey<'a> {
+impl PublicKey<'_> {
     /// Return the key size (in bits) or 0
     pub fn key_size(&self) -> usize {
         match self {
@@ -46,7 +46,7 @@ pub struct RSAPublicKey<'a> {
     pub exponent: &'a [u8],
 }
 
-impl<'a> RSAPublicKey<'a> {
+impl RSAPublicKey<'_> {
     /// Attempt to convert exponent to u64
     ///
     /// Returns an error if integer is too large, empty, or negative
