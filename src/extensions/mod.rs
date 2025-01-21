@@ -890,7 +890,7 @@ pub(crate) mod parser {
                 .data
                 .iter()
                 .rev()
-                .fold(0, |acc, x| acc << 8 | (x.reverse_bits() as u16));
+                .fold(0, |acc, x| (acc << 8) | (x.reverse_bits() as u16));
             Ok((rem, ReasonFlags { flags }))
         } else {
             Err(Err::Failure(BerError::InvalidTag))
