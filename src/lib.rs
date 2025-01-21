@@ -38,6 +38,8 @@
 //!
 //! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
 //!
+//! This crate also provides visitor traits: [`X509CertificateVisitor`](crate::visitor::X509CertificateVisitor).
+//!
 //! # Examples
 //!
 //! Parsing a certificate in DER format:
