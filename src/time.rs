@@ -109,7 +109,7 @@ impl ASN1Time {
     }
 }
 
-impl<'a> FromDer<'a, X509Error> for ASN1Time {
+impl FromDer<'_, X509Error> for ASN1Time {
     fn from_der(i: &[u8]) -> X509Result<Self> {
         let (rem, time) = parse_choice_of_time(i).map_err(|_| X509Error::InvalidDate)?;
         Ok((rem, time))
