@@ -151,6 +151,7 @@ pub mod validate;
 #[cfg(feature = "verify")]
 #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
 pub mod verify;
+pub mod visitor;
 pub mod x509;
 
 // reexports
