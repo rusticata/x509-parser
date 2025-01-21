@@ -10,7 +10,7 @@ repository = "https://github.com/rusticata/x509-parser.git"
 categories = ["parser-implementations", "cryptography"]
 readme = "README.md"
 edition = "2018"
-rust-version = "1.67.0"
+rust-version = "1.67.1"
 
 include = [
   "CHANGELOG.md",

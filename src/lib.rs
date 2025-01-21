@@ -4,7 +4,7 @@
 //! [![crates.io](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Download numbers](https://img.shields.io/crates/d/x509-parser.svg)](https://crates.io/crates/x509-parser)
 //! [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
-//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.67.0+-lightgray.svg)](#rust-version-requirements)
+//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.67.1+-lightgray.svg)](#rust-version-requirements)
 //!
 //! # X.509 Parser
 //!
@@ -109,7 +109,7 @@
 //!
 //! ## Rust version requirements
 //!
-//! `x509-parser` requires **Rustc version 1.67 or greater**, based on der-parser
+//! `x509-parser` requires **Rustc version 1.67.1 or greater**, based on der-parser
 //! dependencies and for proc-macro attributes support.
 //!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
