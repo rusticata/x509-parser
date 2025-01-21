@@ -92,7 +92,7 @@ impl<'a> FromDer<'a, X509Error> for GeneralName<'a> {
     }
 }
 
-impl<'a> fmt::Display for GeneralName<'a> {
+impl fmt::Display for GeneralName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GeneralName::OtherName(oid, _) => write!(f, "OtherName({}, [...])", oid),

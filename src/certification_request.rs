@@ -21,7 +21,7 @@ pub struct X509CertificationRequest<'a> {
     pub signature_value: BitString<'a>,
 }
 
-impl<'a> X509CertificationRequest<'a> {
+impl X509CertificationRequest<'_> {
     pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension>> {
         self.certification_request_info
             .iter_attributes()
@@ -99,7 +99,7 @@ pub struct X509CertificationRequestInfo<'a> {
     pub raw: &'a [u8],
 }
 
-impl<'a> X509CertificationRequestInfo<'a> {
+impl X509CertificationRequestInfo<'_> {
     /// Get the CRL entry extensions.
     #[inline]
     pub fn attributes(&self) -> &[X509CriAttribute] {
