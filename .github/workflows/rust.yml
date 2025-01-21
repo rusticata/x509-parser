@@ -15,7 +15,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.63.0
+          - 1.67.0
           - nightly
     steps:
       - uses: actions/checkout@v4
@@ -24,9 +24,6 @@ jobs:
           toolchain: ${{ matrix.rust }}
       - name: Cargo update
         run: cargo update
-      - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.20
-        if: matrix.rust == '1.63.0'
       - run: RUSTFLAGS="-D warnings" cargo check
 
   check-all-features:
@@ -36,7 +33,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.63.0
+          - 1.67.0
           - nightly
     steps:
       - uses: actions/checkout@v4
@@ -45,9 +42,6 @@ jobs:
           toolchain: ${{ matrix.rust }}
       - name: Cargo update
         run: cargo update
-      - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.20
-        if: matrix.rust == '1.63.0'
       - run: RUSTFLAGS="-D warnings" cargo check --all-targets --all-features
 
   test:
