@@ -157,6 +157,7 @@ pub mod visitor;
 pub mod x509;
 
 // reexports
+pub use asn1_rs;
 pub use der_parser;
 pub use der_parser::num_bigint;
 pub use nom;
