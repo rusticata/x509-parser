@@ -44,7 +44,7 @@ validate = []
 asn1-rs = { version = "0.7.0", features=["datetime"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
-nom = "7.0"
+nom = "8.0"
 oid-registry = { version="0.8", features=["crypto", "x509", "x962"] }
 rusticata-macros = "4.0"
 ring = { version="0.17.7", optional=true }
