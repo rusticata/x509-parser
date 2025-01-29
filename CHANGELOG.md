@@ -6,6 +6,27 @@
 
 ### Thanks
 
+## 0.17.0
+
+### Added/Changed/Fixed
+
+Global:
+- Upgrade `asn1-rs` to version 0.6.2. (#161)
+- Update asn1-rs to 0.7, der-parser to 10.0 and oid-registry to 0.8
+- Upgrade time to 0.3.35 to make the crate compatible with rust >1.79.0 (#168, #175)
+- Update MSRV to 1.67 (due to time 0.3.35, see #168)
+- Add Visitor traits for X.509 Certificates and Certificate Revocation Lists (#179)
+
+Code:
+- Add support for RSA-PSS signature verification (#156)
+- ASN1Time: store the kind of time (UTC or Generalized) in ASN1Time (#163)
+- X509StructureValidator: add validation for dates encoding (#163)
+- X509StructureValidator: enforce version > 1 for issuerUniqueID or subjectUniqueID (Closes #162)
+
+### Thanks
+
+- Daniel McCarney, DefiCake, Victor M. Alvarez, Nikolaus Thuemmel
+
 ## 0.16.0
 
 ### Added/Changed/Fixed

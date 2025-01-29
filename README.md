@@ -40,6 +40,8 @@ same as accessing `<object>.tbs_certificate.issuer`.
 
 For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/index.html) module.
 
+This crate also provides visitor traits: [`X509CertificateVisitor`](crate::visitor::X509CertificateVisitor).
+
 # Examples
 
 Parsing a certificate in DER format:
