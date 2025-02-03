@@ -40,6 +40,7 @@ fn generalname_to_string(gn: &GeneralName) -> String {
         GeneralName::RegisteredID(oid) => format!("RegisteredID:{}", oid),
         GeneralName::URI(n) => format!("URI:{}", n),
         GeneralName::X400Address(obj) => format!("X400Address:{:?}", obj),
+        GeneralName::Invalid(tag, b) => format!("Invalid:tag={},data={:?}", tag, b),
     }
 }
 
