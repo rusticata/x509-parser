@@ -122,6 +122,25 @@ pub trait CertificateRevocationListVisitor {
 
     /// Invoked for the "Signed Certificate Timestamp" (SCT) (if present)
     fn visit_extension_sct(&mut self, _sct: &[SignedCertificateTimestamp]) {}
+
+    /// Invoked for any other extension than the specific (recognized) types
+    ///
+    /// This can happen for several reasons:
+    /// - the parser did not recognize the extension content
+    /// - the parser was explicitly asked to not parse extension content
+    /// - the extension could be correct (for ex in a CRL), but is not supposed to be part of a Certificate
+    fn visit_extension_unknown(&mut self, _ext: &X509Extension) {}
+
+    /// Invoked for any extension than caused a parse error
+    ///
+    /// Normally, this should not match anything except for invalid data.
+    /// This could match any known extension malformed or wrongly encoded.
+    fn visit_extension_parse_error(
+        &mut self,
+        _extension: &X509Extension,
+        _error: &asn1_rs::Err<asn1_rs::Error>,
+    ) {
+    }
 }
 
 impl CertificateRevocationList<'_> {
@@ -137,54 +156,43 @@ impl CertificateRevocationList<'_> {
 impl TbsCertList<'_> {
     /// Run the provided `visitor` over the [`TbsCertList`] object
     pub fn walk<V: CertificateRevocationListVisitor>(&self, visitor: &mut V) {
-        visitor.visit_version(self.version.as_ref());
-        visitor.visit_tbs_signature_algorithm(&self.signature);
-        visitor.visit_issuer(&self.issuer);
-        visitor.visit_this_update(&self.this_update);
-        visitor.visit_next_update(self.next_update.as_ref());
-        visitor.visit_revoked_certificates(&self.revoked_certificates);
+        // shorten name to reduce line length
+        let v = visitor;
+        v.visit_version(self.version.as_ref());
+        v.visit_tbs_signature_algorithm(&self.signature);
+        v.visit_issuer(&self.issuer);
+        v.visit_this_update(&self.this_update);
+        v.visit_next_update(self.next_update.as_ref());
+        v.visit_revoked_certificates(&self.revoked_certificates);
         for certificate in &self.revoked_certificates {
-            visitor.visit_revoked_certificate(certificate);
+            v.visit_revoked_certificate(certificate);
         }
-        visitor.pre_visit_extensions(self.extensions());
+        v.pre_visit_extensions(self.extensions());
         for extension in self.extensions() {
-            visitor.visit_extension(extension);
+            v.visit_extension(extension);
 
-            if extension.oid == OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER {
-                if let ParsedExtension::AuthorityKeyIdentifier(aki) = &extension.parsed_extension {
-                    visitor.visit_extension_aki(aki);
+            match extension.parsed_extension() {
+                ParsedExtension::AuthorityInfoAccess(info) => {
+                    v.visit_extension_authority_information_access(info)
                 }
-            } else if extension.oid == OID_X509_EXT_ISSUER_ALT_NAME {
-                if let ParsedExtension::IssuerAlternativeName(ian) = &extension.parsed_extension {
-                    visitor.visit_extension_issuer_alternative_name(ian);
+                ParsedExtension::AuthorityKeyIdentifier(aki) => v.visit_extension_aki(aki),
+                ParsedExtension::CRLNumber(number) => v.visit_extension_crl_number(number),
+                ParsedExtension::InvalidityDate(time) => v.visit_extension_invalidity_date(time),
+                ParsedExtension::IssuerAlternativeName(ian) => {
+                    v.visit_extension_issuer_alternative_name(ian)
                 }
-            } else if extension.oid == OID_X509_EXT_CRL_NUMBER {
-                if let ParsedExtension::CRLNumber(number) = &extension.parsed_extension {
-                    visitor.visit_extension_crl_number(number);
+                ParsedExtension::IssuingDistributionPoint(dp) => {
+                    v.visit_extension_issuing_distribution_point(dp)
                 }
-            } else if extension.oid == OID_X509_EXT_ISSUER_DISTRIBUTION_POINT {
-                if let ParsedExtension::IssuingDistributionPoint(dp) = &extension.parsed_extension {
-                    visitor.visit_extension_issuing_distribution_point(dp);
+                ParsedExtension::ReasonCode(code) => v.visit_extension_reason_code(code),
+                ParsedExtension::SCT(sct) => v.visit_extension_sct(sct),
+                ParsedExtension::ParseError { error } => {
+                    v.visit_extension_parse_error(extension, error)
                 }
-            } else if extension.oid == OID_PKIX_AUTHORITY_INFO_ACCESS {
-                if let ParsedExtension::AuthorityInfoAccess(info) = &extension.parsed_extension {
-                    visitor.visit_extension_authority_information_access(info);
-                }
-            } else if extension.oid == OID_X509_EXT_REASON_CODE {
-                if let ParsedExtension::ReasonCode(code) = &extension.parsed_extension {
-                    visitor.visit_extension_reason_code(code);
-                }
-            } else if extension.oid == OID_X509_EXT_INVALIDITY_DATE {
-                if let ParsedExtension::InvalidityDate(time) = &extension.parsed_extension {
-                    visitor.visit_extension_invalidity_date(time);
-                }
-            } else if extension.oid == OID_CT_LIST_SCT {
-                if let ParsedExtension::SCT(sct) = &extension.parsed_extension {
-                    visitor.visit_extension_sct(sct);
-                }
+                _ => v.visit_extension_unknown(extension),
             }
         }
-        visitor.post_visit_extensions(self.extensions());
+        v.post_visit_extensions(self.extensions());
     }
 }
 

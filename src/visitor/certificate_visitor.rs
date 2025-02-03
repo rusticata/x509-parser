@@ -110,47 +110,75 @@ pub trait X509CertificateVisitor {
     /// Invoked for extensions, after visiting children
     fn post_visit_extensions(&mut self, _extensions: &[X509Extension]) {}
 
-    /// Invoked for the "Authority Key Identifier" (if present)
+    /// Invoked for the "Authority Key Identifier" extension (if present)
     fn visit_extension_aki(&mut self, _aki: &AuthorityKeyIdentifier) {}
 
-    /// Invoked for the "Subject Key Identifier" (if present)
+    /// Invoked for the "Subject Key Identifier" extension (if present)
     fn visit_extension_ski(&mut self, _id: &KeyIdentifier) {}
 
-    /// Invoked for the "Key Usage" (if present)
+    /// Invoked for the "Key Usage" extension (if present)
     fn visit_extension_key_usage(&mut self, _usage: &KeyUsage) {}
 
-    /// Invoked for the "Certificate Policies" (if present)
+    /// Invoked for the "Certificate Policies" extension (if present)
     fn visit_extension_certificate_policies(&mut self, _policies: &CertificatePolicies) {}
 
-    /// Invoked for the "Subject Alternative Name" (if present)
+    /// Invoked for the "Subject Alternative Name" extension (if present)
     fn visit_extension_subject_alternative_name(&mut self, _san: &SubjectAlternativeName) {}
 
-    /// Invoked for the "Issuer Alternative Name" (if present)
+    /// Invoked for the "Issuer Alternative Name" extension (if present)
     fn visit_extension_issuer_alternative_name(&mut self, _ian: &IssuerAlternativeName) {}
 
-    /// Invoked for the "Basic Constraints" (if present)
+    /// Invoked for the "Basic Constraints" extension (if present)
     fn visit_extension_basic_constraints(&mut self, _bc: &BasicConstraints) {}
 
-    /// Invoked for the "Name Constraints" (if present)
+    /// Invoked for the "Name Constraints" extension (if present)
     fn visit_extension_name_constraints(&mut self, _constraints: &NameConstraints) {}
 
-    /// Invoked for the "Policy Constraints" (if present)
+    /// Invoked for the "Name Constraints" extension (if present)
+    fn visit_extension_nscert_comment(&mut self, _nscert_comment: &str) {}
+
+    /// Invoked for the "Name Constraints" extension (if present)
+    fn visit_extension_nscert_type(&mut self, _nscert_type: &NSCertType) {}
+
+    /// Invoked for the "Policy Constraints" extension (if present)
     fn visit_extension_policy_constraints(&mut self, _constraints: &PolicyConstraints) {}
 
-    /// Invoked for the "Extended Key Usage" (if present)
+    /// Invoked for the "Policy Mappings" extension (if present)
+    fn visit_extension_policy_mappings(&mut self, _mappings: &PolicyMappings) {}
+
+    /// Invoked for the "Extended Key Usage" extension (if present)
     fn visit_extension_extended_key_usage(&mut self, _usage: &ExtendedKeyUsage) {}
 
-    /// Invoked for the "CRL Distribution Points" (if present)
+    /// Invoked for the "CRL Distribution Points" extension (if present)
     fn visit_extension_crl_distribution_points(&mut self, _crl: &CRLDistributionPoints) {}
 
-    /// Invoked for the "Inhibit anyPolicy" (if present)
+    /// Invoked for the "Inhibit anyPolicy" extension (if present)
     fn visit_extension_inhibit_anypolicy(&mut self, _policy: &InhibitAnyPolicy) {}
 
-    /// Invoked for the "Authority Information Access" (if present)
+    /// Invoked for the "Authority Information Access" extension (if present)
     fn visit_extension_authority_information_access(&mut self, _info: &AuthorityInfoAccess) {}
 
-    /// Invoked for the "Signed Certificate Timestamp" (SCT) (if present)
+    /// Invoked for the "Signed Certificate Timestamp" (SCT) extension (if present)
     fn visit_extension_sct(&mut self, _sct: &[SignedCertificateTimestamp]) {}
+
+    /// Invoked for any other extension than the specific (recognized) types
+    ///
+    /// This can happen for several reasons:
+    /// - the parser did not recognize the extension content
+    /// - the parser was explicitly asked to not parse extension content
+    /// - the extension could be correct (for ex in a CRL), but is not supposed to be part of a Certificate
+    fn visit_extension_unknown(&mut self, _ext: &X509Extension) {}
+
+    /// Invoked for any extension than caused a parse error
+    ///
+    /// Normally, this should not match anything except for invalid data.
+    /// This could match any known extension malformed or wrongly encoded.
+    fn visit_extension_parse_error(
+        &mut self,
+        _extension: &X509Extension,
+        _error: &asn1_rs::Err<asn1_rs::Error>,
+    ) {
+    }
 }
 
 impl X509Certificate<'_> {
@@ -166,80 +194,70 @@ impl X509Certificate<'_> {
 impl TbsCertificate<'_> {
     /// Run the provided `visitor` over the [`TbsCertificate`] object
     pub fn walk<V: X509CertificateVisitor>(&self, visitor: &mut V) {
-        visitor.visit_version(&self.version);
-        visitor.visit_serial_number(self.raw_serial());
-        visitor.visit_tbs_signature_algorithm(&self.signature);
-        visitor.visit_issuer(&self.issuer);
-        visitor.visit_validity(&self.validity);
-        visitor.visit_subject(&self.subject);
-        visitor.visit_subject_public_key_info(&self.subject_pki);
-        visitor.visit_issuer_unique_id(self.issuer_uid.as_ref());
-        visitor.visit_subject_unique_id(self.subject_uid.as_ref());
-        visitor.pre_visit_extensions(self.extensions());
+        // shorten name to reduce line length
+        let v = visitor;
+        v.visit_version(&self.version);
+        v.visit_serial_number(self.raw_serial());
+        v.visit_tbs_signature_algorithm(&self.signature);
+        v.visit_issuer(&self.issuer);
+        v.visit_validity(&self.validity);
+        v.visit_subject(&self.subject);
+        v.visit_subject_public_key_info(&self.subject_pki);
+        v.visit_issuer_unique_id(self.issuer_uid.as_ref());
+        v.visit_subject_unique_id(self.subject_uid.as_ref());
+        v.pre_visit_extensions(self.extensions());
         for extension in self.extensions() {
-            visitor.visit_extension(extension);
+            v.visit_extension(extension);
 
-            if extension.oid == OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER {
-                if let ParsedExtension::AuthorityKeyIdentifier(aki) = &extension.parsed_extension {
-                    visitor.visit_extension_aki(aki);
+            match extension.parsed_extension() {
+                ParsedExtension::AuthorityInfoAccess(info) => {
+                    v.visit_extension_authority_information_access(info)
                 }
-            } else if extension.oid == OID_X509_EXT_SUBJECT_KEY_IDENTIFIER {
-                if let ParsedExtension::SubjectKeyIdentifier(id) = &extension.parsed_extension {
-                    visitor.visit_extension_ski(id);
+                ParsedExtension::AuthorityKeyIdentifier(aki) => v.visit_extension_aki(aki),
+                ParsedExtension::BasicConstraints(bc) => v.visit_extension_basic_constraints(bc),
+                ParsedExtension::CertificatePolicies(policies) => {
+                    v.visit_extension_certificate_policies(policies)
                 }
-            } else if extension.oid == OID_X509_EXT_KEY_USAGE {
-                if let ParsedExtension::KeyUsage(usage) = &extension.parsed_extension {
-                    visitor.visit_extension_key_usage(usage);
+                ParsedExtension::CRLDistributionPoints(crl) => {
+                    v.visit_extension_crl_distribution_points(crl)
                 }
-            } else if extension.oid == OID_X509_EXT_CERTIFICATE_POLICIES {
-                if let ParsedExtension::CertificatePolicies(policies) = &extension.parsed_extension
-                {
-                    visitor.visit_extension_certificate_policies(policies);
+                ParsedExtension::ExtendedKeyUsage(usage) => {
+                    v.visit_extension_extended_key_usage(usage)
                 }
-            } else if extension.oid == OID_X509_EXT_SUBJECT_ALT_NAME {
-                if let ParsedExtension::SubjectAlternativeName(san) = &extension.parsed_extension {
-                    visitor.visit_extension_subject_alternative_name(san);
+                ParsedExtension::InhibitAnyPolicy(policy) => {
+                    v.visit_extension_inhibit_anypolicy(policy)
                 }
-            } else if extension.oid == OID_X509_EXT_ISSUER_ALT_NAME {
-                if let ParsedExtension::IssuerAlternativeName(ian) = &extension.parsed_extension {
-                    visitor.visit_extension_issuer_alternative_name(ian);
+                ParsedExtension::IssuerAlternativeName(ian) => {
+                    v.visit_extension_issuer_alternative_name(ian)
                 }
-            } else if extension.oid == OID_X509_EXT_BASIC_CONSTRAINTS {
-                if let ParsedExtension::BasicConstraints(bc) = &extension.parsed_extension {
-                    visitor.visit_extension_basic_constraints(bc);
+                ParsedExtension::KeyUsage(usage) => v.visit_extension_key_usage(usage),
+                ParsedExtension::NSCertType(nscert_type) => {
+                    v.visit_extension_nscert_type(nscert_type)
                 }
-            } else if extension.oid == OID_X509_EXT_NAME_CONSTRAINTS {
-                if let ParsedExtension::NameConstraints(constraints) = &extension.parsed_extension {
-                    visitor.visit_extension_name_constraints(constraints);
+                ParsedExtension::NameConstraints(constraints) => {
+                    v.visit_extension_name_constraints(constraints)
                 }
-            } else if extension.oid == OID_X509_EXT_POLICY_CONSTRAINTS {
-                if let ParsedExtension::PolicyConstraints(constraints) = &extension.parsed_extension
-                {
-                    visitor.visit_extension_policy_constraints(constraints);
+                ParsedExtension::NsCertComment(comment) => {
+                    v.visit_extension_nscert_comment(comment)
                 }
-            } else if extension.oid == OID_X509_EXT_EXTENDED_KEY_USAGE {
-                if let ParsedExtension::ExtendedKeyUsage(usage) = &extension.parsed_extension {
-                    visitor.visit_extension_extended_key_usage(usage);
+                ParsedExtension::PolicyConstraints(constraints) => {
+                    v.visit_extension_policy_constraints(constraints)
                 }
-            } else if extension.oid == OID_X509_EXT_CRL_DISTRIBUTION_POINTS {
-                if let ParsedExtension::CRLDistributionPoints(crl) = &extension.parsed_extension {
-                    visitor.visit_extension_crl_distribution_points(crl);
+                ParsedExtension::PolicyMappings(mappings) => {
+                    v.visit_extension_policy_mappings(mappings)
                 }
-            } else if extension.oid == OID_X509_EXT_INHIBITANT_ANY_POLICY {
-                if let ParsedExtension::InhibitAnyPolicy(policy) = &extension.parsed_extension {
-                    visitor.visit_extension_inhibit_anypolicy(policy);
+                ParsedExtension::SCT(sct) => v.visit_extension_sct(sct),
+                ParsedExtension::SubjectAlternativeName(san) => {
+                    v.visit_extension_subject_alternative_name(san)
                 }
-            } else if extension.oid == OID_PKIX_AUTHORITY_INFO_ACCESS {
-                if let ParsedExtension::AuthorityInfoAccess(info) = &extension.parsed_extension {
-                    visitor.visit_extension_authority_information_access(info);
+                ParsedExtension::SubjectKeyIdentifier(id) => v.visit_extension_ski(id),
+                ParsedExtension::ParseError { error } => {
+                    v.visit_extension_parse_error(extension, error)
                 }
-            } else if extension.oid == OID_CT_LIST_SCT {
-                if let ParsedExtension::SCT(sct) = &extension.parsed_extension {
-                    visitor.visit_extension_sct(sct);
-                }
+                _ => v.visit_extension_unknown(extension),
             }
         }
-        visitor.post_visit_extensions(self.extensions());
+        v.post_visit_extensions(self.extensions());
     }
 }
 
