@@ -190,8 +190,7 @@ dependencies = [
 [[package]]
 name = "oid-registry"
 version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f40cff3dde1b6087cc5d5f5d4d65712f34016a03ed60e9c08dcc392736b5b7"
+source = "git+https://github.com/rusticata/oid-registry?branch=master#33b20513b73ce04e1de48232beba3fa89df33b1d"
 dependencies = [
  "asn1-rs",
 ]

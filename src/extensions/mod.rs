@@ -216,6 +216,8 @@ pub enum ParsedExtension<'a> {
     InhibitAnyPolicy(InhibitAnyPolicy),
     /// Section 4.2.2.1 of rfc 5280
     AuthorityInfoAccess(AuthorityInfoAccess<'a>),
+    /// Section 4.2.2.2 of rfc 5280
+    SubjectInfoAccess(SubjectInfoAccess<'a>),
     /// Netscape certificate type (subject is SSL client, an SSL server, or a CA)
     NSCertType(NSCertType),
     /// Netscape certificate comment
@@ -440,6 +442,68 @@ impl<'a> FromDer<'a, X509Error> for AuthorityInfoAccess<'a> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct SubjectInfoAccess<'a> {
+    pub accessdescs: Vec<AccessDescription<'a>>,
+}
+
+impl<'a> SubjectInfoAccess<'a> {
+    /// Returns an iterator over the Access Descriptors
+    pub fn iter(&self) -> impl Iterator<Item = &AccessDescription<'a>> {
+        self.accessdescs.iter()
+    }
+
+    /// Returns a `HashMap` mapping `Oid` to the list of references to `GeneralNames`
+    ///
+    /// If several names match the same `Oid`, they are merged in the same entry.
+    pub fn as_hashmap(&self) -> HashMap<Oid<'a>, Vec<&GeneralName<'a>>> {
+        // create the hashmap and merge entries with same OID
+        let mut m: HashMap<Oid, Vec<&GeneralName>> = HashMap::new();
+        for desc in &self.accessdescs {
+            let AccessDescription {
+                access_method: oid,
+                access_location: gn,
+            } = desc;
+            if let Some(general_names) = m.get_mut(oid) {
+                general_names.push(gn);
+            } else {
+                m.insert(oid.clone(), vec![gn]);
+            }
+        }
+        m
+    }
+
+    /// Returns a `HashMap` mapping `Oid` to the list of `GeneralNames` (consuming the input)
+    ///
+    /// If several names match the same `Oid`, they are merged in the same entry.
+    pub fn into_hashmap(self) -> HashMap<Oid<'a>, Vec<GeneralName<'a>>> {
+        let mut aia_list = self.accessdescs;
+        // create the hashmap and merge entries with same OID
+        let mut m: HashMap<Oid, Vec<GeneralName>> = HashMap::new();
+        for desc in aia_list.drain(..) {
+            let AccessDescription {
+                access_method: oid,
+                access_location: gn,
+            } = desc;
+            if let Some(general_names) = m.get_mut(&oid) {
+                general_names.push(gn);
+            } else {
+                m.insert(oid, vec![gn]);
+            }
+        }
+        m
+    }
+}
+
+impl<'a> FromDer<'a, X509Error> for SubjectInfoAccess<'a> {
+    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        parser::parse_subjectinfoaccess(i).map_err(Err::convert)
+    }
+}
+
+/// AccessDescription  ::=  SEQUENCE {
+///     accessMethod          OBJECT IDENTIFIER,
+///     accessLocation        GeneralName  }
 #[derive(Clone, Debug, PartialEq)]
 pub struct AccessDescription<'a> {
     pub access_method: Oid<'a>,
@@ -680,6 +744,7 @@ pub(crate) mod parser {
                 OID_PKIX_AUTHORITY_INFO_ACCESS,
                 parse_authorityinfoaccess_ext
             );
+            add!(m, OID_PKIX_SUBJECT_INFO_ACCESS, parse_subjectinfoaccess_ext);
             add!(
                 m,
                 OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
@@ -1016,6 +1081,30 @@ pub(crate) mod parser {
             parse_authorityinfoaccess,
             ParsedExtension::AuthorityInfoAccess,
         )(i)
+    }
+
+    // SubjectInfoAccessSyntax  ::=
+    //         SEQUENCE SIZE (1..MAX) OF AccessDescription
+    //
+    // AccessDescription  ::=  SEQUENCE {
+    //         accessMethod          OBJECT IDENTIFIER,
+    //         accessLocation        GeneralName  }
+    pub(super) fn parse_subjectinfoaccess(i: &[u8]) -> IResult<&[u8], SubjectInfoAccess, BerError> {
+        fn parse_sia(i: &[u8]) -> IResult<&[u8], AccessDescription, BerError> {
+            parse_der_sequence_defined_g(|content, _| {
+                // Read first element, an oid.
+                let (gn, oid) = Oid::from_der(content)?;
+                // Parse second element
+                let (rest, gn) = parse_generalname(gn)?;
+                Ok((rest, AccessDescription::new(oid, gn)))
+            })(i)
+        }
+        let (ret, accessdescs) = parse_der_sequence_of_v(parse_sia)(i)?;
+        Ok((ret, SubjectInfoAccess { accessdescs }))
+    }
+
+    fn parse_subjectinfoaccess_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+        map(parse_subjectinfoaccess, ParsedExtension::SubjectInfoAccess)(i)
     }
 
     fn parse_aki_content<'a>(
