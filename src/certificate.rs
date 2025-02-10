@@ -436,7 +436,7 @@ impl<'a> TbsCertificate<'a> {
     pub fn inhibit_anypolicy(
         &self,
     ) -> Result<Option<BasicExtension<&InhibitAnyPolicy>>, X509Error> {
-        self.get_extension_unique(&OID_X509_EXT_INHIBITANT_ANY_POLICY)?
+        self.get_extension_unique(&OID_X509_EXT_INHIBIT_ANY_POLICY)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::InhibitAnyPolicy(ref value) => {
                     Ok(Some(BasicExtension::new(ext.critical, value)))
