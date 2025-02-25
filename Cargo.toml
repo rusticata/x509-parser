@@ -48,7 +48,7 @@ lazy_static = "1.4"
 nom = "7.0"
 oid-registry = { version="0.8", features=["crypto", "x509", "x962"] }
 rusticata-macros = "4.0"
-ring = { version="0.17.7", optional=true }
+ring = { version="0.17.11", optional=true }
 der-parser = { version = "10.0", features=["bigint"] }
 thiserror = "2.0"
 time = { version="0.3.35", features=["formatting"] }
