@@ -6,6 +6,13 @@
 
 ### Thanks
 
+## 0.17.1
+
+### Added/Changed/Fixed
+
+Global:
+- Upgrade `ring` to version >= 0.17.12 (#190 - RUSTSEC-2025-0009)
+
 ## 0.17.0
 
 ### Added/Changed/Fixed
