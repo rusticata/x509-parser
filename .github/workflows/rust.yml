@@ -22,6 +22,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
+      - run: RUSTFLAGS="-D warnings" cargo check --locked
+
+  check-notlocked:
+    name: Check (not locked)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - name: Cargo update
         run: cargo update
       - run: RUSTFLAGS="-D warnings" cargo check
@@ -40,9 +48,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-      - name: Cargo update
-        run: cargo update
-      - run: RUSTFLAGS="-D warnings" cargo check --all-targets --all-features
+      - run: RUSTFLAGS="-D warnings" cargo check --locked --all-targets --all-features
 
   test:
     name: Test Suite
@@ -51,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --all-features
+      - run: cargo test --locked --all-features
 
   test_features:
     name: Test suite (with features)
@@ -69,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
-      - run: cargo test ${{ matrix.features }}
+      - run: cargo test --locked ${{ matrix.features }}
 
   fmt:
     name: Rustfmt
@@ -90,7 +96,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy
-      - run: cargo clippy --all-features -- -D warnings
+      - run: cargo clippy --locked --all-features -- -D warnings
 
   doc:
     name: Build documentation
