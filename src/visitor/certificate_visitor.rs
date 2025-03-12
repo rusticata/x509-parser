@@ -225,7 +225,7 @@ impl TbsCertificate<'_> {
                 if let ParsedExtension::CRLDistributionPoints(crl) = &extension.parsed_extension {
                     visitor.visit_extension_crl_distribution_points(crl);
                 }
-            } else if extension.oid == OID_X509_EXT_INHIBITANT_ANY_POLICY {
+            } else if extension.oid == OID_X509_EXT_INHIBIT_ANY_POLICY {
                 if let ParsedExtension::InhibitAnyPolicy(policy) = &extension.parsed_extension {
                     visitor.visit_extension_inhibit_anypolicy(policy);
                 }
