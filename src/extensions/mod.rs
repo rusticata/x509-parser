@@ -672,7 +672,7 @@ pub(crate) mod parser {
             );
             add!(
                 m,
-                OID_X509_EXT_INHIBITANT_ANY_POLICY,
+                OID_X509_EXT_INHIBIT_ANY_POLICY,
                 parse_inhibitanypolicy_ext
             );
             add!(
