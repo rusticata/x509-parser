@@ -51,7 +51,7 @@ rusticata-macros = "4.0"
 ring = { version="0.17.12", optional=true }
 der-parser = { version = "10.0", features=["bigint"] }
 thiserror = "2.0"
-time = { version="0.3.35", features=["formatting"] }
+time = { version="0.3.41", features=["formatting"] }
 
 # XXX: remove this before release!
 [patch.crates-io]
