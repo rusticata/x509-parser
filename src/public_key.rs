@@ -1,6 +1,6 @@
 use crate::error::*;
-use asn1_rs::{Error, FromDer};
-use nom::IResult;
+use asn1_rs::{Error, FromDer, Integer};
+use nom::{Err, IResult};
 
 /// Public Key value
 #[derive(Debug, PartialEq, Eq)]
@@ -72,10 +72,14 @@ impl RSAPublicKey<'_> {
 // helper function to parse with error type BerError
 fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, Error> {
     parse_der_sequence_defined_g(move |i, _| {
-        let (i, obj_modulus) = parse_der_integer(i)?;
-        let (i, obj_exponent) = parse_der_integer(i)?;
-        let modulus = obj_modulus.as_slice()?;
-        let exponent = obj_exponent.as_slice()?;
+        let (i, obj_modulus) = Integer::from_der(i)?;
+        let (i, obj_exponent) = Integer::from_der(i)?;
+        let modulus = obj_modulus
+            .as_raw_slice()
+            .ok_or(Err::Error(Error::LifetimeError))?;
+        let exponent = obj_exponent
+            .as_raw_slice()
+            .ok_or(Err::Error(Error::LifetimeError))?;
         let key = RSAPublicKey { modulus, exponent };
         Ok((i, key))
     })(bytes)
@@ -83,7 +87,7 @@ fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, Error> {
 
 impl<'a> FromDer<'a, X509Error> for RSAPublicKey<'a> {
     fn from_der(bytes: &'a [u8]) -> X509Result<'a, Self> {
-        parse_rsa_key(bytes).map_err(|_| nom::Err::Error(X509Error::InvalidSPKI))
+        parse_rsa_key(bytes).map_err(|_| Err::Error(X509Error::InvalidSPKI))
     }
 }
 
