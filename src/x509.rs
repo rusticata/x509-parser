@@ -4,13 +4,13 @@
 //!
 
 use crate::error::{X509Error, X509Result};
-use crate::objects::*;
 use crate::public_key::*;
+use crate::{objects::*, MAX_OBJECT_SIZE};
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Any, BitString, BmpString, DerSequence, Error, FromBer, FromDer, Header, OptTaggedParser,
-    ParseResult, Tag,
+    Any, BitString, BmpString, DerSequence, Error, FromBer, FromDer, Header, Integer,
+    OptTaggedParser, ParseResult, Tag,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -18,7 +18,7 @@ use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{complete, map};
 use nom::multi::{many0, many1};
-use nom::{Err, Offset};
+use nom::{Err, Offset, Parser as _};
 use oid_registry::*;
 use rusticata_macros::newtype_enum;
 use std::fmt;
@@ -211,7 +211,7 @@ impl<'a> FromIterator<AttributeTypeAndValue<'a>> for RelativeDistinguishedName<'
 impl<'a> FromDer<'a, X509Error> for RelativeDistinguishedName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_set_defined_g(|i, _| {
-            let (i, set) = many1(complete(AttributeTypeAndValue::from_der))(i)?;
+            let (i, set) = many1(complete(AttributeTypeAndValue::from_der)).parse(i)?;
             let rdn = RelativeDistinguishedName { set };
             Ok((i, rdn))
         })(i)
@@ -221,7 +221,7 @@ impl<'a> FromDer<'a, X509Error> for RelativeDistinguishedName<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
-    pub subject_public_key: BitString<'a>,
+    pub subject_public_key: BitString,
     /// A raw unparsed PKIX, ASN.1 DER form (see RFC 5280, Section 4.1).
     ///
     /// Note: use the [`Self::parsed()`] function to parse this object.
@@ -231,7 +231,7 @@ pub struct SubjectPublicKeyInfo<'a> {
 impl SubjectPublicKeyInfo<'_> {
     /// Attempt to parse the public key, and return the parsed version or an error
     pub fn parsed(&self) -> Result<PublicKey, X509Error> {
-        let b = &self.subject_public_key.data;
+        let b = &self.subject_public_key.as_raw_slice();
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
             let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
             Ok(PublicKey::RSA(key))
@@ -239,9 +239,11 @@ impl SubjectPublicKeyInfo<'_> {
             let key = ECPoint::from(b.as_ref());
             Ok(PublicKey::EC(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_DSA {
-            let s = parse_der_integer(b)
-                .and_then(|(_, obj)| obj.as_slice().map_err(Err::Error))
-                .or(Err(X509Error::InvalidSPKI))?;
+            let s = Integer::from_der(b)
+                .map(|(_rem, i)| i.as_ref())
+                .map_err(|_| Err::Error(X509Error::InvalidSPKI))?;
+            // .and_then(|(_, obj)| obj.as_ref().map_err(Err::Error))
+            // .or(Err(X509Error::InvalidSPKI))?;
             Ok(PublicKey::DSA(s))
         } else if self.algorithm.algorithm == OID_GOST_R3410_2001 {
             let (_, s) = <&[u8]>::from_der(b).or(Err(X509Error::InvalidSPKI))?;
@@ -470,7 +472,7 @@ impl<'a> FromDer<'a, X509Error> for X509Name<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der))(i)?;
+            let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der)).parse(i)?;
             let len = start_i.offset(i);
             let name = X509Name {
                 rdn_seq,
@@ -521,7 +523,8 @@ fn attribute_value_to_string(attr: &Any, _attr_type: &Oid) -> Result<String, X50
         | Tag::VideotexString
         | Tag::Utf8String
         | Tag::Ia5String => {
-            let s = core::str::from_utf8(attr.data).map_err(|_| X509Error::InvalidAttributes)?;
+            let s = core::str::from_utf8(attr.data.as_bytes2())
+                .map_err(|_| X509Error::InvalidAttributes)?;
             Ok(s.to_owned())
         }
         Tag::BmpString => {
@@ -582,13 +585,15 @@ pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
     any.tag()
         .assert_eq(Tag::Integer)
         .map_err(|_| X509Error::InvalidSerial)?;
-    let slice = any.data;
+    let slice = any.data.as_bytes2();
     let big = BigUint::from_bytes_be(slice);
     Ok((rem, (slice, big)))
 }
 
 #[cfg(test)]
 mod tests {
+    use asn1_rs::oid;
+
     use super::*;
 
     #[test]
@@ -621,13 +626,16 @@ mod tests {
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
                         attr_type: oid! {2.5.4.6}, // countryName
-                        attr_value: Any::from_tag_and_data(Tag::PrintableString, b"FR"),
+                        attr_value: Any::from_tag_and_data(Tag::PrintableString, b"FR".into()),
                     }],
                 },
                 RelativeDistinguishedName {
                     set: vec![AttributeTypeAndValue {
                         attr_type: oid! {2.5.4.8}, // stateOrProvinceName
-                        attr_value: Any::from_tag_and_data(Tag::PrintableString, b"Some-State"),
+                        attr_value: Any::from_tag_and_data(
+                            Tag::PrintableString,
+                            b"Some-State".into(),
+                        ),
                     }],
                 },
                 RelativeDistinguishedName {
@@ -635,7 +643,7 @@ mod tests {
                         attr_type: oid! {2.5.4.10}, // organizationName
                         attr_value: Any::from_tag_and_data(
                             Tag::PrintableString,
-                            b"Internet Widgits Pty Ltd",
+                            b"Internet Widgits Pty Ltd".into(),
                         ),
                     }],
                 },
@@ -643,11 +651,17 @@ mod tests {
                     set: vec![
                         AttributeTypeAndValue {
                             attr_type: oid! {2.5.4.3}, // CN
-                            attr_value: Any::from_tag_and_data(Tag::PrintableString, b"Test1"),
+                            attr_value: Any::from_tag_and_data(
+                                Tag::PrintableString,
+                                b"Test1".into(),
+                            ),
                         },
                         AttributeTypeAndValue {
                             attr_type: oid! {2.5.4.3}, // CN
-                            attr_value: Any::from_tag_and_data(Tag::PrintableString, b"Test2"),
+                            attr_value: Any::from_tag_and_data(
+                                Tag::PrintableString,
+                                b"Test2".into(),
+                            ),
                         },
                     ],
                 },

@@ -1,7 +1,7 @@
 use super::GeneralName;
 use crate::error::{X509Error, X509Result};
 use crate::extensions::parse_generalname;
-use asn1_rs::FromDer;
+use asn1_rs::{Error, FromDer};
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many1;
 use nom::{Err, IResult, Parser as _};
@@ -27,14 +27,14 @@ pub struct GeneralSubtree<'a> {
     // maximum: Option<u32>,
 }
 
-pub(crate) fn parse_nameconstraints(i: &[u8]) -> IResult<&[u8], NameConstraints, BerError> {
-    fn parse_subtree(i: &[u8]) -> IResult<&[u8], GeneralSubtree, BerError> {
+pub(crate) fn parse_nameconstraints(i: &[u8]) -> IResult<&[u8], NameConstraints, Error> {
+    fn parse_subtree(i: &[u8]) -> IResult<&[u8], GeneralSubtree, Error> {
         parse_der_sequence_defined_g(|input, _| {
             map(parse_generalname, |base| GeneralSubtree { base }).parse(input)
         })(i)
     }
-    fn parse_subtrees(i: &[u8]) -> IResult<&[u8], Vec<GeneralSubtree>, BerError> {
-        all_consuming(many1(complete(parse_subtree)))(i)
+    fn parse_subtrees(i: &[u8]) -> IResult<&[u8], Vec<GeneralSubtree>, Error> {
+        all_consuming(many1(complete(parse_subtree))).parse(i)
     }
 
     let (ret, named_constraints) = parse_der_sequence_defined_g(|input, _| {

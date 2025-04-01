@@ -1,8 +1,5 @@
 use crate::error::{X509Error, X509Result};
-use asn1_rs::{oid, FromDer};
-// use der_parser::der::*;
-// use der_parser::error::BerError;
-// use der_parser::{oid, oid::Oid};
+use asn1_rs::{bitvec::field::BitField, oid, BitString, Error, FromDer, Oid};
 use nom::{Err, IResult};
 use std::fmt;
 
@@ -96,21 +93,18 @@ impl<'a> FromDer<'a, X509Error> for ExtendedKeyUsage<'a> {
     }
 }
 
-pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, BerError> {
-    let (rest, obj) = parse_der_bitstring(i)?;
-    let bitstring = obj
-        .content
-        .as_bitstring()
-        .or(Err(Err::Error(BerError::BerTypeError)))?;
-    let flags = bitstring
-        .data
-        .iter()
-        .rev()
-        .fold(0, |acc, x| (acc << 8) | (x.reverse_bits() as u16));
+pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, Error> {
+    let (rest, mut obj) = BitString::from_der(i)?;
+    let bits = obj.as_mut_bitslice();
+    if bits.len() > 16 {
+        return Err(Err::Error(Error::BerValueError));
+    }
+    bits.reverse();
+    let flags = bits.load::<u16>();
     Ok((rest, KeyUsage { flags }))
 }
 
-pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage, BerError> {
+pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage, Error> {
     let (ret, seq) = <Vec<Oid>>::from_der(i)?;
     let mut seen = std::collections::HashSet::new();
     let mut eku = ExtendedKeyUsage {

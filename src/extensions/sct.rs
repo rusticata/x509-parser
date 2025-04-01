@@ -4,7 +4,7 @@
 
 use std::convert::TryInto;
 
-use asn1_rs::FromDer;
+use asn1_rs::{Error, FromDer};
 // use der_parser::error::BerError;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, map_parser};
@@ -52,7 +52,7 @@ pub struct DigitallySigned<'a> {
 /// Parses a list of Signed Certificate Timestamp entries
 pub fn parse_ct_signed_certificate_timestamp_list(
     i: &[u8],
-) -> IResult<&[u8], Vec<SignedCertificateTimestamp>, BerError> {
+) -> IResult<&[u8], Vec<SignedCertificateTimestamp>, Error> {
     // use nom::HexDisplay;
     // eprintln!("{}", i.to_hex(16));
     let (rem, b) = <&[u8]>::from_der(i)?;
@@ -60,23 +60,25 @@ pub fn parse_ct_signed_certificate_timestamp_list(
     let (_, sct_list) = map_parser(
         take(sct_len as usize),
         many1(complete(parse_ct_signed_certificate_timestamp)),
-    )(b)?;
+    )
+    .parse(b)?;
     Ok((rem, sct_list))
 }
 
 /// Parses as single Signed Certificate Timestamp entry
 pub fn parse_ct_signed_certificate_timestamp(
     i: &[u8],
-) -> IResult<&[u8], SignedCertificateTimestamp, BerError> {
+) -> IResult<&[u8], SignedCertificateTimestamp, Error> {
     map_parser(
         length_data(be_u16),
         parse_ct_signed_certificate_timestamp_content,
-    )(i)
+    )
+    .parse(i)
 }
 
 pub(crate) fn parse_ct_signed_certificate_timestamp_content(
     i: &[u8],
-) -> IResult<&[u8], SignedCertificateTimestamp, BerError> {
+) -> IResult<&[u8], SignedCertificateTimestamp, Error> {
     let (i, version) = be_u8(i)?;
     let (i, id) = parse_log_id(i)?;
     let (i, timestamp) = be_u64(i)?;
@@ -93,7 +95,7 @@ pub(crate) fn parse_ct_signed_certificate_timestamp_content(
 }
 
 // Safety: cannot fail, take() returns exactly 32 bytes
-fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID, BerError> {
+fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID, Error> {
     let (i, key_id) = take(32usize)(i)?;
     Ok((
         i,
@@ -105,13 +107,13 @@ fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID, BerError> {
     ))
 }
 
-fn parse_ct_extensions(i: &[u8]) -> IResult<&[u8], CtExtensions, BerError> {
+fn parse_ct_extensions(i: &[u8]) -> IResult<&[u8], CtExtensions, Error> {
     let (i, ext_len) = be_u16(i)?;
     let (i, ext_data) = take(ext_len as usize)(i)?;
     Ok((i, CtExtensions(ext_data)))
 }
 
-fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned, BerError> {
+fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned, Error> {
     let (i, hash_alg_id) = be_u8(i)?;
     let (i, sign_alg_id) = be_u8(i)?;
     let (i, data) = length_data(be_u16).parse(i)?;

@@ -11,7 +11,7 @@ use crate::verify::verify_signature;
 #[cfg(feature = "verify")]
 use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::num_bigint::BigUint;
-use asn1_rs::{BitString, FromDer};
+use asn1_rs::{BitString, FromDer, Tag};
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many0;
 use nom::{Offset, Parser as _};
@@ -225,8 +225,9 @@ impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         let start_i = i;
         parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) =
-                opt(map(parse_der_u32, X509Version))(i).or(Err(X509Error::InvalidVersion))?;
+            let (i, version) = opt(map(<u32>::from_der, X509Version))
+                .parse(i)
+                .or(Err(X509Error::InvalidVersion))?;
             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
             let (i, issuer) = X509Name::from_der(i)?;
             let (i, this_update) = ASN1Time::from_der(i)?;
