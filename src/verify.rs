@@ -57,7 +57,7 @@ pub fn verify_signature(
     let key =
         signature::UnparsedPublicKey::new(verification_alg, &public_key.subject_public_key.data);
     // verify signature
-    key.verify(raw_data, &signature_value.data)
+    key.verify(raw_data, signature_value.as_raw_slice())
         .or(Err(X509Error::SignatureVerificationError))
 }
 

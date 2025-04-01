@@ -7,9 +7,9 @@ use crate::x509::{
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
-use asn1_rs::{BitString, FromDer};
-use der_parser::der::*;
-use der_parser::*;
+use asn1_rs::{BitString, FromDer, Oid};
+// use der_parser::der::*;
+// use der_parser::*;
 use nom::Offset;
 use std::collections::HashMap;
 
@@ -18,7 +18,7 @@ use std::collections::HashMap;
 pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitString<'a>,
+    pub signature_value: BitString,
 }
 
 impl X509CertificationRequest<'_> {

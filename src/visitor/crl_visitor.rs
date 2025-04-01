@@ -1,5 +1,5 @@
+use asn1_rs::num_bigint::BigUint;
 use asn1_rs::BitString;
-use der_parser::num_bigint::BigUint;
 use oid_registry::*;
 
 use crate::extensions::*;

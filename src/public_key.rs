@@ -1,9 +1,5 @@
 use crate::error::*;
 use asn1_rs::FromDer;
-use der_parser::{
-    der::{parse_der_integer, parse_der_sequence_defined_g},
-    error::BerResult,
-};
 
 /// Public Key value
 #[derive(Debug, PartialEq, Eq)]

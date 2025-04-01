@@ -6,10 +6,10 @@ use crate::utils::format_serial;
 use crate::x509::{ReasonCode, RelativeDistinguishedName};
 
 use asn1_rs::FromDer;
-use der_parser::ber::parse_ber_bool;
-use der_parser::der::*;
-use der_parser::error::{BerError, BerResult};
-use der_parser::num_bigint::BigUint;
+// use der_parser::ber::parse_ber_bool;
+// use der_parser::der::*;
+// use der_parser::error::{BerError, BerResult};
+// use der_parser::num_bigint::BigUint;
 use nom::combinator::{all_consuming, complete, cut, map, map_res, opt};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult, Parser};
@@ -156,7 +156,10 @@ impl Default for X509ExtensionParser {
     }
 }
 
-impl<'a> Parser<&'a [u8], X509Extension<'a>, X509Error> for X509ExtensionParser {
+impl<'a> Parser<&'a [u8]> for X509ExtensionParser {
+    type Output = X509Extension<'a>;
+    type Error = X509Error;
+
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Extension<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, oid) = Oid::from_der(i)?;
@@ -176,6 +179,13 @@ impl<'a> Parser<&'a [u8], X509Extension<'a>, X509Error> for X509ExtensionParser 
             Ok((i, ext))
         })(input)
         .map_err(|_| X509Error::InvalidExtensions.into())
+    }
+
+    fn process<OM: nom::OutputMode>(
+        &mut self,
+        input: &'a [u8],
+    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        todo!()
     }
 }
 
@@ -551,7 +561,7 @@ impl<'a> FromDer<'a, X509Error> for SubjectAlternativeName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) =
-                all_consuming(many0(complete(cut(GeneralName::from_der))))(input)?;
+                all_consuming(many0(complete(cut(GeneralName::from_der)))).parse(input)?;
             Ok((i, SubjectAlternativeName { general_names }))
         })(i)
     }
@@ -566,7 +576,7 @@ impl<'a> FromDer<'a, X509Error> for IssuerAlternativeName<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) =
-                all_consuming(many0(complete(cut(GeneralName::from_der))))(input)?;
+                all_consuming(many0(complete(cut(GeneralName::from_der)))).parse(input)?;
             Ok((i, IssuerAlternativeName { general_names }))
         })(i)
     }
@@ -677,7 +687,7 @@ pub struct IssuingDistributionPoint<'a> {
 pub(crate) mod parser {
     use crate::extensions::*;
     use asn1_rs::{GeneralizedTime, ParseResult};
-    use der_parser::ber::BerObject;
+    // use der_parser::ber::BerObject;
     use lazy_static::lazy_static;
 
     type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, BerError>;
@@ -855,7 +865,8 @@ pub(crate) mod parser {
         i: &[u8],
     ) -> IResult<&[u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
-            let (i, general_names) = all_consuming(many0(complete(cut(parse_generalname))))(input)?;
+            let (i, general_names) =
+                all_consuming(many0(complete(cut(parse_generalname)))).parse(input)?;
             Ok((
                 i,
                 ParsedExtension::SubjectAlternativeName(SubjectAlternativeName { general_names }),
@@ -867,7 +878,8 @@ pub(crate) mod parser {
         i: &[u8],
     ) -> IResult<&[u8], ParsedExtension, BerError> {
         parse_der_sequence_defined_g(|input, _| {
-            let (i, general_names) = all_consuming(many0(complete(cut(parse_generalname))))(input)?;
+            let (i, general_names) =
+                all_consuming(many0(complete(cut(parse_generalname)))).parse(input)?;
             Ok((
                 i,
                 ParsedExtension::IssuerAlternativeName(IssuerAlternativeName { general_names }),
@@ -898,7 +910,7 @@ pub(crate) mod parser {
     }
 
     fn parse_policymappings_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_policymappings, ParsedExtension::PolicyMappings)(i)
+        map(parse_policymappings, ParsedExtension::PolicyMappings).parse(i)
     }
 
     fn parse_inhibitanypolicy_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
@@ -920,7 +932,7 @@ pub(crate) mod parser {
         let (rem, header) = der_read_element_header(i)?;
         match header.tag().0 {
             0 => {
-                let (rem, names) = many1(complete(parse_generalname))(rem)?;
+                let (rem, names) = many1(complete(parse_generalname)).parse(rem)?;
                 Ok((rem, DistributionPointName::FullName(names)))
             }
             1 => {
@@ -963,7 +975,7 @@ pub(crate) mod parser {
     }
 
     fn parse_crlissuer_content(i: &[u8]) -> BerResult<Vec<GeneralName>> {
-        many1(complete(parse_generalname))(i)
+        many1(complete(parse_generalname)).parse(i)
     }
 
     // DistributionPoint ::= SEQUENCE {
@@ -978,7 +990,7 @@ pub(crate) mod parser {
                 opt(complete(parse_der_tagged_explicit_g(0, |b, _| {
                     parse_distributionpointname(b)
                 })))(content)?;
-            let (rem, reasons) = opt(complete(parse_implicit_tagged_reasons(1)))(rem)?;
+            let (rem, reasons) = opt(complete(parse_implicit_tagged_reasons(1))).parse(rem)?;
             let (rem, crl_issuer) = opt(complete(parse_der_tagged_implicit_g(2, |i, _, _| {
                 parse_crlissuer_content(i)
             })))(rem)?;
@@ -1031,7 +1043,8 @@ pub(crate) mod parser {
 
             let (rem, only_contains_user_certs) = parse_tagged_bool(1, rem)?;
             let (rem, only_contains_ca_certs) = parse_tagged_bool(2, rem)?;
-            let (rem, only_some_reasons) = opt(complete(parse_implicit_tagged_reasons(3)))(rem)?;
+            let (rem, only_some_reasons) =
+                opt(complete(parse_implicit_tagged_reasons(3))).parse(rem)?;
             let (rem, indirect_crl) = parse_tagged_bool(4, rem)?;
             let (rem, only_contains_attribute_certs) = parse_tagged_bool(5, rem)?;
 
@@ -1116,7 +1129,7 @@ pub(crate) mod parser {
         })))(i)?;
         let (i, authority_cert_issuer) =
             opt(complete(parse_der_tagged_implicit_g(1, |d, _, _| {
-                many0(complete(parse_generalname))(d)
+                many0(complete(parse_generalname)).parse(d)
             })))(i)?;
         let (i, authority_cert_serial) = opt(complete(parse_der_tagged_implicit(
             2,
@@ -1288,9 +1301,9 @@ pub(crate) mod parser {
 
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 pub(crate) fn parse_extension_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
-    parse_der_sequence_defined_g(|a, _| all_consuming(many0(complete(X509Extension::from_der)))(a))(
-        i,
-    )
+    parse_der_sequence_defined_g(|a, _| {
+        all_consuming(many0(complete(X509Extension::from_der))).parse(a)
+    })(i)
 }
 
 pub(crate) fn parse_extensions(i: &[u8], explicit_tag: Tag) -> X509Result<Vec<X509Extension>> {
@@ -1303,7 +1316,7 @@ pub(crate) fn parse_extensions(i: &[u8], explicit_tag: Tag) -> X509Result<Vec<X5
             if hdr.tag() != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
-            all_consuming(parse_extension_sequence)(rem)
+            all_consuming(parse_extension_sequence).parse(rem)
         }
         Err(_) => Err(X509Error::InvalidExtensions.into()),
     }
@@ -1313,7 +1326,7 @@ pub(crate) fn parse_extensions(i: &[u8], explicit_tag: Tag) -> X509Result<Vec<X5
 pub(crate) fn parse_extension_envelope_sequence(i: &[u8]) -> X509Result<Vec<X509Extension>> {
     let parser = X509ExtensionParser::new().with_deep_parse_extensions(false);
 
-    parse_der_sequence_defined_g(move |a, _| all_consuming(many0(complete(parser)))(a))(i)
+    parse_der_sequence_defined_g(move |a, _| all_consuming(many0(complete(parser))).parse(a))(i)
 }
 
 pub(crate) fn parse_extensions_envelope(
@@ -1329,7 +1342,7 @@ pub(crate) fn parse_extensions_envelope(
             if hdr.tag() != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
             }
-            all_consuming(parse_extension_envelope_sequence)(rem)
+            all_consuming(parse_extension_envelope_sequence).parse(rem)
         }
         Err(_) => Err(X509Error::InvalidExtensions.into()),
     }
@@ -1349,6 +1362,7 @@ fn der_read_critical(i: &[u8]) -> BerResult<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use asn1_rs::oid;
 
     #[test]
     fn test_keyusage_flags() {
@@ -1366,7 +1380,6 @@ mod tests {
 
     #[test]
     fn test_extensions1() {
-        use der_parser::oid;
         let crt = crate::parse_x509_certificate(include_bytes!("../../assets/extension1.der"))
             .unwrap()
             .1;
@@ -1483,7 +1496,6 @@ mod tests {
 
     #[test]
     fn test_extensions2() {
-        use der_parser::oid;
         let crt = crate::parse_x509_certificate(include_bytes!("../../assets/extension2.der"))
             .unwrap()
             .1;

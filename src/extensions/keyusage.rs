@@ -1,8 +1,8 @@
 use crate::error::{X509Error, X509Result};
-use asn1_rs::FromDer;
-use der_parser::der::*;
-use der_parser::error::BerError;
-use der_parser::{oid, oid::Oid};
+use asn1_rs::{oid, FromDer};
+// use der_parser::der::*;
+// use der_parser::error::BerError;
+// use der_parser::{oid, oid::Oid};
 use nom::{Err, IResult};
 use std::fmt;
 
