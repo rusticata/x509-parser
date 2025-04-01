@@ -5,7 +5,7 @@ version = 3
 [[package]]
 name = "asn1-rs"
 version = "0.8.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#2869b79919cc4a9b5650b6a53a69b4f61da961d2"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#120260dcef00aa275f87dd8c12c35dcf22f9403b"
 dependencies = [
  "asn1-rs-derive",
  "asn1-rs-impl",
@@ -23,7 +23,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-derive"
 version = "0.7.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#2869b79919cc4a9b5650b6a53a69b4f61da961d2"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#120260dcef00aa275f87dd8c12c35dcf22f9403b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-impl"
 version = "0.3.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#2869b79919cc4a9b5650b6a53a69b4f61da961d2"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#120260dcef00aa275f87dd8c12c35dcf22f9403b"
 dependencies = [
  "proc-macro2",
  "quote",

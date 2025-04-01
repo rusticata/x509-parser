@@ -688,8 +688,8 @@ pub struct IssuingDistributionPoint<'a> {
 pub(crate) mod parser {
     use crate::extensions::*;
     use asn1_rs::{
-        bitvec::field::BitField, BitString, Enumerated, GeneralizedTime, Header, Integer,
-        ParseResult,
+        bitvec::field::BitField, BitString, Enumerated, GeneralizedTime, Header, Ia5String,
+        Integer, ParseResult,
     };
     // use der_parser::ber::BerObject;
     use lazy_static::lazy_static;
@@ -1198,10 +1198,9 @@ pub(crate) mod parser {
     }
 
     fn parse_nscomment_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
-        // FIXME: if using Ia5String.as_ref(), the lifetime is too short (bound to object)
-        match parse_der_ia5string(i) {
+        match Ia5String::from_der(i) {
             Ok((i, obj)) => {
-                let s = obj.as_str()?;
+                let s = obj.as_raw_str().ok_or(Err::Error(Error::LifetimeError))?;
                 Ok((i, ParsedExtension::NsCertComment(s)))
             }
             Err(e) => {
