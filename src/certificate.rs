@@ -13,13 +13,13 @@ use crate::x509::{
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
-use asn1_rs::{BitString, FromDer, OptTaggedImplicit};
+use asn1_rs::{BigUint, BitString, Error, FromDer, OptTaggedImplicit, Tag};
 use core::ops::Deref;
 // use der_parser::der::*;
 // use der_parser::error::*;
 // use der_parser::num_bigint::BigUint;
 // use der_parser::*;
-use nom::{Offset, Parser};
+use nom::{IResult, Offset, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 use time::Duration;
@@ -766,7 +766,7 @@ impl UniqueIdentifier {
     // Parse a [tag] UniqueIdentifier OPTIONAL
     //
     // UniqueIdentifier  ::=  BIT STRING
-    fn parse<const TAG: u32>(i: &[u8]) -> BerResult<Option<UniqueIdentifier>> {
+    fn parse<const TAG: u32>(i: &[u8]) -> IResult<&[u8], Option<UniqueIdentifier>, Error> {
         let (rem, unique_id) = OptTaggedImplicit::<BitString, Error, TAG>::from_der(i)?;
         let unique_id = unique_id.map(|u| UniqueIdentifier(u.into_inner()));
         Ok((rem, unique_id))

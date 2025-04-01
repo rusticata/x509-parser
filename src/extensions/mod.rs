@@ -5,7 +5,7 @@ use crate::time::ASN1Time;
 use crate::utils::format_serial;
 use crate::x509::{ReasonCode, RelativeDistinguishedName};
 
-use asn1_rs::FromDer;
+use asn1_rs::{BigUint, Error, FromDer, Header, Tag};
 // use der_parser::ber::parse_ber_bool;
 // use der_parser::der::*;
 // use der_parser::error::{BerError, BerResult};
@@ -196,7 +196,7 @@ pub enum ParsedExtension<'a> {
         oid: Oid<'a>,
     },
     ParseError {
-        error: Err<BerError>,
+        error: Err<Error>,
     },
     /// Section 4.2.1.1 of rfc 5280
     AuthorityKeyIdentifier(AuthorityKeyIdentifier<'a>),
@@ -253,7 +253,7 @@ impl ParsedExtension<'_> {
     }
 
     /// Return a reference on the parsing error if the extension parsing failed
-    pub fn error(&self) -> Option<&Err<BerError>> {
+    pub fn error(&self) -> Option<&Err<Error>> {
         match self {
             ParsedExtension::ParseError { error } => Some(error),
             _ => None,
@@ -536,7 +536,8 @@ pub struct InhibitAnyPolicy {
 
 impl<'a> FromDer<'a, X509Error> for InhibitAnyPolicy {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        map(parse_der_u32, |skip_certs| InhibitAnyPolicy { skip_certs })(i).map_err(Err::convert)
+        let (rem, skip_certs) = <u32>::from_der(i).map_err(Err::convert)?;
+        Ok((rem, InhibitAnyPolicy { skip_certs }))
     }
 }
 
@@ -686,11 +687,14 @@ pub struct IssuingDistributionPoint<'a> {
 
 pub(crate) mod parser {
     use crate::extensions::*;
-    use asn1_rs::{GeneralizedTime, ParseResult};
+    use asn1_rs::{
+        bitvec::field::BitField, BitString, Enumerated, GeneralizedTime, Header, Integer,
+        ParseResult,
+    };
     // use der_parser::ber::BerObject;
     use lazy_static::lazy_static;
 
-    type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, BerError>;
+    type ExtParser = fn(&[u8]) -> IResult<&[u8], ParsedExtension, Error>;
 
     lazy_static! {
         static ref EXTENSION_PARSERS: HashMap<Oid<'static>, ExtParser> = {
@@ -781,7 +785,7 @@ pub(crate) mod parser {
         orig_i: &'a [u8],
         i: &'a [u8],
         oid: &Oid,
-    ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
+    ) -> IResult<&'a [u8], ParsedExtension<'a>, Error> {
         if let Some(parser) = EXTENSION_PARSERS.get(oid) {
             match parser(i) {
                 Ok((_, ext)) => Ok((orig_i, ext)),
@@ -801,7 +805,7 @@ pub(crate) mod parser {
         orig_i: &'a [u8],
         i: &'a [u8],
         oid: &Oid,
-    ) -> IResult<&'a [u8], ParsedExtension<'a>, BerError> {
+    ) -> IResult<&'a [u8], ParsedExtension<'a>, Error> {
         parse_extension0(orig_i, i, oid)
     }
 
@@ -816,7 +820,7 @@ pub(crate) mod parser {
     ///
     /// Note the maximum length of the `pathLenConstraint` field is limited to the size of a 32-bits
     /// unsigned integer, and parsing will fail if value if larger.
-    pub(super) fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], BasicConstraints, BerError> {
+    pub(super) fn parse_basicconstraints(i: &[u8]) -> IResult<&[u8], BasicConstraints, Error> {
         let (rem, obj) = parse_der_sequence(i)?;
         if let Ok(seq) = obj.as_sequence() {
             let (ca, path_len_constraint) = match seq.len() {
@@ -827,19 +831,15 @@ pub(crate) mod parser {
                     } else if let Ok(u) = seq[0].as_u32() {
                         (false, Some(u))
                     } else {
-                        return Err(Err::Error(BerError::InvalidTag));
+                        return Err(Err::Error(Error::InvalidTag));
                     }
                 }
                 2 => {
-                    let ca = seq[0]
-                        .as_bool()
-                        .or(Err(Err::Error(BerError::InvalidLength)))?;
-                    let pl = seq[1]
-                        .as_u32()
-                        .or(Err(Err::Error(BerError::InvalidLength)))?;
+                    let ca = seq[0].as_bool().or(Err(Err::Error(Error::InvalidLength)))?;
+                    let pl = seq[1].as_u32().or(Err(Err::Error(Error::InvalidLength)))?;
                     (ca, Some(pl))
                 }
-                _ => return Err(Err::Error(BerError::InvalidLength)),
+                _ => return Err(Err::Error(Error::InvalidLength)),
             };
             Ok((
                 rem,
@@ -849,21 +849,21 @@ pub(crate) mod parser {
                 },
             ))
         } else {
-            Err(Err::Error(BerError::InvalidLength))
+            Err(Err::Error(Error::InvalidLength))
         }
     }
 
-    fn parse_basicconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_basicconstraints, ParsedExtension::BasicConstraints)(i)
+    fn parse_basicconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_basicconstraints, ParsedExtension::BasicConstraints).parse(i)
     }
 
-    fn parse_nameconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_nameconstraints, ParsedExtension::NameConstraints)(i)
+    fn parse_nameconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_nameconstraints, ParsedExtension::NameConstraints).parse(i)
     }
 
     pub(super) fn parse_subjectalternativename_ext(
         i: &[u8],
-    ) -> IResult<&[u8], ParsedExtension, BerError> {
+    ) -> IResult<&[u8], ParsedExtension, Error> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) =
                 all_consuming(many0(complete(cut(parse_generalname)))).parse(input)?;
@@ -876,7 +876,7 @@ pub(crate) mod parser {
 
     pub(super) fn parse_issueralternativename_ext(
         i: &[u8],
-    ) -> IResult<&[u8], ParsedExtension, BerError> {
+    ) -> IResult<&[u8], ParsedExtension, Error> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, general_names) =
                 all_consuming(many0(complete(cut(parse_generalname)))).parse(input)?;
@@ -887,7 +887,7 @@ pub(crate) mod parser {
         })(i)
     }
 
-    pub(super) fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], PolicyConstraints, BerError> {
+    pub(super) fn parse_policyconstraints(i: &[u8]) -> IResult<&[u8], PolicyConstraints, Error> {
         parse_der_sequence_defined_g(|input, _| {
             let (i, require_explicit_policy) = opt(complete(map_res(
                 parse_der_tagged_implicit(0, parse_der_content(Tag::Integer)),
@@ -905,46 +905,48 @@ pub(crate) mod parser {
         })(i)
     }
 
-    fn parse_policyconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_policyconstraints, ParsedExtension::PolicyConstraints)(i)
+    fn parse_policyconstraints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_policyconstraints, ParsedExtension::PolicyConstraints).parse(i)
     }
 
-    fn parse_policymappings_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_policymappings_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(parse_policymappings, ParsedExtension::PolicyMappings).parse(i)
     }
 
-    fn parse_inhibitanypolicy_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (ret, skip_certs) = parse_der_u32(i)?;
+    fn parse_inhibitanypolicy_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        let (ret, skip_certs) = <u32>::from_der(i)?;
         Ok((
             ret,
             ParsedExtension::InhibitAnyPolicy(InhibitAnyPolicy { skip_certs }),
         ))
     }
 
-    fn parse_extendedkeyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_extendedkeyusage, ParsedExtension::ExtendedKeyUsage)(i)
+    fn parse_extendedkeyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_extendedkeyusage, ParsedExtension::ExtendedKeyUsage).parse(i)
     }
 
     // DistributionPointName ::= CHOICE {
     //     fullName                [0]     GeneralNames,
     //     nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
-    fn parse_distributionpointname(i: &[u8]) -> IResult<&[u8], DistributionPointName, BerError> {
-        let (rem, header) = der_read_element_header(i)?;
+    fn parse_distributionpointname(i: &[u8]) -> IResult<&[u8], DistributionPointName, Error> {
+        let (rem, header) = Header::from_der(i)?;
         match header.tag().0 {
             0 => {
                 let (rem, names) = many1(complete(parse_generalname)).parse(rem)?;
                 Ok((rem, DistributionPointName::FullName(names)))
             }
             1 => {
-                let (rem, rdn) = RelativeDistinguishedName::from_der(rem)
-                    .map_err(|_| BerError::BerValueError)?;
+                let (rem, rdn) =
+                    RelativeDistinguishedName::from_der(rem).map_err(|_| Error::BerValueError)?;
                 Ok((rem, DistributionPointName::NameRelativeToCRLIssuer(rdn)))
             }
-            _ => Err(Err::Error(BerError::InvalidTag)),
+            _ => Err(Err::Error(Error::InvalidTag)),
         }
     }
 
-    fn parse_implicit_tagged_reasons(tag: u32) -> impl Fn(&[u8]) -> BerResult<ReasonFlags> {
+    fn parse_implicit_tagged_reasons(
+        tag: u32,
+    ) -> impl Fn(&[u8]) -> IResult<&[u8], ReasonFlags, Error> {
         move |i: &[u8]| {
             let (rem, obj) = parse_der_tagged_implicit(tag, parse_der_content(Tag::BitString))(i)?;
             parse_reasons(rem, obj)
@@ -961,7 +963,10 @@ pub(crate) mod parser {
     // certificateHold         (6),
     // privilegeWithdrawn      (7),
     // aACompromise            (8) }
-    fn parse_reasons<'a>(rem: &'a [u8], obj: BerObject<'a>) -> BerResult<'a, ReasonFlags> {
+    fn parse_reasons<'a>(
+        rem: &'a [u8],
+        obj: BerObject<'a>,
+    ) -> IResult<&'a [u8], ReasonFlags, Error> {
         if let DerObjectContent::BitString(_, b) = obj.content {
             let flags = b
                 .data
@@ -970,11 +975,11 @@ pub(crate) mod parser {
                 .fold(0, |acc, x| (acc << 8) | (x.reverse_bits() as u16));
             Ok((rem, ReasonFlags { flags }))
         } else {
-            Err(Err::Failure(BerError::InvalidTag))
+            Err(Err::Failure(Error::InvalidTag))
         }
     }
 
-    fn parse_crlissuer_content(i: &[u8]) -> BerResult<Vec<GeneralName>> {
+    fn parse_crlissuer_content(i: &[u8]) -> IResult<&[u8], Vec<GeneralName>, Error> {
         many1(complete(parse_generalname)).parse(i)
     }
 
@@ -984,7 +989,7 @@ pub(crate) mod parser {
     //     cRLIssuer               [2]     GeneralNames OPTIONAL }
     pub(super) fn parse_crldistributionpoint(
         i: &[u8],
-    ) -> IResult<&[u8], CRLDistributionPoint, BerError> {
+    ) -> IResult<&[u8], CRLDistributionPoint, Error> {
         parse_der_sequence_defined_g(|content, _| {
             let (rem, distribution_point) =
                 opt(complete(parse_der_tagged_explicit_g(0, |b, _| {
@@ -1005,16 +1010,17 @@ pub(crate) mod parser {
 
     pub(super) fn parse_crldistributionpoints(
         i: &[u8],
-    ) -> IResult<&[u8], CRLDistributionPoints, BerError> {
+    ) -> IResult<&[u8], CRLDistributionPoints, Error> {
         let (ret, crldps) = parse_der_sequence_of_v(parse_crldistributionpoint)(i)?;
         Ok((ret, CRLDistributionPoints { points: crldps }))
     }
 
-    fn parse_crldistributionpoints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_crldistributionpoints_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(
             parse_crldistributionpoints,
             ParsedExtension::CRLDistributionPoints,
-        )(i)
+        )
+        .parse(i)
     }
 
     //  IssuingDistributionPoint ::= SEQUENCE {
@@ -1026,9 +1032,9 @@ pub(crate) mod parser {
     //         onlyContainsAttributeCerts [5] BOOLEAN DEFAULT FALSE }
     pub(super) fn parse_issuingdistributionpoint(
         i: &[u8],
-    ) -> IResult<&[u8], IssuingDistributionPoint, BerError> {
+    ) -> IResult<&[u8], IssuingDistributionPoint, Error> {
         parse_der_sequence_defined_g(|content, _| {
-            let parse_tagged_bool = |tag: u32, rem| -> IResult<&[u8], bool, BerError> {
+            let parse_tagged_bool = |tag: u32, rem| -> IResult<&[u8], bool, Error> {
                 let (rem, value) = opt(complete(|_| {
                     parse_der_implicit(rem, tag, parse_der_content(Tag::Boolean))
                         .map(|(res, ob)| (res, ob.as_bool().unwrap_or(false)))
@@ -1060,11 +1066,12 @@ pub(crate) mod parser {
         })(i)
     }
 
-    fn parse_issuingdistributionpoint_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_issuingdistributionpoint_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(
             parse_issuingdistributionpoint,
             ParsedExtension::IssuingDistributionPoint,
-        )(i)
+        )
+        .parse(i)
     }
 
     // AuthorityInfoAccessSyntax  ::=
@@ -1075,8 +1082,8 @@ pub(crate) mod parser {
     //         accessLocation        GeneralName  }
     pub(super) fn parse_authorityinfoaccess(
         i: &[u8],
-    ) -> IResult<&[u8], AuthorityInfoAccess, BerError> {
-        fn parse_aia(i: &[u8]) -> IResult<&[u8], AccessDescription, BerError> {
+    ) -> IResult<&[u8], AuthorityInfoAccess, Error> {
+        fn parse_aia(i: &[u8]) -> IResult<&[u8], AccessDescription, Error> {
             parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
                 let (gn, oid) = Oid::from_der(content)?;
@@ -1089,11 +1096,12 @@ pub(crate) mod parser {
         Ok((ret, AuthorityInfoAccess { accessdescs }))
     }
 
-    fn parse_authorityinfoaccess_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_authorityinfoaccess_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(
             parse_authorityinfoaccess,
             ParsedExtension::AuthorityInfoAccess,
-        )(i)
+        )
+        .parse(i)
     }
 
     // SubjectInfoAccessSyntax  ::=
@@ -1102,8 +1110,8 @@ pub(crate) mod parser {
     // AccessDescription  ::=  SEQUENCE {
     //         accessMethod          OBJECT IDENTIFIER,
     //         accessLocation        GeneralName  }
-    pub(super) fn parse_subjectinfoaccess(i: &[u8]) -> IResult<&[u8], SubjectInfoAccess, BerError> {
-        fn parse_sia(i: &[u8]) -> IResult<&[u8], AccessDescription, BerError> {
+    pub(super) fn parse_subjectinfoaccess(i: &[u8]) -> IResult<&[u8], SubjectInfoAccess, Error> {
+        fn parse_sia(i: &[u8]) -> IResult<&[u8], AccessDescription, Error> {
             parse_der_sequence_defined_g(|content, _| {
                 // Read first element, an oid.
                 let (gn, oid) = Oid::from_der(content)?;
@@ -1116,14 +1124,14 @@ pub(crate) mod parser {
         Ok((ret, SubjectInfoAccess { accessdescs }))
     }
 
-    fn parse_subjectinfoaccess_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_subjectinfoaccess, ParsedExtension::SubjectInfoAccess)(i)
+    fn parse_subjectinfoaccess_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_subjectinfoaccess, ParsedExtension::SubjectInfoAccess).parse(i)
     }
 
     fn parse_aki_content<'a>(
         i: &'a [u8],
         _hdr: Header<'_>,
-    ) -> IResult<&'a [u8], AuthorityKeyIdentifier<'a>, BerError> {
+    ) -> IResult<&'a [u8], AuthorityKeyIdentifier<'a>, Error> {
         let (i, key_identifier) = opt(complete(parse_der_tagged_implicit_g(0, |d, _, _| {
             Ok((&[], KeyIdentifier(d)))
         })))(i)?;
@@ -1147,51 +1155,50 @@ pub(crate) mod parser {
     // RFC 5280 section 4.2.1.1: Authority Key Identifier
     pub(super) fn parse_authoritykeyidentifier(
         i: &[u8],
-    ) -> IResult<&[u8], AuthorityKeyIdentifier, BerError> {
+    ) -> IResult<&[u8], AuthorityKeyIdentifier, Error> {
         let (rem, aki) = parse_der_sequence_defined_g(parse_aki_content)(i)?;
         Ok((rem, aki))
     }
 
-    fn parse_authoritykeyidentifier_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_authoritykeyidentifier_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(
             parse_authoritykeyidentifier,
             ParsedExtension::AuthorityKeyIdentifier,
-        )(i)
+        )
+        .parse(i)
     }
 
-    pub(super) fn parse_keyidentifier(i: &[u8]) -> IResult<&[u8], KeyIdentifier, BerError> {
+    pub(super) fn parse_keyidentifier(i: &[u8]) -> IResult<&[u8], KeyIdentifier, Error> {
         let (rest, id) = <&[u8]>::from_der(i)?;
         let ki = KeyIdentifier(id);
         Ok((rest, ki))
     }
 
-    fn parse_keyidentifier_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_keyidentifier, ParsedExtension::SubjectKeyIdentifier)(i)
+    fn parse_keyidentifier_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_keyidentifier, ParsedExtension::SubjectKeyIdentifier).parse(i)
     }
 
-    fn parse_keyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_keyusage, ParsedExtension::KeyUsage)(i)
+    fn parse_keyusage_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_keyusage, ParsedExtension::KeyUsage).parse(i)
     }
 
-    pub(super) fn parse_nscerttype(i: &[u8]) -> IResult<&[u8], NSCertType, BerError> {
-        let (rest, obj) = parse_der_bitstring(i)?;
-        let bitstring = obj
-            .content
-            .as_bitstring()
-            .or(Err(Err::Error(BerError::BerTypeError)))?;
-        // bitstring should be 1 byte long
-        if bitstring.data.len() != 1 {
-            return Err(Err::Error(BerError::BerValueError));
+    pub(super) fn parse_nscerttype(i: &[u8]) -> IResult<&[u8], NSCertType, Error> {
+        let (rem, mut obj) = BitString::from_der(i)?;
+        let bs = obj.as_mut_bitslice();
+        if bs.len() > 8 {
+            return Err(Err::Error(Error::BerValueError));
         }
-        let flags = bitstring.data[0].reverse_bits();
-        Ok((rest, NSCertType(flags)))
+        bs.reverse();
+        let flags = bs.load::<u8>();
+        Ok((rem, NSCertType(flags)))
     }
 
-    fn parse_nscerttype_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        map(parse_nscerttype, ParsedExtension::NSCertType)(i)
+    fn parse_nscerttype_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        map(parse_nscerttype, ParsedExtension::NSCertType).parse(i)
     }
 
-    fn parse_nscomment_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_nscomment_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        // FIXME: if using Ia5String.as_ref(), the lifetime is too short (bound to object)
         match parse_der_ia5string(i) {
             Ok((i, obj)) => {
                 let s = obj.as_str()?;
@@ -1228,8 +1235,8 @@ pub(crate) mod parser {
     // PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice )
     pub(super) fn parse_certificatepolicies(
         i: &[u8],
-    ) -> IResult<&[u8], Vec<PolicyInformation>, BerError> {
-        fn parse_policy_qualifier_info(i: &[u8]) -> IResult<&[u8], PolicyQualifierInfo, BerError> {
+    ) -> IResult<&[u8], Vec<PolicyInformation>, Error> {
+        fn parse_policy_qualifier_info(i: &[u8]) -> IResult<&[u8], PolicyQualifierInfo, Error> {
             parse_der_sequence_defined_g(|content, _| {
                 let (rem, policy_qualifier_id) = Oid::from_der(content)?;
                 let info = PolicyQualifierInfo {
@@ -1239,12 +1246,12 @@ pub(crate) mod parser {
                 Ok((&[], info))
             })(i)
         }
-        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], PolicyInformation, BerError> {
+        fn parse_policy_information(i: &[u8]) -> IResult<&[u8], PolicyInformation, Error> {
             parse_der_sequence_defined_g(|content, _| {
                 let (rem, policy_id) = Oid::from_der(content)?;
                 let (rem, policy_qualifiers) =
                     opt(complete(parse_der_sequence_defined_g(|content, _| {
-                        many1(complete(parse_policy_qualifier_info))(content)
+                        many1(complete(parse_policy_qualifier_info)).parse(content)
                     })))(rem)?;
                 let info = PolicyInformation {
                     policy_id,
@@ -1256,22 +1263,20 @@ pub(crate) mod parser {
         parse_der_sequence_of_v(parse_policy_information)(i)
     }
 
-    fn parse_certificatepolicies_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_certificatepolicies_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(
             parse_certificatepolicies,
             ParsedExtension::CertificatePolicies,
-        )(i)
+        )
+        .parse(i)
     }
 
     // CRLReason ::= ENUMERATED { ...
-    fn parse_reason_code(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (rest, obj) = parse_der_enum(i)?;
-        let code = obj
-            .content
-            .as_u32()
-            .or(Err(Err::Error(BerError::BerValueError)))?;
+    fn parse_reason_code(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        let (rest, obj) = Enumerated::from_der(i)?;
+        let code = obj.0;
         if code > 10 {
-            return Err(Err::Error(BerError::BerValueError));
+            return Err(Err::Error(Error::BerValueError));
         }
         let ret = ParsedExtension::ReasonCode(ReasonCode(code as u8));
         Ok((rest, ret))
@@ -1286,16 +1291,17 @@ pub(crate) mod parser {
 
     // CRLNumber ::= INTEGER (0..MAX)
     // Note from RFC 3280: "CRL verifiers MUST be able to handle CRLNumber values up to 20 octets."
-    fn parse_crl_number(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
-        let (rest, num) = map_res(parse_der_integer, |obj| obj.as_biguint())(i)?;
+    fn parse_crl_number(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
+        let (rest, num) = map_res(Integer::from_der, |obj| obj.as_biguint()).parse(i)?;
         Ok((rest, ParsedExtension::CRLNumber(num)))
     }
 
-    fn parse_sct_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, BerError> {
+    fn parse_sct_ext(i: &[u8]) -> IResult<&[u8], ParsedExtension, Error> {
         map(
             parse_ct_signed_certificate_timestamp_list,
             ParsedExtension::SCT,
-        )(i)
+        )
+        .parse(i)
     }
 }
 
@@ -1311,7 +1317,7 @@ pub(crate) fn parse_extensions(i: &[u8], explicit_tag: Tag) -> X509Result<Vec<X5
         return Ok((i, Vec::new()));
     }
 
-    match der_read_element_header(i) {
+    match Header::from_der(i) {
         Ok((rem, hdr)) => {
             if hdr.tag() != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
@@ -1337,7 +1343,7 @@ pub(crate) fn parse_extensions_envelope(
         return Ok((i, Vec::new()));
     }
 
-    match der_read_element_header(i) {
+    match Header::from_der(i) {
         Ok((rem, hdr)) => {
             if hdr.tag() != explicit_tag {
                 return Err(Err::Error(X509Error::InvalidExtensions));
@@ -1348,12 +1354,12 @@ pub(crate) fn parse_extensions_envelope(
     }
 }
 
-fn der_read_critical(i: &[u8]) -> BerResult<bool> {
+fn der_read_critical(i: &[u8]) -> IResult<&[u8], bool, Error> {
     // Some certificates do not respect the DER BOOLEAN constraint (true must be encoded as 0xff)
     // so we attempt to parse as BER
-    let (rem, obj) = opt(parse_ber_bool)(i)?;
+    use asn1_rs::FromBer;
+    let (rem, obj) = opt(<bool>::from_ber).parse(i)?;
     let value = obj
-        .map(|o| o.as_bool().unwrap_or_default()) // unwrap cannot fail, we just read a bool
         .unwrap_or(false) // default critical value
         ;
     Ok((rem, value))

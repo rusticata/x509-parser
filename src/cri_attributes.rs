@@ -77,12 +77,13 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
+    use crate::utils::DirectoryString;
+    use asn1_rs::{DerParser, Input};
     // use der_parser::der::{
     //     parse_der_bmpstring, parse_der_printablestring, parse_der_t61string,
     //     parse_der_universalstring, parse_der_utf8string,
     // };
     use lazy_static::lazy_static;
-    use nom::branch::alt;
     use nom::combinator::map;
 
     type AttrParser = fn(&[u8]) -> X509Result<ParsedCriAttribute>;
@@ -139,30 +140,12 @@ pub(crate) mod parser {
     //            SINGLE VALUE TRUE
     //            ID pkcs-9-at-challengePassword
     //    }
-    // RFC 5280, 4.1.2.4.  Issuer
-    //    DirectoryString ::= CHOICE {
-    //          teletexString           TeletexString (SIZE (1..MAX)),
-    //          printableString         PrintableString (SIZE (1..MAX)),
-    //          universalString         UniversalString (SIZE (1..MAX)),
-    //          utf8String              UTF8String (SIZE (1..MAX)),
-    //          bmpString               BMPString (SIZE (1..MAX))
-    //    }
     pub(super) fn parse_challenge_password(i: &[u8]) -> X509Result<ChallengePassword> {
-        let (rem, obj) = match alt((
-            parse_der_utf8string,
-            parse_der_printablestring,
-            parse_der_universalstring,
-            parse_der_bmpstring,
-            parse_der_t61string, // == teletexString
-        ))(i)
-        {
-            Ok((rem, obj)) => (rem, obj),
-            Err(_) => return Err(Err::Error(X509Error::InvalidAttributes)),
-        };
-        match obj.content.as_str() {
-            Ok(s) => Ok((rem, ChallengePassword(s.to_string()))),
-            Err(_) => Err(Err::Error(X509Error::InvalidAttributes)),
-        }
+        // FIXME: use Input
+        let (rem, ds) = DirectoryString::parse_der(Input::from(i))
+            .map_err(|_| Err::Error(X509Error::InvalidAttributes))?;
+
+        Ok((rem.as_bytes2(), ChallengePassword(ds.to_string())))
     }
 
     fn parse_challenge_password_attr(i: &[u8]) -> X509Result<ParsedCriAttribute> {

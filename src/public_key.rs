@@ -1,5 +1,6 @@
 use crate::error::*;
-use asn1_rs::FromDer;
+use asn1_rs::{Error, FromDer};
+use nom::IResult;
 
 /// Public Key value
 #[derive(Debug, PartialEq, Eq)]
@@ -69,7 +70,7 @@ impl RSAPublicKey<'_> {
 }
 
 // helper function to parse with error type BerError
-fn parse_rsa_key(bytes: &[u8]) -> BerResult<RSAPublicKey> {
+fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, Error> {
     parse_der_sequence_defined_g(move |i, _| {
         let (i, obj_modulus) = parse_der_integer(i)?;
         let (i, obj_exponent) = parse_der_integer(i)?;
