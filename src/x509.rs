@@ -7,16 +7,13 @@ use crate::error::{X509Error, X509Result};
 use crate::objects::*;
 use crate::public_key::*;
 
+use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Any, BitString, BmpString, DerSequence, FromBer, FromDer, OptTaggedParser, ParseResult,
+    Any, BitString, BmpString, DerSequence, Error, FromBer, FromDer, Header, OptTaggedParser,
+    ParseResult, Tag,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
-use der_parser::ber::MAX_OBJECT_SIZE;
-use der_parser::der::*;
-use der_parser::error::*;
-use der_parser::num_bigint::BigUint;
-use der_parser::*;
 use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{complete, map};
@@ -52,7 +49,9 @@ impl X509Version {
 // Version  ::=  INTEGER  {  v1(0), v2(1), v3(2)  }
 impl<'a> FromDer<'a, X509Error> for X509Version {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        map(<u32>::from_der, X509Version)(i).map_err(|_| Err::Error(X509Error::InvalidVersion))
+        map(<u32>::from_der, X509Version)
+            .parse(i)
+            .map_err(|_| Err::Error(X509Error::InvalidVersion))
     }
 }
 
@@ -108,7 +107,7 @@ impl<'a> AttributeTypeAndValue<'a> {
         // TODO: replace this with helper function, when it is added to asn1-rs
         match self.attr_value.tag() {
             Tag::NumericString | Tag::PrintableString | Tag::Utf8String | Tag::Ia5String => {
-                let s = core::str::from_utf8(self.attr_value.data)
+                let s = core::str::from_utf8(self.attr_value.data.as_bytes2())
                     .map_err(|_| X509Error::InvalidAttributes)?;
                 Ok(s)
             }
@@ -154,7 +153,7 @@ impl<'a> FromDer<'a, X509Error> for AttributeTypeAndValue<'a> {
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
 fn parse_attribute_value(i: &[u8]) -> ParseResult<Any, Error> {
-    alt((Any::from_der, parse_malformed_string))(i)
+    alt((Any::from_der, parse_malformed_string)).parse(i)
 }
 
 fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {

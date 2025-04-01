@@ -117,7 +117,7 @@ impl<'a> RsaSsaPssParams<'a> {
             Some(alg) => {
                 let (_, hash) = alg
                     .parameters()
-                    .and_then(|any| Oid::from_der(any.data).ok())
+                    .and_then(|any| Oid::from_der(any.data.as_bytes2()).ok())
                     .ok_or(X509Error::InvalidAlgorithmIdentifier)?;
                 Ok(MaskGenAlgorithm::new(alg.algorithm.clone(), hash))
             }
@@ -154,7 +154,7 @@ impl<'a, 'b> TryFrom<&'b Any<'a>> for RsaSsaPssParams<'a> {
 
     fn try_from(value: &'b Any<'a>) -> Result<Self, Self::Error> {
         value.tag().assert_eq(Tag::Sequence)?;
-        let i = &value.data;
+        let i = value.data.as_bytes2();
         // let (i, hash_alg) = OptTaggedExplicit::<_, X509Error, 0>::from_der(i)?;
         let (i, hash_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(0))
             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
@@ -246,9 +246,9 @@ impl<'a> RsaAesOaepParams<'a> {
     pub fn mask_gen_algorithm(&self) -> Result<MaskGenAlgorithm, X509Error> {
         match self.mask_gen_alg.as_ref() {
             Some(alg) => {
-                let (_, hash) = alg
+                let hash = alg
                     .parameters()
-                    .and_then(|any| Oid::from_der(any.data).ok())
+                    .and_then(|any| any.as_oid().ok())
                     .ok_or(X509Error::InvalidAlgorithmIdentifier)?;
                 Ok(MaskGenAlgorithm::new(alg.algorithm.clone(), hash))
             }
@@ -286,7 +286,7 @@ impl<'a, 'b> TryFrom<&'b Any<'a>> for RsaAesOaepParams<'a> {
 
     fn try_from(value: &'b Any<'a>) -> Result<Self, Self::Error> {
         value.tag().assert_eq(Tag::Sequence)?;
-        let i = &value.data;
+        let i = value.data.as_bytes2();
         // let (i, hash_alg) = OptTaggedExplicit::<_, X509Error, 0>::from_der(i)?;
         let (i, hash_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(0))
             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;

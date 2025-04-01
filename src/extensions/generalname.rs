@@ -4,7 +4,7 @@ use crate::x509::X509Name;
 use asn1_rs::{Any, CheckDerConstraints, Class, Error, FromDer, Oid, Sequence, Tag};
 use core::convert::TryFrom;
 use nom::combinator::all_consuming;
-use nom::{Err, IResult};
+use nom::{Err, IResult, Parser as _};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -42,7 +42,7 @@ impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
 
         let name = match parse_generalname_entry(any.clone()) {
             Ok(name) => name,
-            Err(_) => GeneralName::Invalid(any.tag(), any.data),
+            Err(_) => GeneralName::Invalid(any.tag(), any.data.as_bytes2()),
         };
         Ok(name)
     }
@@ -54,7 +54,7 @@ fn parse_generalname_entry(
     Ok(match any.tag().0 {
         0 => {
             // otherName SEQUENCE { OID, [0] explicit any defined by oid }
-            let (rest, oid) = Oid::from_der(any.data)?;
+            let (rest, oid) = Oid::from_der(any.data.as_bytes2())?;
             GeneralName::OtherName(oid, rest)
         }
         1 => GeneralName::RFC822Name(ia5str(any)?),
@@ -65,7 +65,7 @@ fn parse_generalname_entry(
         }
         4 => {
             // directoryName, name
-            let (_, name) = all_consuming(X509Name::from_der)(any.data)
+            let (_, name) = all_consuming(X509Name::from_der).parse(any.data.as_bytes2())
                 .or(Err(Error::Unsupported)) // XXX remove me
                 ?;
             GeneralName::DirectoryName(name)
@@ -77,10 +77,10 @@ fn parse_generalname_entry(
         6 => GeneralName::URI(ia5str(any)?),
         7 => {
             // IPAddress, OctetString
-            GeneralName::IPAddress(any.data)
+            GeneralName::IPAddress(any.data.as_bytes2())
         }
         8 => {
-            let oid = Oid::new(any.data.into());
+            let oid = Oid::new(any.data.as_bytes2().into());
             GeneralName::RegisteredID(oid)
         }
         _ => return Err(Error::unexpected_tag(None, any.tag())),
@@ -121,7 +121,7 @@ impl fmt::Display for GeneralName<'_> {
 fn ia5str(any: Any) -> Result<&str, Err<Error>> {
     // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
     // are using unicode characters
-    std::str::from_utf8(any.data).map_err(|_| Err::Failure(Error::BerValueError))
+    std::str::from_utf8(any.data.as_bytes2()).map_err(|_| Err::Failure(Error::BerValueError))
 }
 
 pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName, Error> {

@@ -72,7 +72,7 @@ pub fn oid_registry() -> &'static OidRegistry<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use der_parser::oid;
+    use asn1_rs::oid;
 
     // This test is meant to check syntax of pattern matching with OID objects
     #[test]

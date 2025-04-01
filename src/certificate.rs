@@ -15,10 +15,10 @@ use crate::x509::{
 use crate::verify::verify_signature;
 use asn1_rs::{BitString, FromDer, OptTaggedImplicit};
 use core::ops::Deref;
-use der_parser::der::*;
-use der_parser::error::*;
-use der_parser::num_bigint::BigUint;
-use der_parser::*;
+// use der_parser::der::*;
+// use der_parser::error::*;
+// use der_parser::num_bigint::BigUint;
+// use der_parser::*;
 use nom::{Offset, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
@@ -65,7 +65,7 @@ use time::Duration;
 pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitString<'a>,
+    pub signature_value: BitString,
 }
 
 impl X509Certificate<'_> {
@@ -210,7 +210,10 @@ impl Default for X509CertificateParser {
     }
 }
 
-impl<'a> Parser<&'a [u8], X509Certificate<'a>, X509Error> for X509CertificateParser {
+impl<'a> Parser<&'a [u8]> for X509CertificateParser {
+    type Output = X509Certificate<'a>;
+    type Error = X509Error;
+
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
         parse_der_sequence_defined_g(|i, _| {
             // pass options to TbsCertificate parser
@@ -226,6 +229,13 @@ impl<'a> Parser<&'a [u8], X509Certificate<'a>, X509Error> for X509CertificatePar
             };
             Ok((i, cert))
         })(input)
+    }
+
+    fn process<OM: nom::OutputMode>(
+        &mut self,
+        input: &'a [u8],
+    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        todo!()
     }
 }
 
@@ -273,8 +283,8 @@ pub struct TbsCertificate<'a> {
     pub validity: Validity,
     pub subject: X509Name<'a>,
     pub subject_pki: SubjectPublicKeyInfo<'a>,
-    pub issuer_uid: Option<UniqueIdentifier<'a>>,
-    pub subject_uid: Option<UniqueIdentifier<'a>>,
+    pub issuer_uid: Option<UniqueIdentifier>,
+    pub subject_uid: Option<UniqueIdentifier>,
     extensions: Vec<X509Extension<'a>>,
     pub(crate) raw: &'a [u8],
     pub(crate) raw_serial: &'a [u8],
@@ -615,7 +625,10 @@ impl Default for TbsCertificateParser {
     }
 }
 
-impl<'a> Parser<&'a [u8], TbsCertificate<'a>, X509Error> for TbsCertificateParser {
+impl<'a> Parser<&'a [u8]> for TbsCertificateParser {
+    type Output = TbsCertificate<'a>;
+    type Error = X509Error;
+
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], TbsCertificate<'a>, X509Error> {
         let start_i = input;
         parse_der_sequence_defined_g(move |i, _| {
@@ -651,6 +664,13 @@ impl<'a> Parser<&'a [u8], TbsCertificate<'a>, X509Error> for TbsCertificateParse
             };
             Ok((i, tbs))
         })(input)
+    }
+
+    fn process<OM: nom::OutputMode>(
+        &mut self,
+        input: &'a [u8],
+    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        todo!()
     }
 }
 
@@ -730,11 +750,11 @@ impl FromDer<'_, X509Error> for Validity {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct UniqueIdentifier<'a>(pub BitString<'a>);
+pub struct UniqueIdentifier(pub BitString);
 
-impl<'a> UniqueIdentifier<'a> {
+impl UniqueIdentifier {
     // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_issuer(i: &'a [u8]) -> X509Result<'a, Option<Self>> {
+    fn from_der_issuer(i: &[u8]) -> X509Result<Option<Self>> {
         Self::parse::<1>(i).map_err(|_| X509Error::InvalidIssuerUID.into())
     }
 
@@ -755,6 +775,8 @@ impl<'a> UniqueIdentifier<'a> {
 
 #[cfg(test)]
 mod tests {
+    use asn1_rs::oid;
+
     use super::*;
 
     #[test]

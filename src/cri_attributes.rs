@@ -4,9 +4,12 @@ use crate::{
 };
 
 use asn1_rs::{Error, FromDer, Header, Oid, Sequence, Tag};
-use nom::combinator::{all_consuming, complete};
 use nom::multi::many0;
 use nom::Err;
+use nom::{
+    combinator::{all_consuming, complete},
+    Parser as _,
+};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -74,10 +77,10 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
-    use der_parser::der::{
-        parse_der_bmpstring, parse_der_printablestring, parse_der_t61string,
-        parse_der_universalstring, parse_der_utf8string,
-    };
+    // use der_parser::der::{
+    //     parse_der_bmpstring, parse_der_printablestring, parse_der_t61string,
+    //     parse_der_universalstring, parse_der_utf8string,
+    // };
     use lazy_static::lazy_static;
     use nom::branch::alt;
     use nom::combinator::map;
@@ -125,7 +128,8 @@ pub(crate) mod parser {
         map(
             parse_extension_request,
             ParsedCriAttribute::ExtensionRequest,
-        )(i)
+        )
+        .parse(i)
     }
 
     // RFC 2985, 5.4.1 Challenge password
@@ -165,14 +169,15 @@ pub(crate) mod parser {
         map(
             parse_challenge_password,
             ParsedCriAttribute::ChallengePassword,
-        )(i)
+        )
+        .parse(i)
     }
 }
 
 pub(crate) fn parse_cri_attributes(i: &[u8]) -> X509Result<Vec<X509CriAttribute>> {
     let (i, hdr) = Header::from_der(i).map_err(|_| Err::Error(X509Error::InvalidAttributes))?;
     if hdr.is_contextspecific() && hdr.tag().0 == 0 {
-        all_consuming(many0(complete(X509CriAttribute::from_der)))(i)
+        all_consuming(many0(complete(X509CriAttribute::from_der))).parse(i)
     } else {
         Err(Err::Error(X509Error::InvalidAttributes))
     }

@@ -5,12 +5,12 @@
 use std::convert::TryInto;
 
 use asn1_rs::FromDer;
-use der_parser::error::BerError;
+// use der_parser::error::BerError;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, map_parser};
 use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u64, be_u8};
-use nom::IResult;
+use nom::{IResult, Parser as _};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignedCertificateTimestamp<'a> {
@@ -114,7 +114,7 @@ fn parse_ct_extensions(i: &[u8]) -> IResult<&[u8], CtExtensions, BerError> {
 fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned, BerError> {
     let (i, hash_alg_id) = be_u8(i)?;
     let (i, sign_alg_id) = be_u8(i)?;
-    let (i, data) = length_data(be_u16)(i)?;
+    let (i, data) = length_data(be_u16).parse(i)?;
     let signed = DigitallySigned {
         hash_alg_id,
         sign_alg_id,

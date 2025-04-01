@@ -10,12 +10,11 @@ use crate::x509::{
 use crate::verify::verify_signature;
 #[cfg(feature = "verify")]
 use crate::x509::SubjectPublicKeyInfo;
+use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{BitString, FromDer};
-use der_parser::der::*;
-use der_parser::num_bigint::BigUint;
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many0;
-use nom::Offset;
+use nom::{Offset, Parser as _};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -50,7 +49,7 @@ use std::collections::HashMap;
 pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    pub signature_value: BitString<'a>,
+    pub signature_value: BitString,
 }
 
 impl<'a> CertificateRevocationList<'a> {
@@ -232,7 +231,7 @@ impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
             let (i, issuer) = X509Name::from_der(i)?;
             let (i, this_update) = ASN1Time::from_der(i)?;
             let (i, next_update) = ASN1Time::from_der_opt(i)?;
-            let (i, revoked_certificates) = opt(complete(parse_revoked_certificates))(i)?;
+            let (i, revoked_certificates) = opt(complete(parse_revoked_certificates)).parse(i)?;
             let (i, extensions) = parse_extensions(i, Tag(0))?;
             let len = start_i.offset(i);
             let tbs = TbsCertList {
@@ -344,7 +343,7 @@ impl<'a> FromDer<'a, X509Error> for RevokedCertificate<'a> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
             let (i, revocation_date) = ASN1Time::from_der(i)?;
-            let (i, extensions) = opt(complete(parse_extension_sequence))(i)?;
+            let (i, extensions) = opt(complete(parse_extension_sequence)).parse(i)?;
             let revoked = RevokedCertificate {
                 user_certificate,
                 revocation_date,
@@ -358,6 +357,6 @@ impl<'a> FromDer<'a, X509Error> for RevokedCertificate<'a> {
 
 fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
     parse_der_sequence_defined_g(|a, _| {
-        all_consuming(many0(complete(RevokedCertificate::from_der)))(a)
+        all_consuming(many0(complete(RevokedCertificate::from_der))).parse(a)
     })(i)
 }

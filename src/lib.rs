@@ -158,8 +158,7 @@ pub mod x509;
 
 // reexports
 pub use asn1_rs;
-pub use der_parser;
-pub use der_parser::num_bigint;
+pub use asn1_rs::num_bigint;
 pub use nom;
 pub use oid_registry;
 
@@ -167,6 +166,9 @@ use asn1_rs::FromDer;
 use certificate::X509Certificate;
 use error::X509Result;
 use revocation_list::CertificateRevocationList;
+
+/// Default maximum object size (2^32)
+pub const MAX_OBJECT_SIZE: usize = 4_294_967_295;
 
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
 /// object.

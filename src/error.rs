@@ -1,6 +1,6 @@
 //! X.509 errors
 
-use der_parser::error::BerError;
+// use der_parser::error::BerError;
 use nom::error::{ErrorKind, ParseError};
 use nom::IResult;
 

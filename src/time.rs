@@ -1,12 +1,12 @@
 use asn1_rs::nom::Err;
-use asn1_rs::{Error, FromDer, GeneralizedTime, Header, ParseResult, UtcTime};
-use der_parser::ber::{Tag, MAX_OBJECT_SIZE};
+use asn1_rs::{Error, FromDer, GeneralizedTime, Header, ParseResult, Tag, UtcTime};
 use std::fmt;
 use std::ops::{Add, Sub};
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
 
 use crate::error::{X509Error, X509Result};
+use crate::MAX_OBJECT_SIZE;
 
 /// An ASN.1 timestamp.
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]

@@ -2,11 +2,9 @@ use super::GeneralName;
 use crate::error::{X509Error, X509Result};
 use crate::extensions::parse_generalname;
 use asn1_rs::FromDer;
-use der_parser::der::*;
-use der_parser::error::BerError;
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many1;
-use nom::{Err, IResult};
+use nom::{Err, IResult, Parser as _};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NameConstraints<'a> {
@@ -32,7 +30,7 @@ pub struct GeneralSubtree<'a> {
 pub(crate) fn parse_nameconstraints(i: &[u8]) -> IResult<&[u8], NameConstraints, BerError> {
     fn parse_subtree(i: &[u8]) -> IResult<&[u8], GeneralSubtree, BerError> {
         parse_der_sequence_defined_g(|input, _| {
-            map(parse_generalname, |base| GeneralSubtree { base })(input)
+            map(parse_generalname, |base| GeneralSubtree { base }).parse(input)
         })(i)
     }
     fn parse_subtrees(i: &[u8]) -> IResult<&[u8], Vec<GeneralSubtree>, BerError> {

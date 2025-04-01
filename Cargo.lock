@@ -4,52 +4,26 @@ version = 3
 
 [[package]]
 name = "asn1-rs"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56624a96882bb8c26d61312ae18cb45868e5a9992ea73c58e45c3101e56a1e60"
-dependencies = [
- "asn1-rs-derive 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "asn1-rs-impl 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "displaydoc",
- "nom 7.1.3",
- "num-traits",
- "rusticata-macros 4.1.0",
- "thiserror",
-]
-
-[[package]]
-name = "asn1-rs"
 version = "0.8.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#87aa196ea63be7275888aa05b0f2435339220bb5"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#2869b79919cc4a9b5650b6a53a69b4f61da961d2"
 dependencies = [
- "asn1-rs-derive 0.6.0 (git+https://github.com/rusticata/asn1-rs?branch=master)",
- "asn1-rs-impl 0.2.0 (git+https://github.com/rusticata/asn1-rs?branch=master)",
+ "asn1-rs-derive",
+ "asn1-rs-impl",
  "bitvec",
  "deranged",
  "displaydoc",
- "nom 8.0.0",
+ "nom",
+ "num-bigint",
  "num-traits",
- "rusticata-macros 5.0.0",
+ "rusticata-macros",
  "thiserror",
  "time",
 ]
 
 [[package]]
 name = "asn1-rs-derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3109e49b1e4909e9db6515a30c633684d68cdeaa252f215214cb4fa1a5bfee2c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
-]
-
-[[package]]
-name = "asn1-rs-derive"
-version = "0.6.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#87aa196ea63be7275888aa05b0f2435339220bb5"
+version = "0.7.0"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#2869b79919cc4a9b5650b6a53a69b4f61da961d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -59,19 +33,8 @@ dependencies = [
 
 [[package]]
 name = "asn1-rs-impl"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b18050c2cd6fe86c3a76584ef5e0baf286d038cda203eb6223df2cc413565f7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "asn1-rs-impl"
-version = "0.2.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#87aa196ea63be7275888aa05b0f2435339220bb5"
+version = "0.3.0"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#2869b79919cc4a9b5650b6a53a69b4f61da961d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -116,20 +79,6 @@ name = "data-encoding"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "575f75dfd25738df5b91b8e43e14d44bda14637a58fae779fd2b064f8bf3e010"
-
-[[package]]
-name = "der-parser"
-version = "10.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07da5016415d5a3c4dd39b11ed26f915f52fc4e0dc197d87908bc916e51bc1a6"
-dependencies = [
- "asn1-rs 0.7.1",
- "displaydoc",
- "nom 7.1.3",
- "num-bigint",
- "num-traits",
- "rusticata-macros 4.1.0",
-]
 
 [[package]]
 name = "deranged"
@@ -193,22 +142,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
-name = "minimal-lexical"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
-
-[[package]]
-name = "nom"
-version = "7.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
-dependencies = [
- "memchr",
- "minimal-lexical",
-]
-
-[[package]]
 name = "nom"
 version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -253,10 +186,10 @@ dependencies = [
 
 [[package]]
 name = "oid-registry"
-version = "0.8.1"
-source = "git+https://github.com/rusticata/oid-registry?branch=master#33b20513b73ce04e1de48232beba3fa89df33b1d"
+version = "0.9.0"
+source = "git+https://github.com/rusticata/oid-registry?branch=oid-registry-0.9#f3279b50b4b6263a88e703d023e117ab46764cba"
 dependencies = [
- "asn1-rs 0.7.1",
+ "asn1-rs",
 ]
 
 [[package]]
@@ -305,20 +238,11 @@ dependencies = [
 
 [[package]]
 name = "rusticata-macros"
-version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "faf0c4a6ece9950b9abdb62b1cfcf2a68b3b67a10ba445b3bb85be2a293d0632"
-dependencies = [
- "nom 7.1.3",
-]
-
-[[package]]
-name = "rusticata-macros"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40620447734539bcc6c64e9c66fed2410e17b46986733f1090c922d85f7105b"
 dependencies = [
- "nom 8.0.0",
+ "nom",
 ]
 
 [[package]]
@@ -530,14 +454,13 @@ dependencies = [
 name = "x509-parser"
 version = "0.18.0"
 dependencies = [
- "asn1-rs 0.8.0",
+ "asn1-rs",
  "data-encoding",
- "der-parser",
  "lazy_static",
- "nom 8.0.0",
+ "nom",
  "oid-registry",
  "ring",
- "rusticata-macros 5.0.0",
+ "rusticata-macros",
  "thiserror",
  "time",
 ]
