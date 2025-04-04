@@ -1,5 +1,6 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
+use crate::parser_utils::parse_object_with_span;
 use crate::time::ASN1Time;
 use crate::utils::format_serial;
 use crate::x509::{
@@ -11,10 +12,10 @@ use crate::verify::verify_signature;
 #[cfg(feature = "verify")]
 use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::num_bigint::BigUint;
-use asn1_rs::{BitString, FromDer, Tag};
+use asn1_rs::{BitString, DerParser, FromDer, Header, Input, Sequence, Tag, Tagged};
 use nom::combinator::{all_consuming, complete, map, opt};
 use nom::multi::many0;
-use nom::{Offset, Parser as _};
+use nom::{Err, IResult, Input as _, Offset, Parser as _};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -167,7 +168,9 @@ impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
 ///                                      -- if present, version MUST be v2
 ///                             }
 /// </pre>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct TbsCertList<'a> {
     pub version: Option<X509Version>,
     pub signature: AlgorithmIdentifier<'a>,
@@ -176,7 +179,7 @@ pub struct TbsCertList<'a> {
     pub next_update: Option<ASN1Time>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
     extensions: Vec<X509Extension<'a>>,
-    pub(crate) raw: &'a [u8],
+    raw: &'a [u8],
 }
 
 impl TbsCertList<'_> {
@@ -215,40 +218,40 @@ impl TbsCertList<'_> {
     }
 }
 
-impl AsRef<[u8]> for TbsCertList<'_> {
-    fn as_ref(&self) -> &[u8] {
-        self.raw
-    }
-}
+// impl AsRef<[u8]> for TbsCertList<'_> {
+//     fn as_ref(&self) -> &[u8] {
+//         self.raw
+//     }
+// }
 
-impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = opt(map(<u32>::from_der, X509Version))
-                .parse(i)
-                .or(Err(X509Error::InvalidVersion))?;
-            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
-            let (i, issuer) = X509Name::from_der(i)?;
-            let (i, this_update) = ASN1Time::from_der(i)?;
-            let (i, next_update) = ASN1Time::from_der_opt(i)?;
-            let (i, revoked_certificates) = opt(complete(parse_revoked_certificates)).parse(i)?;
-            let (i, extensions) = parse_extensions(i, Tag(0))?;
-            let len = start_i.offset(i);
-            let tbs = TbsCertList {
-                version,
-                signature,
-                issuer,
-                this_update,
-                next_update,
-                revoked_certificates: revoked_certificates.unwrap_or_default(),
-                extensions,
-                raw: &start_i[..len],
-            };
-            Ok((i, tbs))
-        })(i)
-    }
-}
+// impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+//         let start_i = i;
+//         parse_der_sequence_defined_g(move |i, _| {
+//             let (i, version) = opt(map(<u32>::from_der, X509Version))
+//                 .parse(i)
+//                 .or(Err(X509Error::InvalidVersion))?;
+//             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
+//             let (i, issuer) = X509Name::from_der(i)?;
+//             let (i, this_update) = ASN1Time::from_der(i)?;
+//             let (i, next_update) = ASN1Time::from_der_opt(i)?;
+//             let (i, revoked_certificates) = opt(complete(parse_revoked_certificates)).parse(i)?;
+//             let (i, extensions) = parse_extensions(i, Tag(0))?;
+//             let len = start_i.offset(i);
+//             let tbs = TbsCertList {
+//                 version,
+//                 signature,
+//                 issuer,
+//                 this_update,
+//                 next_update,
+//                 revoked_certificates: revoked_certificates.unwrap_or_default(),
+//                 extensions,
+//                 raw: &start_i[..len],
+//             };
+//             Ok((i, tbs))
+//         })(i)
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {

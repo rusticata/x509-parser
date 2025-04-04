@@ -75,24 +75,6 @@ impl<'a> FromDer<'a, X509Error> for KeyUsage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExtendedKeyUsage<'a> {
-    pub any: bool,
-    pub server_auth: bool,
-    pub client_auth: bool,
-    pub code_signing: bool,
-    pub email_protection: bool,
-    pub time_stamping: bool,
-    pub ocsp_signing: bool,
-    pub other: Vec<Oid<'a>>,
-}
-
-impl<'a> FromDer<'a, X509Error> for ExtendedKeyUsage<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_extendedkeyusage(i).map_err(Err::convert)
-    }
-}
-
 pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, Error> {
     let (rest, mut obj) = BitString::from_der(i)?;
     let bits = obj.as_mut_bitslice();
@@ -102,43 +84,4 @@ pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, Error> {
     bits.reverse();
     let flags = bits.load::<u16>();
     Ok((rest, KeyUsage { flags }))
-}
-
-pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage, Error> {
-    let (ret, seq) = <Vec<Oid>>::from_der(i)?;
-    let mut seen = std::collections::HashSet::new();
-    let mut eku = ExtendedKeyUsage {
-        any: false,
-        server_auth: false,
-        client_auth: false,
-        code_signing: false,
-        email_protection: false,
-        time_stamping: false,
-        ocsp_signing: false,
-        other: Vec::new(),
-    };
-    for oid in &seq {
-        if !seen.insert(oid.clone()) {
-            continue;
-        }
-        let asn1 = oid.as_bytes();
-        if asn1 == oid!(raw 2.5.29.37.0) {
-            eku.any = true;
-        } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.1) {
-            eku.server_auth = true;
-        } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.2) {
-            eku.client_auth = true;
-        } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.3) {
-            eku.code_signing = true;
-        } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.4) {
-            eku.email_protection = true;
-        } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.8) {
-            eku.time_stamping = true;
-        } else if asn1 == oid!(raw 1.3.6.1.5.5.7.3.9) {
-            eku.ocsp_signing = true;
-        } else {
-            eku.other.push(oid.clone());
-        }
-    }
-    Ok((ret, eku))
 }

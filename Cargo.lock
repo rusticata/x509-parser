@@ -5,7 +5,7 @@ version = 3
 [[package]]
 name = "asn1-rs"
 version = "0.8.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#120260dcef00aa275f87dd8c12c35dcf22f9403b"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#daa8625acb626d8c49f81c1844a06d6cb935163b"
 dependencies = [
  "asn1-rs-derive",
  "asn1-rs-impl",
@@ -23,7 +23,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-derive"
 version = "0.7.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#120260dcef00aa275f87dd8c12c35dcf22f9403b"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#daa8625acb626d8c49f81c1844a06d6cb935163b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-impl"
 version = "0.3.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#120260dcef00aa275f87dd8c12c35dcf22f9403b"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#daa8625acb626d8c49f81c1844a06d6cb935163b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -61,9 +61,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.17"
+version = "1.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fcb57c740ae1daf453ae85f16e37396f672b039e00d9d866e07ddb24e328e3a"
+checksum = "525046617d8376e3db1deffb079e91cef90a89fc3ca5c185bbf8c9ecdd15cd5c"
 dependencies = [
  "shlex",
 ]
@@ -116,6 +116,12 @@ dependencies = [
  "libc",
  "wasi",
 ]
+
+[[package]]
+name = "hex-literal"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
 
 [[package]]
 name = "itoa"
@@ -456,6 +462,7 @@ version = "0.18.0"
 dependencies = [
  "asn1-rs",
  "data-encoding",
+ "hex-literal",
  "lazy_static",
  "nom",
  "oid-registry",

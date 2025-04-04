@@ -139,6 +139,7 @@ pub mod cri_attributes;
 pub mod error;
 pub mod extensions;
 pub mod objects;
+pub mod parser_utils;
 pub mod pem;
 pub mod prelude;
 pub mod public_key;

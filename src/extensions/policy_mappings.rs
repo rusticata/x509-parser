@@ -1,18 +1,16 @@
-use crate::error::{X509Error, X509Result};
-use asn1_rs::{DerSequence, Error, FromDer, Oid};
-use nom::{Err, IResult};
+use crate::error::X509Error;
+use asn1_rs::{Alias, Oid, Sequence};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PolicyMappings<'a> {
-    pub mappings: Vec<PolicyMapping<'a>>,
-}
-
-impl<'a> FromDer<'a, X509Error> for PolicyMappings<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_policymappings(i).map_err(Err::convert)
-    }
-}
+/// <pre>
+/// PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
+///  issuerDomainPolicy      CertPolicyId,
+///  subjectDomainPolicy     CertPolicyId }
+/// </pre>
+#[derive(Clone, Debug, PartialEq, Eq, Alias)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
+pub struct PolicyMappings<'a>(pub Vec<PolicyMapping<'a>>);
 
 impl<'a> PolicyMappings<'a> {
     /// Returns a `HashMap` mapping `Oid` to the list of references to `Oid`
@@ -21,7 +19,7 @@ impl<'a> PolicyMappings<'a> {
     pub fn as_hashmap(&self) -> HashMap<Oid<'a>, Vec<&Oid<'a>>> {
         // create the hashmap and merge entries with same OID
         let mut m: HashMap<Oid, Vec<&_>> = HashMap::new();
-        for desc in &self.mappings {
+        for desc in &self.0 {
             let PolicyMapping {
                 issuer_domain_policy: left,
                 subject_domain_policy: right,
@@ -39,7 +37,7 @@ impl<'a> PolicyMappings<'a> {
     ///
     /// If several names match the same `Oid`, they are merged in the same entry.
     pub fn into_hashmap(self) -> HashMap<Oid<'a>, Vec<Oid<'a>>> {
-        let mut l = self.mappings;
+        let mut l = self.0;
         // create the hashmap and merge entries with same OID
         let mut m: HashMap<Oid, Vec<_>> = HashMap::new();
         for mapping in l.drain(..) {
@@ -57,7 +55,14 @@ impl<'a> PolicyMappings<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, DerSequence)]
+/// <pre>
+/// SEQUENCE {
+///  issuerDomainPolicy      CertPolicyId,
+///  subjectDomainPolicy     CertPolicyId }
+/// </pre>
+#[derive(Clone, Debug, PartialEq, Eq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct PolicyMapping<'a> {
     pub issuer_domain_policy: Oid<'a>,
     pub subject_domain_policy: Oid<'a>,
@@ -70,23 +75,4 @@ impl<'a> PolicyMapping<'a> {
             subject_domain_policy,
         }
     }
-}
-
-// PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
-//  issuerDomainPolicy      CertPolicyId,
-//  subjectDomainPolicy     CertPolicyId }
-pub(crate) fn parse_policymappings(i: &[u8]) -> IResult<&[u8], PolicyMappings, Error> {
-    let (ret, pairs) = <Vec<PolicyMapping>>::from_der(i)?;
-    // let mut mappings: HashMap<Oid, Vec<Oid>> = HashMap::new();
-    let mappings = pairs;
-    // let mut mappings = Vec::new();
-    // for pair in pairs.iter() {
-    //     // XXX this should go to Validate
-    //     // if left.bytes() == oid!(raw 2.5.29.32.0) || right.bytes() == oid!(raw 2.5.29.32.0) {
-    //     //     // mapping to or from anyPolicy is not allowed
-    //     //     return Err(Err::Failure(BerError::InvalidTag));
-    //     // }
-    //     mappings.push(PolicyMapping::new(left, right));
-    // }
-    Ok((ret, PolicyMappings { mappings }))
 }

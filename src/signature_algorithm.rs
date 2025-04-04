@@ -1,9 +1,6 @@
 use crate::error::X509Error;
 use crate::x509::AlgorithmIdentifier;
-use asn1_rs::{
-    oid, Any, CheckDerConstraints, Class, DerAutoDerive, Error, FromDer, OptTaggedExplicit,
-    OptTaggedParser, Tag,
-};
+use asn1_rs::{oid, Any, CheckDerConstraints, DerAutoDerive, DerParser, FromDer, Sequence};
 use core::convert::TryFrom;
 use oid_registry::*;
 
@@ -30,8 +27,12 @@ impl<'a, 'b> TryFrom<&'b AlgorithmIdentifier<'a>> for SignatureAlgorithm<'a> {
                     Some(any) => any,
                     None => return Err(X509Error::InvalidSignatureValue),
                 };
-                let params = RsaSsaPssParams::try_from(params)
-                    .map_err(|_| X509Error::InvalidSignatureValue)?;
+                // let params = RsaSsaPssParams::try_from(params)
+                //     .map_err(|_| X509Error::InvalidSignatureValue)?;
+                // FIXME: check this
+                let (_, params) =
+                    RsaSsaPssParams::from_der_content(&params.header, params.data.clone())
+                        .map_err(|_| X509Error::InvalidSignatureValue)?;
                 Ok(SignatureAlgorithm::RSASSA_PSS(Box::new(params)))
             } else {
                 // rfc3279#section-2.2.1: the parameters component of that type SHALL be
@@ -53,8 +54,12 @@ impl<'a, 'b> TryFrom<&'b AlgorithmIdentifier<'a>> for SignatureAlgorithm<'a> {
                 Some(any) => any,
                 None => return Err(X509Error::InvalidSignatureValue),
             };
-            let params =
-                RsaAesOaepParams::try_from(params).map_err(|_| X509Error::InvalidSignatureValue)?;
+            // let params =
+            //     RsaAesOaepParams::try_from(params).map_err(|_| X509Error::InvalidSignatureValue)?;
+            // FIXME: check this
+            let (_, params) =
+                RsaAesOaepParams::from_der_content(&params.header, params.data.clone())
+                    .map_err(|_| X509Error::InvalidSignatureValue)?;
             Ok(SignatureAlgorithm::RSAAES_OAEP(Box::new(params)))
         } else {
             if cfg!(debug_assertions) {
@@ -81,11 +86,18 @@ fn test_ecdsa_oid(oid: &Oid) -> bool {
 //                               mgf1SHA1Identifier,
 //     saltLength         [2] INTEGER DEFAULT 20,
 //     trailerField       [3] INTEGER DEFAULT 1  }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[debug_derive]
+#[error(X509Error)]
 pub struct RsaSsaPssParams<'a> {
+    #[tag_explicit(0)]
     hash_alg: Option<AlgorithmIdentifier<'a>>,
+    #[tag_explicit(1)]
     mask_gen_algorithm: Option<AlgorithmIdentifier<'a>>,
+    #[tag_explicit(2)]
     salt_length: Option<u32>,
+    #[tag_explicit(3)]
     trailer_field: Option<u32>,
 }
 
@@ -141,37 +153,37 @@ impl<'a> RsaSsaPssParams<'a> {
     }
 }
 
-impl<'a> TryFrom<Any<'a>> for RsaSsaPssParams<'a> {
-    type Error = X509Error;
+// impl<'a> TryFrom<Any<'a>> for RsaSsaPssParams<'a> {
+//     type Error = X509Error;
 
-    fn try_from(value: Any<'a>) -> Result<Self, Self::Error> {
-        Self::try_from(&value)
-    }
-}
+//     fn try_from(value: Any<'a>) -> Result<Self, Self::Error> {
+//         Self::try_from(&value)
+//     }
+// }
 
-impl<'a, 'b> TryFrom<&'b Any<'a>> for RsaSsaPssParams<'a> {
-    type Error = X509Error;
+// impl<'a, 'b> TryFrom<&'b Any<'a>> for RsaSsaPssParams<'a> {
+//     type Error = X509Error;
 
-    fn try_from(value: &'b Any<'a>) -> Result<Self, Self::Error> {
-        value.tag().assert_eq(Tag::Sequence)?;
-        let i = value.data.as_bytes2();
-        // let (i, hash_alg) = OptTaggedExplicit::<_, X509Error, 0>::from_der(i)?;
-        let (i, hash_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(0))
-            .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
-        // let (i, mask_gen_algorithm) = OptTaggedExplicit::<_, Error, 1>::from_der(i)?;
-        let (i, mask_gen_algorithm) = OptTaggedParser::new(Class::ContextSpecific, Tag(1))
-            .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
-        let (i, salt_length) = OptTaggedExplicit::<_, Error, 2>::from_der(i)?;
-        let (_, trailer_field) = OptTaggedExplicit::<_, Error, 3>::from_der(i)?;
-        let params = RsaSsaPssParams {
-            hash_alg,
-            mask_gen_algorithm,
-            salt_length: salt_length.map(|t| t.into_inner()),
-            trailer_field: trailer_field.map(|t| t.into_inner()),
-        };
-        Ok(params)
-    }
-}
+//     fn try_from(value: &'b Any<'a>) -> Result<Self, Self::Error> {
+//         value.tag().assert_eq(Tag::Sequence)?;
+//         let i = value.data.as_bytes2();
+//         // let (i, hash_alg) = OptTaggedExplicit::<_, X509Error, 0>::from_der(i)?;
+//         let (i, hash_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(0))
+//             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
+//         // let (i, mask_gen_algorithm) = OptTaggedExplicit::<_, Error, 1>::from_der(i)?;
+//         let (i, mask_gen_algorithm) = OptTaggedParser::new(Class::ContextSpecific, Tag(1))
+//             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
+//         let (i, salt_length) = OptTaggedExplicit::<_, Error, 2>::from_der(i)?;
+//         let (_, trailer_field) = OptTaggedExplicit::<_, Error, 3>::from_der(i)?;
+//         let params = RsaSsaPssParams {
+//             hash_alg,
+//             mask_gen_algorithm,
+//             salt_length: salt_length.map(|t| t.into_inner()),
+//             trailer_field: trailer_field.map(|t| t.into_inner()),
+//         };
+//         Ok(params)
+//     }
+// }
 
 impl CheckDerConstraints for RsaSsaPssParams<'_> {
     fn check_constraints(any: &Any) -> asn1_rs::Result<()> {
@@ -208,10 +220,16 @@ impl<'a, 'b> MaskGenAlgorithm<'a, 'b> {
 //                       { id-pSpecified, nullOctetString }
 //
 //  nullOctetString  OCTET STRING (SIZE (0))  ::=  { ''H }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[debug_derive]
+#[error(X509Error)]
 pub struct RsaAesOaepParams<'a> {
+    #[tag_explicit(0)]
     hash_alg: Option<AlgorithmIdentifier<'a>>,
+    #[tag_explicit(1)]
     mask_gen_alg: Option<AlgorithmIdentifier<'a>>,
+    #[tag_explicit(2)]
     p_source_alg: Option<AlgorithmIdentifier<'a>>,
 }
 
@@ -267,42 +285,42 @@ impl<'a> RsaAesOaepParams<'a> {
     }
 }
 
-impl<'a> TryFrom<Any<'a>> for RsaAesOaepParams<'a> {
-    type Error = X509Error;
+// impl<'a> TryFrom<Any<'a>> for RsaAesOaepParams<'a> {
+//     type Error = X509Error;
 
-    fn try_from(value: Any<'a>) -> Result<Self, Self::Error> {
-        Self::try_from(&value)
-    }
-}
+//     fn try_from(value: Any<'a>) -> Result<Self, Self::Error> {
+//         Self::try_from(&value)
+//     }
+// }
 
-//     hashFunc          [0] AlgorithmIdentifier DEFAULT
-//                              sha1Identifier,
-//     maskGenFunc       [1] AlgorithmIdentifier DEFAULT
-//                              mgf1SHA1Identifier,
-//     pSourceFunc       [2] AlgorithmIdentifier DEFAULT
-//                              pSpecifiedEmptyIdentifier  }
-impl<'a, 'b> TryFrom<&'b Any<'a>> for RsaAesOaepParams<'a> {
-    type Error = X509Error;
+// //     hashFunc          [0] AlgorithmIdentifier DEFAULT
+// //                              sha1Identifier,
+// //     maskGenFunc       [1] AlgorithmIdentifier DEFAULT
+// //                              mgf1SHA1Identifier,
+// //     pSourceFunc       [2] AlgorithmIdentifier DEFAULT
+// //                              pSpecifiedEmptyIdentifier  }
+// impl<'a, 'b> TryFrom<&'b Any<'a>> for RsaAesOaepParams<'a> {
+//     type Error = X509Error;
 
-    fn try_from(value: &'b Any<'a>) -> Result<Self, Self::Error> {
-        value.tag().assert_eq(Tag::Sequence)?;
-        let i = value.data.as_bytes2();
-        // let (i, hash_alg) = OptTaggedExplicit::<_, X509Error, 0>::from_der(i)?;
-        let (i, hash_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(0))
-            .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
-        // let (i, mask_gen_algorithm) = OptTaggedExplicit::<_, Error, 1>::from_der(i)?;
-        let (i, mask_gen_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(1))
-            .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
-        let (_, p_source_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(2))
-            .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
-        let params = RsaAesOaepParams {
-            hash_alg,
-            mask_gen_alg,
-            p_source_alg,
-        };
-        Ok(params)
-    }
-}
+//     fn try_from(value: &'b Any<'a>) -> Result<Self, Self::Error> {
+//         value.tag().assert_eq(Tag::Sequence)?;
+//         let i = value.data.as_bytes2();
+//         // let (i, hash_alg) = OptTaggedExplicit::<_, X509Error, 0>::from_der(i)?;
+//         let (i, hash_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(0))
+//             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
+//         // let (i, mask_gen_algorithm) = OptTaggedExplicit::<_, Error, 1>::from_der(i)?;
+//         let (i, mask_gen_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(1))
+//             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
+//         let (_, p_source_alg) = OptTaggedParser::new(Class::ContextSpecific, Tag(2))
+//             .parse_der(i, |_, inner| AlgorithmIdentifier::from_der(inner))?;
+//         let params = RsaAesOaepParams {
+//             hash_alg,
+//             mask_gen_alg,
+//             p_source_alg,
+//         };
+//         Ok(params)
+//     }
+// }
 
 impl CheckDerConstraints for RsaAesOaepParams<'_> {
     fn check_constraints(any: &Any) -> asn1_rs::Result<()> {

@@ -1,6 +1,6 @@
 //! X.509 errors
 
-use asn1_rs::Error;
+use asn1_rs::{BerError, Error, InnerError, Input};
 // use der_parser::error::BerError;
 use nom::error::{ErrorKind, ParseError};
 use nom::IResult;
@@ -67,6 +67,8 @@ pub enum X509Error {
 
     #[error("BER error: {0}")]
     Der(#[from] Error),
+    #[error("BER error: {0}")]
+    DerParser(#[from] InnerError),
     #[error("nom error: {0:?}")]
     NomError(ErrorKind),
 }
@@ -95,6 +97,12 @@ impl From<X509Error> for nom::Err<X509Error> {
 impl From<ErrorKind> for X509Error {
     fn from(e: ErrorKind) -> X509Error {
         X509Error::NomError(e)
+    }
+}
+
+impl<'a> From<BerError<Input<'a>>> for X509Error {
+    fn from(e: BerError<Input<'a>>) -> X509Error {
+        X509Error::DerParser(e.inner().clone())
     }
 }
 

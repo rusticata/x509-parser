@@ -53,6 +53,9 @@ ring = { version="0.17.12", optional=true }
 thiserror = "2.0"
 time = { version="0.3.35", features=["formatting"] }
 
+[dev-dependencies]
+hex-literal = "0.4"
+
 # XXX: remove this before release!
 [patch.crates-io]
 oid-registry = { git="https://github.com/rusticata/oid-registry", branch="oid-registry-0.9" }

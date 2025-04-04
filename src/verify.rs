@@ -1,13 +1,12 @@
 use crate::prelude::*;
 use crate::signature_algorithm::RsaSsaPssParams;
-use asn1_rs::{Any, BitString};
+use asn1_rs::{Any, BitString, DerParser};
 use oid_registry::{
     OID_EC_P256, OID_NIST_EC_P384, OID_NIST_HASH_SHA256, OID_NIST_HASH_SHA384,
     OID_NIST_HASH_SHA512, OID_PKCS1_RSASSAPSS, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA,
     OID_PKCS1_SHA384WITHRSA, OID_PKCS1_SHA512WITHRSA, OID_SHA1_WITH_RSA, OID_SIG_ECDSA_WITH_SHA256,
     OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ED25519,
 };
-use std::convert::TryFrom;
 
 /// Verify the cryptographic signature of the raw data (can be a certificate, a CRL or a CSR).
 ///
@@ -100,7 +99,9 @@ fn get_rsa_pss_verification_algo(
     use ring::signature;
 
     let params = params.as_ref()?;
-    let params = RsaSsaPssParams::try_from(params).ok()?;
+    // let params = RsaSsaPssParams::try_from(params).ok()?;
+    let (_, params) =
+        RsaSsaPssParams::from_der_content(&params.header, params.data.clone()).ok()?;
     let hash_algo = params.hash_algorithm_oid();
 
     if *hash_algo == OID_NIST_HASH_SHA256 {
