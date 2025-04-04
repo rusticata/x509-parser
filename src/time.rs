@@ -1,14 +1,22 @@
 use asn1_rs::nom::Err;
-use asn1_rs::{Error, FromDer, GeneralizedTime, Header, ParseResult, Tag, UtcTime};
+use asn1_rs::{
+    BerError, DerParser, DynTagged, Error, GeneralizedTime, Header, InnerError, Input, Tag, UtcTime,
+};
+use nom::IResult;
 use std::fmt;
 use std::ops::{Add, Sub};
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
 
 use crate::error::{X509Error, X509Result};
-use crate::MAX_OBJECT_SIZE;
 
 /// An ASN.1 timestamp.
+///
+/// <pre>
+/// Time ::= CHOICE {
+///     utcTime        UTCTime,
+///     generalTime    GeneralizedTime }
+/// </pre>
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct ASN1Time {
     time: OffsetDateTime,
@@ -109,36 +117,71 @@ impl ASN1Time {
     }
 }
 
-impl FromDer<'_, X509Error> for ASN1Time {
-    fn from_der(i: &[u8]) -> X509Result<Self> {
-        let (rem, time) = parse_choice_of_time(i).map_err(|_| X509Error::InvalidDate)?;
-        Ok((rem, time))
+// impl FromDer<'_, X509Error> for ASN1Time {
+//     fn from_der(i: &[u8]) -> X509Result<Self> {
+//         let (rem, time) = parse_choice_of_time(i).map_err(|_| X509Error::InvalidDate)?;
+//         Ok((rem, time))
+//     }
+// }
+
+impl DynTagged for ASN1Time {
+    fn tag(&self) -> Tag {
+        if self.is_generalizedtime() {
+            Tag::GeneralizedTime
+        } else {
+            Tag::UtcTime
+        }
+    }
+
+    fn accept_tag(tag: Tag) -> bool {
+        tag == Tag::GeneralizedTime || tag == Tag::UtcTime
     }
 }
 
-pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<ASN1Time> {
-    if let Ok((rem, t)) = UtcTime::from_der(i) {
-        let dt = t.utc_adjusted_datetime()?;
-        return Ok((rem, ASN1Time::new_utc(dt)));
+impl<'a> DerParser<'a> for ASN1Time {
+    type Error = X509Error;
+
+    fn from_der_content(
+        _: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        if let Ok((rem, t)) = UtcTime::parse_der(input.clone()) {
+            let dt = t
+                .utc_adjusted_datetime()
+                .map_err(|e| Err::Error(e.into()))?;
+            Ok((rem, ASN1Time::new_utc(dt)))
+        } else if let Ok((rem, t)) = GeneralizedTime::parse_der(input.clone()) {
+            let dt = t.utc_datetime().map_err(|e| Err::Error(e.into()))?;
+            Ok((rem, ASN1Time::new_utc(dt)))
+        } else {
+            parse_malformed_date(input).map_err(Err::convert)
+        }
     }
-    if let Ok((rem, t)) = GeneralizedTime::from_der(i) {
-        let dt = t.utc_datetime()?;
-        return Ok((rem, ASN1Time::new_generalized(dt)));
-    }
-    parse_malformed_date(i)
 }
+
+// pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<ASN1Time> {
+//     if let Ok((rem, t)) = UtcTime::from_der(i) {
+//         let dt = t.utc_adjusted_datetime()?;
+//         return Ok((rem, ASN1Time::new_utc(dt)));
+//     }
+//     if let Ok((rem, t)) = GeneralizedTime::from_der(i) {
+//         let dt = t.utc_datetime()?;
+//         return Ok((rem, ASN1Time::new_generalized(dt)));
+//     }
+//     parse_malformed_date(i)
+// }
 
 // allow relaxed parsing of UTCTime (ex: 370116130016+0000)
-fn parse_malformed_date(i: &[u8]) -> ParseResult<ASN1Time> {
+fn parse_malformed_date<'a>(input: Input<'a>) -> IResult<Input<'a>, ASN1Time, BerError<Input<'a>>> {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     // fn check_char(b: &u8) -> bool {
     //     (0x20 <= *b && *b <= 0x7f) || (*b == b'+')
     // }
-    let (_rem, hdr) = Header::from_der(i)?;
-    let len = hdr.length().definite()?;
-    if len > MAX_OBJECT_SIZE {
-        return Err(Err::Error(Error::InvalidLength));
-    }
+    let (_rem, hdr) = Header::parse_der(input.clone())?;
+    // let len = hdr.length().definite()?;
+    // if len > MAX_OBJECT_SIZE {
+    //     return Err(Err::Error(Error::InvalidLength));
+    // }
     match hdr.tag() {
         Tag::UtcTime => {
             // // if we are in this function, the PrintableString could not be validated.
@@ -152,9 +195,9 @@ fn parse_malformed_date(i: &[u8]) -> ParseResult<ASN1Time> {
             // let content = BerObjectContent::UTCTime(s);
             // let obj = DerObject::from_header_and_content(hdr, content);
             // Ok((rem, obj))
-            Err(Err::Error(Error::BerValueError))
+            Err(BerError::nom_err_input(&input, InnerError::BerValueError))
         }
-        _ => Err(Err::Error(Error::unexpected_tag(None, hdr.tag()))),
+        _ => Err(Err::Error(BerError::unexpected_tag(input, None, hdr.tag()))),
     }
 }
 

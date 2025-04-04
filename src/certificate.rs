@@ -13,13 +13,16 @@ use crate::x509::{
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
-use asn1_rs::{BigUint, BitString, Error, FromDer, OptTaggedImplicit, Tag};
+use asn1_rs::{
+    Alias, BerError, BigUint, BitString, DerParser, Error, FromDer, Header, Input,
+    OptTaggedImplicit, Sequence, Tag, Tagged,
+};
 use core::ops::Deref;
 // use der_parser::der::*;
 // use der_parser::error::*;
 // use der_parser::num_bigint::BigUint;
 // use der_parser::*;
-use nom::{IResult, Offset, Parser};
+use nom::{Err, IResult, Offset, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 use time::Duration;
@@ -100,6 +103,38 @@ impl<'a> Deref for X509Certificate<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.tbs_certificate
+    }
+}
+
+impl Tagged for X509Certificate<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'a> DerParser<'a> for X509Certificate<'a> {
+    type Error = X509Error;
+
+    fn parse_der(input: Input<'a>) -> IResult<Input<'a>, Self, Self::Error> {
+        X509CertificateParser::new().parse(input)
+    }
+
+    fn from_der_content(
+        header: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+        let (rem, tbs_certificate) = TbsCertificate::parse_der(input)?;
+        let (rem, signature_algorithm) = AlgorithmIdentifier::parse_der(rem)?;
+        let (rem, signature_value) = BitString::parse_der(rem).map_err(Err::convert)?;
+
+        let cert = X509Certificate {
+            tbs_certificate,
+            signature_algorithm,
+            signature_value,
+        };
+        Ok((rem, cert))
     }
 }
 
@@ -210,17 +245,17 @@ impl Default for X509CertificateParser {
     }
 }
 
-impl<'a> Parser<&'a [u8]> for X509CertificateParser {
+impl<'a> Parser<Input<'a>> for X509CertificateParser {
     type Output = X509Certificate<'a>;
     type Error = X509Error;
 
-    fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
-        parse_der_sequence_defined_g(|i, _| {
+    fn parse(&mut self, input: Input<'a>) -> IResult<Input<'a>, X509Certificate<'a>, X509Error> {
+        Sequence::parse_der_and_then(input, |_, i| {
             // pass options to TbsCertificate parser
             let mut tbs_parser =
                 TbsCertificateParser::new().with_deep_parse_extensions(self.deep_parse_extensions);
             let (i, tbs_certificate) = tbs_parser.parse(i)?;
-            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
+            let (i, signature_algorithm) = AlgorithmIdentifier::parse_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
             let cert = X509Certificate {
                 tbs_certificate,
@@ -228,13 +263,13 @@ impl<'a> Parser<&'a [u8]> for X509CertificateParser {
                 signature_value,
             };
             Ok((i, cert))
-        })(input)
+        })
     }
 
     fn process<OM: nom::OutputMode>(
         &mut self,
-        input: &'a [u8],
-    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        input: Input<'a>,
+    ) -> nom::PResult<OM, Input<'a>, Self::Output, Self::Error> {
         todo!()
     }
 }
@@ -544,56 +579,107 @@ impl AsRef<[u8]> for TbsCertificate<'_> {
     }
 }
 
-impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
-    /// Parse a DER-encoded TbsCertificate object
-    ///
-    /// <pre>
-    /// TBSCertificate  ::=  SEQUENCE  {
-    ///      version         [0]  Version DEFAULT v1,
-    ///      serialNumber         CertificateSerialNumber,
-    ///      signature            AlgorithmIdentifier,
-    ///      issuer               Name,
-    ///      validity             Validity,
-    ///      subject              Name,
-    ///      subjectPublicKeyInfo SubjectPublicKeyInfo,
-    ///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
-    ///                           -- If present, version MUST be v2 or v3
-    ///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
-    ///                           -- If present, version MUST be v2 or v3
-    ///      extensions      [3]  Extensions OPTIONAL
-    ///                           -- If present, version MUST be v3 --  }
-    /// </pre>
-    fn from_der(i: &'a [u8]) -> X509Result<'a, TbsCertificate<'a>> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der_tagged_0(i)?;
-            let (i, serial) = parse_serial(i)?;
-            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
-            let (i, issuer) = X509Name::from_der(i)?;
-            let (i, validity) = Validity::from_der(i)?;
-            let (i, subject) = X509Name::from_der(i)?;
-            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
-            let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
-            let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
-            let (i, extensions) = parse_extensions(i, Tag(3))?;
-            let len = start_i.offset(i);
-            let tbs = TbsCertificate {
-                version,
-                serial: serial.1,
-                signature,
-                issuer,
-                validity,
-                subject,
-                subject_pki,
-                issuer_uid,
-                subject_uid,
-                extensions,
+// impl<'a> FromDer<'a, X509Error> for TbsCertificate<'a> {
+//     /// Parse a DER-encoded TbsCertificate object
+//     ///
+//     /// <pre>
+//     /// TBSCertificate  ::=  SEQUENCE  {
+//     ///      version         [0]  Version DEFAULT v1,
+//     ///      serialNumber         CertificateSerialNumber,
+//     ///      signature            AlgorithmIdentifier,
+//     ///      issuer               Name,
+//     ///      validity             Validity,
+//     ///      subject              Name,
+//     ///      subjectPublicKeyInfo SubjectPublicKeyInfo,
+//     ///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+//     ///                           -- If present, version MUST be v2 or v3
+//     ///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+//     ///                           -- If present, version MUST be v2 or v3
+//     ///      extensions      [3]  Extensions OPTIONAL
+//     ///                           -- If present, version MUST be v3 --  }
+//     /// </pre>
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, TbsCertificate<'a>> {
+//         let start_i = i;
+//         parse_der_sequence_defined_g(move |i, _| {
+//             let (i, version) = X509Version::from_der_tagged_0(i)?;
+//             let (i, serial) = parse_serial(i)?;
+//             let (i, signature) = AlgorithmIdentifier::from_der(i)?;
+//             let (i, issuer) = X509Name::from_der(i)?;
+//             let (i, validity) = Validity::from_der(i)?;
+//             let (i, subject) = X509Name::from_der(i)?;
+//             let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
+//             let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
+//             let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
+//             let (i, extensions) = parse_extensions(i, Tag(3))?;
+//             let len = start_i.offset(i);
+//             let tbs = TbsCertificate {
+//                 version,
+//                 serial: serial.1,
+//                 signature,
+//                 issuer,
+//                 validity,
+//                 subject,
+//                 subject_pki,
+//                 issuer_uid,
+//                 subject_uid,
+//                 extensions,
 
-                raw: &start_i[..len],
-                raw_serial: serial.0,
-            };
-            Ok((i, tbs))
-        })(i)
+//                 raw: &start_i[..len],
+//                 raw_serial: serial.0,
+//             };
+//             Ok((i, tbs))
+//         })(i)
+//     }
+// }
+
+impl Tagged for TbsCertificate<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+/// Parse a DER-encoded TbsCertificate object
+///
+/// <pre>
+/// TBSCertificate  ::=  SEQUENCE  {
+///      version         [0]  Version DEFAULT v1,
+///      serialNumber         CertificateSerialNumber,
+///      signature            AlgorithmIdentifier,
+///      issuer               Name,
+///      validity             Validity,
+///      subject              Name,
+///      subjectPublicKeyInfo SubjectPublicKeyInfo,
+///      issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+///                           -- If present, version MUST be v2 or v3
+///      subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+///                           -- If present, version MUST be v2 or v3
+///      extensions      [3]  Extensions OPTIONAL
+///                           -- If present, version MUST be v3 --  }
+/// </pre>
+impl<'a> DerParser<'a> for TbsCertificate<'a> {
+    type Error = X509Error;
+
+    fn parse_der(input: Input<'a>) -> IResult<Input<'a>, Self, Self::Error> {
+        TbsCertificateParser::new().parse(input)
+    }
+
+    fn from_der_content(
+        header: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+        let (rem, version) = X509Version::parse_der_tagged_0(input)?;
+        let (rem, serial) = parse_serial(rem)?;
+        let (rem, signature) = AlgorithmIdentifier::parse_der(rem)?;
+        let (rem, issuer) = X509Name::parse_der(rem)?;
+        let (rem, validity) = Validity::parse_der(rem)?;
+        let (rem, subject) = X509Name::parse_der(rem)?;
+        let (rem, subject_pki) = SubjectPublicKeyInfo::parse_der(rem)?;
+        let (rem, issuer_uid) = UniqueIdentifier::parse_der_issuer(rem)?;
+        let (rem, subject_uid) = UniqueIdentifier::parse_der_subject(rem)?;
+        let (rem, extensions) = parse_extensions(rem, Tag(3))?;
+        todo!()
     }
 }
 
@@ -625,11 +711,11 @@ impl Default for TbsCertificateParser {
     }
 }
 
-impl<'a> Parser<&'a [u8]> for TbsCertificateParser {
+impl<'a> Parser<Input<'a>> for TbsCertificateParser {
     type Output = TbsCertificate<'a>;
     type Error = X509Error;
 
-    fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], TbsCertificate<'a>, X509Error> {
+    fn parse(&mut self, input: Input<'a>) -> IResult<Input<'a>, TbsCertificate<'a>, X509Error> {
         let start_i = input;
         parse_der_sequence_defined_g(move |i, _| {
             let (i, version) = X509Version::from_der_tagged_0(i)?;
@@ -668,8 +754,8 @@ impl<'a> Parser<&'a [u8]> for TbsCertificateParser {
 
     fn process<OM: nom::OutputMode>(
         &mut self,
-        input: &'a [u8],
-    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        input: Input<'a>,
+    ) -> nom::PResult<OM, Input<'a>, Self::Output, Self::Error> {
         todo!()
     }
 }
@@ -700,7 +786,14 @@ impl<T> BasicExtension<T> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// <pre>
+/// Validity ::= SEQUENCE {
+///     notBefore      Time,
+///     notAfter       Time  }
+/// </pre>
+#[derive(Clone, Debug, PartialEq, Eq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct Validity {
     pub not_before: ASN1Time,
     pub not_after: ASN1Time,
@@ -735,39 +828,46 @@ impl Validity {
     }
 }
 
-impl FromDer<'_, X509Error> for Validity {
-    fn from_der(i: &[u8]) -> X509Result<Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, not_before) = ASN1Time::from_der(i)?;
-            let (i, not_after) = ASN1Time::from_der(i)?;
-            let v = Validity {
-                not_before,
-                not_after,
-            };
-            Ok((i, v))
-        })(i)
-    }
-}
+// impl FromDer<'_, X509Error> for Validity {
+//     fn from_der(i: &[u8]) -> X509Result<Self> {
+//         parse_der_sequence_defined_g(|i, _| {
+//             let (i, not_before) = ASN1Time::from_der(i)?;
+//             let (i, not_after) = ASN1Time::from_der(i)?;
+//             let v = Validity {
+//                 not_before,
+//                 not_after,
+//             };
+//             Ok((i, v))
+//         })(i)
+//     }
+// }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// <pre>
+/// UniqueIdentifier  ::=  BIT STRING
+/// </pre>
+#[derive(Clone, Debug, PartialEq, Eq, Alias)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct UniqueIdentifier(pub BitString);
 
 impl UniqueIdentifier {
     // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_issuer(i: &[u8]) -> X509Result<Option<Self>> {
+    fn parse_der_issuer<'a>(i: Input<'a>) -> IResult<Input<'a>, Option<Self>, X509Error> {
         Self::parse::<1>(i).map_err(|_| X509Error::InvalidIssuerUID.into())
     }
 
     // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_subject(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
+    fn parse_der_subject<'a>(i: Input<'a>) -> IResult<Input<'a>, Option<Self>, X509Error> {
         Self::parse::<2>(i).map_err(|_| X509Error::InvalidSubjectUID.into())
     }
 
     // Parse a [tag] UniqueIdentifier OPTIONAL
     //
     // UniqueIdentifier  ::=  BIT STRING
-    fn parse<const TAG: u32>(i: &[u8]) -> IResult<&[u8], Option<UniqueIdentifier>, Error> {
-        let (rem, unique_id) = OptTaggedImplicit::<BitString, Error, TAG>::from_der(i)?;
+    fn parse<'a, const TAG: u32>(
+        i: Input<'a>,
+    ) -> IResult<Input<'a>, Option<Self>, BerError<Input<'a>>> {
+        let (rem, unique_id) = OptTaggedImplicit::<BitString, Error, TAG>::parse_der(i)?;
         let unique_id = unique_id.map(|u| UniqueIdentifier(u.into_inner()));
         Ok((rem, unique_id))
     }

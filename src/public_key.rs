@@ -1,5 +1,5 @@
 use crate::error::*;
-use asn1_rs::{Error, FromDer, Integer};
+use asn1_rs::{BerError, DerParser, Error, FromDer, InnerError, Input, Integer};
 use nom::{Err, IResult};
 
 /// Public Key value
@@ -31,6 +31,7 @@ impl PublicKey<'_> {
 }
 
 /// RSA public Key, defined in rfc3279
+/// FIXME: replace this with a derive(Sequence)
 #[derive(Debug, PartialEq, Eq)]
 pub struct RSAPublicKey<'a> {
     /// Raw bytes of the modulus
@@ -69,20 +70,17 @@ impl RSAPublicKey<'_> {
     }
 }
 
-// helper function to parse with error type BerError
-fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, Error> {
-    parse_der_sequence_defined_g(move |i, _| {
-        let (i, obj_modulus) = Integer::from_der(i)?;
-        let (i, obj_exponent) = Integer::from_der(i)?;
-        let modulus = obj_modulus
-            .as_raw_slice()
-            .ok_or(Err::Error(Error::LifetimeError))?;
-        let exponent = obj_exponent
-            .as_raw_slice()
-            .ok_or(Err::Error(Error::LifetimeError))?;
-        let key = RSAPublicKey { modulus, exponent };
-        Ok((i, key))
-    })(bytes)
+fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, X509Error> {
+    let input = Input::from(bytes);
+    let (rem, (o1, o2)) = <(Integer, Integer)>::parse_der(input).map_err(Err::convert)?;
+    let modulus = o1
+        .as_raw_slice()
+        .ok_or(Err::Error(InnerError::LifetimeError.into()))?;
+    let exponent = o1
+        .as_raw_slice()
+        .ok_or(Err::Error(InnerError::LifetimeError.into()))?;
+    let key = RSAPublicKey { modulus, exponent };
+    Ok((rem.as_bytes2(), key))
 }
 
 impl<'a> FromDer<'a, X509Error> for RSAPublicKey<'a> {

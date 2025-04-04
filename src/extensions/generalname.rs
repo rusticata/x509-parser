@@ -1,19 +1,34 @@
-use crate::error::{X509Error, X509Result};
+use crate::error::X509Error;
 use crate::prelude::format_serial;
 use crate::x509::X509Name;
-use asn1_rs::{Any, CheckDerConstraints, Class, Error, FromDer, Oid, Sequence, Tag};
-use core::convert::TryFrom;
-use nom::combinator::all_consuming;
-use nom::{Err, IResult, Parser as _};
+use asn1_rs::{Any, DerParser, DynTagged, Header, InnerError, Input, Oid, Tag};
+use nom::{Err, IResult, Input as _};
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq)]
+/// GeneralNames ::= SEQUENCE SIZE (1..MAX) OF GeneralName
+pub type GeneralNames<'a> = Vec<GeneralName<'a>>;
+
 /// Represents a GeneralName as defined in RFC5280. There
 /// is no support X.400 addresses and EDIPartyName.
 ///
 /// String formats are not validated (except for valid UTF-8).
+///
+/// <pre>
+/// -- Note: IMPLICIT Tags
+/// GeneralName ::= CHOICE {
+///     otherName                 [0]  AnotherName,
+///     rfc822Name                [1]  IA5String,
+///     dNSName                   [2]  IA5String,
+///     x400Address               [3]  ORAddress,
+///     directoryName             [4]  Name,
+///     ediPartyName              [5]  EDIPartyName,
+///     uniformResourceIdentifier [6]  IA5String,
+///     iPAddress                 [7]  OCTET STRING,
+///     registeredID              [8]  OBJECT IDENTIFIER }
+/// </pre>
+#[derive(Clone, Debug, PartialEq)]
 pub enum GeneralName<'a> {
-    OtherName(Oid<'a>, &'a [u8]),
+    OtherName(Oid<'a>, Any<'a>),
     /// More or less an e-mail, the format is not checked.
     RFC822Name(&'a str),
     /// A hostname, format is not checked.
@@ -31,73 +46,166 @@ pub enum GeneralName<'a> {
     IPAddress(&'a [u8]),
     RegisteredID(Oid<'a>),
     /// Invalid data (for ex. invalid UTF-8 data in DNSName entry)
-    Invalid(Tag, &'a [u8]),
+    Invalid(Any<'a>),
 }
 
-impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
-    type Error = Error;
+impl DynTagged for GeneralName<'_> {
+    fn constructed(&self) -> bool {
+        match self {
+            GeneralName::OtherName(_, _)
+            | GeneralName::X400Address(_)
+            | GeneralName::DirectoryName(_)
+            | GeneralName::EDIPartyName(_) => true,
+            _ => false,
+        }
+    }
 
-    fn try_from(any: Any<'a>) -> Result<Self, Self::Error> {
-        any.class().assert_eq(Class::ContextSpecific)?;
+    fn tag(&self) -> Tag {
+        match self {
+            GeneralName::OtherName(_, _) => Tag(0),
+            GeneralName::RFC822Name(_) => Tag(1),
+            GeneralName::DNSName(_) => Tag(2),
+            GeneralName::X400Address(_) => Tag(3),
+            GeneralName::DirectoryName(_) => Tag(4),
+            GeneralName::EDIPartyName(_) => Tag(5),
+            GeneralName::URI(_) => Tag(6),
+            GeneralName::IPAddress(_) => Tag(7),
+            GeneralName::RegisteredID(_) => Tag(8),
+            GeneralName::Invalid(any) => any.tag(),
+        }
+    }
 
-        let name = match parse_generalname_entry(any.clone()) {
-            Ok(name) => name,
-            Err(_) => GeneralName::Invalid(any.tag(), any.data.as_bytes2()),
+    fn accept_tag(tag: Tag) -> bool {
+        (0..9).contains(&tag.0)
+    }
+}
+
+impl<'a> DerParser<'a> for GeneralName<'a> {
+    type Error = X509Error;
+
+    fn from_der_content(
+        header: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        let (rem, gn) = match header.tag().0 {
+            0 => {
+                // AnotherName ::= SEQUENCE {
+                //     type-id    OBJECT IDENTIFIER,
+                //     value      [0] EXPLICIT ANY DEFINED BY type-id }
+                let (rem, (type_id, value)) =
+                    <(Oid, Any)>::from_der_content(header, input).map_err(Err::convert)?;
+                (rem, GeneralName::OtherName(type_id, value))
+            }
+            1 => {
+                let (rem, s) = ia5str_relaxed(input)?;
+                (rem, GeneralName::RFC822Name(s))
+            }
+            2 => {
+                let (rem, s) = ia5str_relaxed(input)?;
+                (rem, GeneralName::DNSName(s))
+            }
+            3 => {
+                // XXX Not yet implemented
+                let rem = input.take_from(input.input_len());
+                let any = Any::new(header.clone(), input);
+                (rem, GeneralName::X400Address(any))
+            }
+            4 => {
+                let (rem, name) = X509Name::from_der_content(header, input)?;
+                (rem, GeneralName::DirectoryName(name))
+            }
+            5 => {
+                // XXX Not yet implemented
+                let rem = input.take_from(input.input_len());
+                let any = Any::new(header.clone(), input);
+                (rem, GeneralName::EDIPartyName(any))
+            }
+            6 => {
+                let (rem, s) = ia5str_relaxed(input)?;
+                (rem, GeneralName::URI(s))
+            }
+            7 => {
+                let (rem, b) = <&[u8]>::from_der_content(header, input).map_err(Err::convert)?;
+                (rem, GeneralName::IPAddress(b))
+            }
+            8 => {
+                let (rem, oid) = Oid::from_der_content(header, input).map_err(Err::convert)?;
+                (rem, GeneralName::RegisteredID(oid))
+            }
+            _ => {
+                let rem = input.take_from(input.input_len());
+                let any = Any::new(header.clone(), input);
+                (rem, GeneralName::Invalid(any))
+            }
         };
-        Ok(name)
+        Ok((rem, gn))
     }
 }
 
-fn parse_generalname_entry(
-    any: Any<'_>,
-) -> Result<GeneralName<'_>, <GeneralName<'_> as TryFrom<Any<'_>>>::Error> {
-    Ok(match any.tag().0 {
-        0 => {
-            // otherName SEQUENCE { OID, [0] explicit any defined by oid }
-            let (rest, oid) = Oid::from_der(any.data.as_bytes2())?;
-            GeneralName::OtherName(oid, rest)
-        }
-        1 => GeneralName::RFC822Name(ia5str(any)?),
-        2 => GeneralName::DNSName(ia5str(any)?),
-        3 => {
-            // XXX Not yet implemented
-            GeneralName::X400Address(any)
-        }
-        4 => {
-            // directoryName, name
-            let (_, name) = all_consuming(X509Name::from_der).parse(any.data.as_bytes2())
-                .or(Err(Error::Unsupported)) // XXX remove me
-                ?;
-            GeneralName::DirectoryName(name)
-        }
-        5 => {
-            // XXX Not yet implemented
-            GeneralName::EDIPartyName(any)
-        }
-        6 => GeneralName::URI(ia5str(any)?),
-        7 => {
-            // IPAddress, OctetString
-            GeneralName::IPAddress(any.data.as_bytes2())
-        }
-        8 => {
-            let oid = Oid::new(any.data.as_bytes2().into());
-            GeneralName::RegisteredID(oid)
-        }
-        _ => return Err(Error::unexpected_tag(None, any.tag())),
-    })
-}
+// impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
+//     type Error = Error;
 
-impl CheckDerConstraints for GeneralName<'_> {
-    fn check_constraints(any: &Any) -> asn1_rs::Result<()> {
-        Sequence::check_constraints(any)
-    }
-}
+//     fn try_from(any: Any<'a>) -> Result<Self, Self::Error> {
+//         any.class().assert_eq(Class::ContextSpecific)?;
 
-impl<'a> FromDer<'a, X509Error> for GeneralName<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_generalname(i).map_err(Err::convert)
-    }
-}
+//         let name = match parse_generalname_entry(any.clone()) {
+//             Ok(name) => name,
+//             Err(_) => GeneralName::Invalid(any.tag(), any.data.as_bytes2()),
+//         };
+//         Ok(name)
+//     }
+// }
+
+// fn parse_generalname_entry(
+//     any: Any<'_>,
+// ) -> Result<GeneralName<'_>, <GeneralName<'_> as TryFrom<Any<'_>>>::Error> {
+//     Ok(match any.tag().0 {
+//         0 => {
+//             // otherName SEQUENCE { OID, [0] explicit any defined by oid }
+//             let (rest, oid) = Oid::from_der(any.data.as_bytes2())?;
+//             GeneralName::OtherName(oid, rest)
+//         }
+//         1 => GeneralName::RFC822Name(ia5str(any)?),
+//         2 => GeneralName::DNSName(ia5str(any)?),
+//         3 => {
+//             // XXX Not yet implemented
+//             GeneralName::X400Address(any)
+//         }
+//         4 => {
+//             // directoryName, name
+//             let (_, name) = all_consuming(X509Name::from_der).parse(any.data.as_bytes2())
+//                 .or(Err(Error::Unsupported)) // XXX remove me
+//                 ?;
+//             GeneralName::DirectoryName(name)
+//         }
+//         5 => {
+//             // XXX Not yet implemented
+//             GeneralName::EDIPartyName(any)
+//         }
+//         6 => GeneralName::URI(ia5str(any)?),
+//         7 => {
+//             // IPAddress, OctetString
+//             GeneralName::IPAddress(any.data.as_bytes2())
+//         }
+//         8 => {
+//             let oid = Oid::new(any.data.as_bytes2().into());
+//             GeneralName::RegisteredID(oid)
+//         }
+//         _ => return Err(Error::unexpected_tag(None, any.tag())),
+//     })
+// }
+
+// impl CheckDerConstraints for GeneralName<'_> {
+//     fn check_constraints(any: &Any) -> asn1_rs::Result<()> {
+//         Sequence::check_constraints(any)
+//     }
+// }
+
+// impl<'a> FromDer<'a, X509Error> for GeneralName<'a> {
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+//         parse_generalname(i).map_err(Err::convert)
+//     }
+// }
 
 impl fmt::Display for GeneralName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -111,21 +219,29 @@ impl fmt::Display for GeneralName<'_> {
             GeneralName::URI(s) => write!(f, "URI({})", s),
             GeneralName::IPAddress(b) => write!(f, "IPAddress({})", format_serial(b)),
             GeneralName::RegisteredID(oid) => write!(f, "RegisteredID({})", oid),
-            GeneralName::Invalid(tag, b) => {
-                write!(f, "Invalid(tag={}, data={})", tag, format_serial(b))
+            GeneralName::Invalid(any) => {
+                write!(
+                    f,
+                    "Invalid(tag={}, data={})",
+                    any.tag(),
+                    format_serial(any.data.as_bytes2())
+                )
             }
         }
     }
 }
 
-fn ia5str(any: Any) -> Result<&str, Err<Error>> {
+fn ia5str_relaxed(input: Input) -> Result<(Input, &str), Err<X509Error>> {
+    let (rem, input) = input.take_split(input.input_len());
     // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
     // are using unicode characters
-    std::str::from_utf8(any.data.as_bytes2()).map_err(|_| Err::Failure(Error::BerValueError))
+    let s = std::str::from_utf8(input.as_bytes2())
+        .map_err(|_| Err::Failure(X509Error::DerParser(InnerError::StringInvalidCharset)))?;
+    Ok((rem, s))
 }
 
-pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName, Error> {
-    let (rest, any) = Any::from_der(i)?;
-    let gn = GeneralName::try_from(any)?;
-    Ok((rest, gn))
-}
+// pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName, X509Error> {
+//     let (rest, any) = Any::from_der(i)?;
+//     let (_, gn) = GeneralName::try_from(any)?;
+//     Ok((rest, gn))
+// }

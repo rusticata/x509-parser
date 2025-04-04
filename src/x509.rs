@@ -4,25 +4,25 @@
 //!
 
 use crate::error::{X509Error, X509Result};
+use crate::objects::*;
+use crate::parser_utils::get_span;
 use crate::public_key::*;
-use crate::{objects::*, MAX_OBJECT_SIZE};
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Any, BitString, BmpString, DerSequence, Error, FromBer, FromDer, Header, Integer,
-    OptTaggedParser, ParseResult, Tag,
+    Alias, Any, AnyIterator, BerError, BitString, BmpString, DerMode, DerParser,
+    FromDer, Header, Input, Integer, OptTaggedExplicit, OptTaggedParser, Sequence, Tag,
+    Tagged,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
-use nom::branch::alt;
-use nom::bytes::complete::take;
-use nom::combinator::{complete, map};
-use nom::multi::{many0, many1};
-use nom::{Err, Offset, Parser as _};
+use nom::combinator::map;
+use nom::{Err, IResult, Parser as _};
 use oid_registry::*;
 use rusticata_macros::newtype_enum;
 use std::fmt;
 use std::iter::FromIterator;
+use std::ops::Range;
 
 /// The version of the encoded certificate.
 ///
@@ -32,7 +32,12 @@ use std::iter::FromIterator;
 /// version MAY be 3.  If only basic fields are present, the version
 /// SHOULD be 1 (the value is omitted from the certificate as the default
 /// value); however, the version MAY be 2 or 3.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+///
+/// <pre>
+/// Version  ::=  INTEGER  {  v1(0), v2(1), v3(2)  }
+/// </pre>
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Alias)]
+#[asn1(parse = "DER", encode = "")]
 pub struct X509Version(pub u32);
 
 impl X509Version {
@@ -42,6 +47,18 @@ impl X509Version {
             .parse_der(i, |_, data| Self::from_der(data))
             .map_err(Err::convert)?;
         let version = opt_version.unwrap_or(X509Version::V1);
+        Ok((rem, version))
+    }
+
+    /// Parse `[0]` EXPLICIT Version DEFAULT v1
+    pub(crate) fn parse_der_tagged_0<'a>(
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, X509Version, X509Error> {
+        type T<'a> = OptTaggedExplicit<X509Version, BerError<Input<'a>>, 0>;
+        let (rem, opt_version) = <T>::parse_der(input).map_err(Err::convert)?;
+        let version = opt_version
+            .map(|t| t.into_inner())
+            .unwrap_or(X509Version::V1);
         Ok((rem, version))
     }
 }
@@ -66,7 +83,14 @@ newtype_enum! {
 /// A generic attribute type and value
 ///
 /// These objects are used as [`RelativeDistinguishedName`] components.
-#[derive(Clone, Debug, PartialEq)]
+/// <pre>
+/// AttributeTypeAndValue   ::= SEQUENCE {
+///     type    AttributeType,
+///     value   AttributeValue }
+/// </pre>
+#[derive(Clone, Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct AttributeTypeAndValue<'a> {
     attr_type: Oid<'a>,
     attr_value: Any<'a>, // ANY -- DEFINED BY AttributeType
@@ -103,16 +127,10 @@ impl<'a> AttributeTypeAndValue<'a> {
     /// Only NumericString, PrintableString, UTF8String and IA5String
     /// are considered here. Other string types can be read using `as_slice`.
     #[inline]
-    pub fn as_str(&self) -> Result<&'a str, X509Error> {
-        // TODO: replace this with helper function, when it is added to asn1-rs
-        match self.attr_value.tag() {
-            Tag::NumericString | Tag::PrintableString | Tag::Utf8String | Tag::Ia5String => {
-                let s = core::str::from_utf8(self.attr_value.data.as_bytes2())
-                    .map_err(|_| X509Error::InvalidAttributes)?;
-                Ok(s)
-            }
-            t => Err(X509Error::Der(Error::unexpected_tag(None, t))),
-        }
+    pub fn as_str(&'a self) -> Result<&'a str, X509Error> {
+        self.attr_value
+            .as_any_str()
+            .map_err(|_| X509Error::InvalidAttributes)
     }
 
     /// Get the content as a slice.
@@ -136,53 +154,13 @@ impl<'a, 'b> From<&'a AttributeTypeAndValue<'b>> for &'a [u8] {
     }
 }
 
-// AttributeTypeAndValue   ::= SEQUENCE {
-//     type    AttributeType,
-//     value   AttributeValue }
-impl<'a> FromDer<'a, X509Error> for AttributeTypeAndValue<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, attr_type) = Oid::from_der(i).or(Err(X509Error::InvalidX509Name))?;
-            let (i, attr_value) = parse_attribute_value(i).or(Err(X509Error::InvalidX509Name))?;
-            let attr = AttributeTypeAndValue::new(attr_type, attr_value);
-            Ok((i, attr))
-        })(i)
-    }
-}
-
-// AttributeValue          ::= ANY -- DEFINED BY AttributeType
-#[inline]
-fn parse_attribute_value(i: &[u8]) -> ParseResult<Any, Error> {
-    alt((Any::from_der, parse_malformed_string)).parse(i)
-}
-
-fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {
-    let (rem, hdr) = Header::from_der(i)?;
-    let len = hdr.length().definite()?;
-    if len > MAX_OBJECT_SIZE {
-        return Err(Err::Error(Error::InvalidLength));
-    }
-    match hdr.tag() {
-        Tag::PrintableString => {
-            // if we are in this function, the PrintableString could not be validated.
-            // Accept it without validating charset, because some tools do not respect the charset
-            // restrictions (for ex. they use '*' while explicingly disallowed)
-            let (rem, data) = take(len)(rem)?;
-            // check valid encoding
-            let _ = std::str::from_utf8(data).map_err(|_| Error::BerValueError)?;
-            let obj = Any::new(hdr, data);
-            Ok((rem, obj))
-        }
-        t => Err(Err::Error(Error::unexpected_tag(
-            Some(Tag::PrintableString),
-            t,
-        ))),
-    }
-}
-
 /// A Relative Distinguished Name element.
 ///
 /// These objects are used as [`X509Name`] components.
+/// <pre>
+/// RelativeDistinguishedName ::=
+///     SET SIZE (1..MAX) OF AttributeTypeAndValue
+/// </pre>
 #[derive(Clone, Debug, PartialEq)]
 pub struct RelativeDistinguishedName<'a> {
     set: Vec<AttributeTypeAndValue<'a>>,
@@ -208,30 +186,42 @@ impl<'a> FromIterator<AttributeTypeAndValue<'a>> for RelativeDistinguishedName<'
     }
 }
 
-impl<'a> FromDer<'a, X509Error> for RelativeDistinguishedName<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_set_defined_g(|i, _| {
-            let (i, set) = many1(complete(AttributeTypeAndValue::from_der)).parse(i)?;
-            let rdn = RelativeDistinguishedName { set };
-            Ok((i, rdn))
-        })(i)
+impl Tagged for RelativeDistinguishedName<'_> {
+    const CONSTRUCTED: bool = true;
+
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'a> DerParser<'a> for RelativeDistinguishedName<'a> {
+    type Error = X509Error;
+
+    fn from_der_content(
+        _header: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        let (rem, set) = AnyIterator::<DerMode>::new(input).try_parse_collect()?;
+        Ok((rem, RelativeDistinguishedName { set }))
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct SubjectPublicKeyInfo<'a> {
     pub algorithm: AlgorithmIdentifier<'a>,
-    pub subject_public_key: BitString,
     /// A raw unparsed PKIX, ASN.1 DER form (see RFC 5280, Section 4.1).
     ///
     /// Note: use the [`Self::parsed()`] function to parse this object.
-    pub raw: &'a [u8],
+    pub subject_public_key: BitString,
+
+    #[asn1(parse = "|input| get_span(header, input).map_err(Err::convert)")]
+    pub(crate) range: Range<usize>,
 }
 
 impl SubjectPublicKeyInfo<'_> {
     /// Attempt to parse the public key, and return the parsed version or an error
     pub fn parsed(&self) -> Result<PublicKey, X509Error> {
-        let b = &self.subject_public_key.as_raw_slice();
+        let b = self.subject_public_key.as_raw_slice();
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
             let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
             Ok(PublicKey::RSA(key))
@@ -240,10 +230,10 @@ impl SubjectPublicKeyInfo<'_> {
             Ok(PublicKey::EC(key))
         } else if self.algorithm.algorithm == OID_KEY_TYPE_DSA {
             let s = Integer::from_der(b)
-                .map(|(_rem, i)| i.as_ref())
-                .map_err(|_| Err::Error(X509Error::InvalidSPKI))?;
-            // .and_then(|(_, obj)| obj.as_ref().map_err(Err::Error))
-            // .or(Err(X509Error::InvalidSPKI))?;
+                .map(|(_rem, i)| i.as_raw_slice())
+                .map_err(|_| Err::Error(X509Error::InvalidSPKI))?
+                // note: this `ok_or` cannot fail, as_raw_slice after parsing always succeeds
+                .ok_or(Err::Error(X509Error::InvalidSPKI))?;
             Ok(PublicKey::DSA(s))
         } else if self.algorithm.algorithm == OID_GOST_R3410_2001 {
             let (_, s) = <&[u8]>::from_der(b).or(Err(X509Error::InvalidSPKI))?;
@@ -256,25 +246,6 @@ impl SubjectPublicKeyInfo<'_> {
         } else {
             Ok(PublicKey::Unknown(b))
         }
-    }
-}
-
-impl<'a> FromDer<'a, X509Error> for SubjectPublicKeyInfo<'a> {
-    /// Parse the SubjectPublicKeyInfo struct portion of a DER-encoded X.509 Certificate
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, subject_public_key) = BitString::from_der(i).or(Err(X509Error::InvalidSPKI))?;
-            let len = start_i.offset(i);
-            let raw = &start_i[..len];
-            let spki = SubjectPublicKeyInfo {
-                algorithm,
-                subject_public_key,
-                raw,
-            };
-            Ok((i, spki))
-        })(i)
     }
 }
 
@@ -292,7 +263,8 @@ impl<'a> FromDer<'a, X509Error> for SubjectPublicKeyInfo<'a> {
 /// algorithm.  The OBJECT IDENTIFIER component identifies the algorithm
 /// (such as DSA with SHA-1).  The contents of the optional parameters
 /// field will vary according to the algorithm identified.
-#[derive(Clone, Debug, PartialEq, DerSequence)]
+#[derive(Clone, Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
 #[error(X509Error)]
 pub struct AlgorithmIdentifier<'a> {
     #[map_err(|_| X509Error::InvalidAlgorithmIdentifier)]
@@ -300,6 +272,11 @@ pub struct AlgorithmIdentifier<'a> {
     #[optional]
     pub parameters: Option<Any<'a>>,
 }
+
+pub const SHA1_IDENTIFIER: AlgorithmIdentifier = AlgorithmIdentifier {
+    algorithm: OID_HASH_SHA1,
+    parameters: None,
+};
 
 impl<'a> AlgorithmIdentifier<'a> {
     /// Create a new `AlgorithmIdentifier`
@@ -327,10 +304,21 @@ impl<'a> AlgorithmIdentifier<'a> {
 /// as country name, and corresponding values, such as US.  The type of
 /// the component AttributeValue is determined by the AttributeType; in
 /// general it will be a DirectoryString.
-#[derive(Clone, Debug, PartialEq)]
+///
+/// <pre>
+/// Name ::= CHOICE { -- only one possibility for now --
+///     rdnSequence  RDNSequence }
+///
+/// RDNSequence ::= SEQUENCE OF RelativeDistinguishedName
+/// </pre>
+#[derive(Clone, Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct X509Name<'a> {
     pub(crate) rdn_seq: Vec<RelativeDistinguishedName<'a>>,
-    pub(crate) raw: &'a [u8],
+
+    #[asn1(parse = "|input| get_span(header, input).map_err(Err::convert)")]
+    pub(crate) range: Range<usize>,
 }
 
 impl fmt::Display for X509Name<'_> {
@@ -345,8 +333,8 @@ impl fmt::Display for X509Name<'_> {
 impl<'a> X509Name<'a> {
     /// Builds a new `X509Name` from the provided elements.
     #[inline]
-    pub const fn new(rdn_seq: Vec<RelativeDistinguishedName<'a>>, raw: &'a [u8]) -> Self {
-        X509Name { rdn_seq, raw }
+    pub const fn new(rdn_seq: Vec<RelativeDistinguishedName<'a>>, range: Range<usize>) -> Self {
+        X509Name { rdn_seq, range }
     }
 
     /// Attempt to format the current name, using the given registry to convert OIDs to strings.
@@ -357,9 +345,9 @@ impl<'a> X509Name<'a> {
         x509name_to_string(&self.rdn_seq, oid_registry)
     }
 
-    // Not using the AsRef trait, as that would not give back the full 'a lifetime
-    pub fn as_raw(&self) -> &'a [u8] {
-        self.raw
+    // Return the parsed data span (start and end offset of bytes)
+    pub fn range(&self) -> Range<usize> {
+        self.range.clone()
     }
 
     /// Return an iterator over the `RelativeDistinguishedName` components of the name
@@ -457,7 +445,10 @@ impl<'a> X509Name<'a> {
 impl<'a> FromIterator<RelativeDistinguishedName<'a>> for X509Name<'a> {
     fn from_iter<T: IntoIterator<Item = RelativeDistinguishedName<'a>>>(iter: T) -> Self {
         let rdn_seq = iter.into_iter().collect();
-        X509Name { rdn_seq, raw: &[] }
+        X509Name {
+            rdn_seq,
+            range: Range { start: 0, end: 0 },
+        }
     }
 }
 
@@ -467,21 +458,21 @@ impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
     }
 }
 
-impl<'a> FromDer<'a, X509Error> for X509Name<'a> {
-    /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der)).parse(i)?;
-            let len = start_i.offset(i);
-            let name = X509Name {
-                rdn_seq,
-                raw: &start_i[..len],
-            };
-            Ok((i, name))
-        })(i)
-    }
-}
+// impl<'a> FromDer<'a, X509Error> for X509Name<'a> {
+//     /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+//         let start_i = i;
+//         parse_der_sequence_defined_g(move |i, _| {
+//             let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der)).parse(i)?;
+//             let len = start_i.offset(i);
+//             let name = X509Name {
+//                 rdn_seq,
+//                 raw: &start_i[..len],
+//             };
+//             Ok((i, name))
+//         })(i)
+//     }
+// }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ReasonCode(pub u8);
@@ -573,12 +564,17 @@ fn x509name_to_string(
     })
 }
 
-pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitString> {
-    BitString::from_der(i).or(Err(Err::Error(X509Error::InvalidSignatureValue)))
+/// helper function to parse BIT STRING with correct error type
+pub(crate) fn parse_signature_value<'a>(
+    input: Input<'a>,
+) -> IResult<Input<'a>, BitString, X509Error> {
+    BitString::parse_der(input).or(Err(Err::Error(X509Error::InvalidSignatureValue)))
 }
 
-pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
-    let (rem, any) = Any::from_ber(i).map_err(|_| X509Error::InvalidSerial)?;
+pub(crate) fn parse_serial<'a>(
+    input: Input<'a>,
+) -> IResult<Input<'a>, (&'a [u8], BigUint), X509Error> {
+    let (rem, any) = Any::parse_der(input).map_err(|_| X509Error::InvalidSerial)?;
     // RFC 5280 4.1.2.2: "The serial number MUST be a positive integer"
     // however, many CAs do not respect this and send integers with MSB set,
     // so we do not use `as_biguint()`
@@ -666,7 +662,7 @@ mod tests {
                     ],
                 },
             ],
-            raw: &[], // incorrect, but enough for testing
+            range: Range { start: 0, end: 0 }, // incorrect, but enough for testing
         };
         assert_eq!(
             name.to_string(),
