@@ -22,7 +22,7 @@ use core::ops::Deref;
 // use der_parser::error::*;
 // use der_parser::num_bigint::BigUint;
 // use der_parser::*;
-use nom::{Err, IResult, Offset, Parser};
+use nom::{Err, IResult, Input as _, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 use time::Duration;
@@ -93,7 +93,7 @@ impl X509Certificate<'_> {
             spki,
             &self.signature_algorithm,
             &self.signature_value,
-            self.tbs_certificate.raw,
+            self.tbs_certificate.raw.as_bytes2(),
         )
     }
 }
@@ -176,8 +176,12 @@ impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
     /// # }
     /// ```
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+        let input = Input::from(i);
         // run parser with default options
-        X509CertificateParser::new().parse(i)
+        match X509CertificateParser::new().parse(input) {
+            Ok((rem, res)) => Ok((rem.as_bytes2(), res)),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -321,7 +325,8 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier>,
     pub subject_uid: Option<UniqueIdentifier>,
     extensions: Vec<X509Extension<'a>>,
-    pub(crate) raw: &'a [u8],
+    /// `raw` is used to verity signature
+    pub(crate) raw: Input<'a>,
     pub(crate) raw_serial: &'a [u8],
 }
 
@@ -575,7 +580,7 @@ fn get_extension_unique<'a, 'b>(
 impl AsRef<[u8]> for TbsCertificate<'_> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
-        self.raw
+        self.raw.as_bytes2()
     }
 }
 
@@ -670,6 +675,7 @@ impl<'a> DerParser<'a> for TbsCertificate<'a> {
         header
             .assert_constructed_input(&input)
             .map_err(|e| Err::Error(e.into()))?;
+        let orig_input = input.clone();
         let (rem, version) = X509Version::parse_der_tagged_0(input)?;
         let (rem, serial) = parse_serial(rem)?;
         let (rem, signature) = AlgorithmIdentifier::parse_der(rem)?;
@@ -679,8 +685,25 @@ impl<'a> DerParser<'a> for TbsCertificate<'a> {
         let (rem, subject_pki) = SubjectPublicKeyInfo::parse_der(rem)?;
         let (rem, issuer_uid) = UniqueIdentifier::parse_der_issuer(rem)?;
         let (rem, subject_uid) = UniqueIdentifier::parse_der_subject(rem)?;
-        let (rem, extensions) = parse_tagged_extensions::<3>(rem)?;
-        todo!()
+        let (rem, extensions) = parse_opt_tagged_extensions::<3>(rem)?;
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
+        let tbs = TbsCertificate {
+            version,
+            serial: serial.1,
+            signature,
+            issuer,
+            validity,
+            subject,
+            subject_pki,
+            issuer_uid,
+            subject_uid,
+            extensions,
+
+            raw,
+            raw_serial: serial.0,
+        };
+        Ok((rem, tbs))
     }
 }
 
@@ -717,23 +740,24 @@ impl<'a> Parser<Input<'a>> for TbsCertificateParser {
     type Error = X509Error;
 
     fn parse(&mut self, input: Input<'a>) -> IResult<Input<'a>, TbsCertificate<'a>, X509Error> {
-        let start_i = input;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der_tagged_0(i)?;
-            let (i, serial) = parse_serial(i)?;
-            let (i, signature) = AlgorithmIdentifier::from_der(i)?;
-            let (i, issuer) = X509Name::from_der(i)?;
-            let (i, validity) = Validity::from_der(i)?;
-            let (i, subject) = X509Name::from_der(i)?;
-            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
-            let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
-            let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
-            let (i, extensions) = if self.deep_parse_extensions {
-                parse_tagged_extensions::<3>(i)?
+        let orig_input = input.clone();
+        let (rem, mut tbs) = Sequence::parse_der_and_then(input, |_, input| {
+            let (rem, version) = X509Version::parse_der_tagged_0(input)?;
+            let (rem, serial) = parse_serial(rem)?;
+            let (rem, signature) = AlgorithmIdentifier::parse_der(rem)?;
+            let (rem, issuer) = X509Name::parse_der(rem)?;
+            let (rem, validity) = Validity::parse_der(rem)?;
+            let (rem, subject) = X509Name::parse_der(rem)?;
+            let (rem, subject_pki) = SubjectPublicKeyInfo::parse_der(rem)?;
+            let (rem, issuer_uid) = UniqueIdentifier::parse_der_issuer(rem)?;
+            let (rem, subject_uid) = UniqueIdentifier::parse_der_subject(rem)?;
+            let (rem, extensions) = if self.deep_parse_extensions {
+                parse_opt_tagged_extensions::<3>(rem)?
             } else {
-                parse_tagged_extensions_envelope_only::<3>(i)?
+                parse_opt_tagged_extensions_envelope_only::<3>(rem)?
             };
-            let len = start_i.offset(i);
+            // do no set `raw` here, it will be updated just after closure return;
+            let raw = Input::default();
             let tbs = TbsCertificate {
                 version,
                 serial: serial.1,
@@ -746,11 +770,16 @@ impl<'a> Parser<Input<'a>> for TbsCertificateParser {
                 subject_uid,
                 extensions,
 
-                raw: &start_i[..len],
+                raw,
                 raw_serial: serial.0,
             };
-            Ok((i, tbs))
-        })(input)
+            Ok((rem, tbs))
+        })?;
+        // update `raw` field to contain full sequence (including header)
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
+        tbs.raw = raw;
+        Ok((rem, tbs))
     }
 
     fn process<OM: nom::OutputMode>(
@@ -898,11 +927,36 @@ mod tests {
     #[test]
     fn extension_duplication() {
         let extensions = vec![
-            X509Extension::new(oid! {1.2}, true, &[], ParsedExtension::Unparsed),
-            X509Extension::new(oid! {1.3}, true, &[], ParsedExtension::Unparsed),
-            X509Extension::new(oid! {1.2}, true, &[], ParsedExtension::Unparsed),
-            X509Extension::new(oid! {1.4}, true, &[], ParsedExtension::Unparsed),
-            X509Extension::new(oid! {1.4}, true, &[], ParsedExtension::Unparsed),
+            X509Extension::new(
+                oid! {1.2},
+                true,
+                Input::default(),
+                ParsedExtension::Unparsed,
+            ),
+            X509Extension::new(
+                oid! {1.3},
+                true,
+                Input::default(),
+                ParsedExtension::Unparsed,
+            ),
+            X509Extension::new(
+                oid! {1.2},
+                true,
+                Input::default(),
+                ParsedExtension::Unparsed,
+            ),
+            X509Extension::new(
+                oid! {1.4},
+                true,
+                Input::default(),
+                ParsedExtension::Unparsed,
+            ),
+            X509Extension::new(
+                oid! {1.4},
+                true,
+                Input::default(),
+                ParsedExtension::Unparsed,
+            ),
         ];
 
         let r2 = get_extension_unique(&extensions, &oid! {1.2});

@@ -138,7 +138,7 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
             // specific extension checks
             // SAN
             if let ParsedExtension::SubjectAlternativeName(san) = ext.parsed_extension() {
-                for name in &san.general_names {
+                for name in san.general_names() {
                     match name {
                         GeneralName::DNSName(ref s) | GeneralName::RFC822Name(ref s) => {
                             // should be an ia5string

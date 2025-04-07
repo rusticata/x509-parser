@@ -1,6 +1,6 @@
 use ::time::macros::datetime;
 use ::time::OffsetDateTime;
-use der_parser::oid;
+use asn1_rs::oid;
 use nom::Parser;
 use oid_registry::*;
 use std::collections::HashMap;

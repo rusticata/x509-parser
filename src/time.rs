@@ -1,6 +1,6 @@
 use asn1_rs::nom::Err;
 use asn1_rs::{
-    BerError, DerParser, DynTagged, Error, GeneralizedTime, Header, InnerError, Input, Tag, UtcTime,
+    BerError, DerParser, DynTagged, GeneralizedTime, Header, InnerError, Input, Tag, UtcTime,
 };
 use nom::IResult;
 use std::fmt;
@@ -8,7 +8,7 @@ use std::ops::{Add, Sub};
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
 
-use crate::error::{X509Error, X509Result};
+use crate::error::X509Error;
 
 /// An ASN.1 timestamp.
 ///
@@ -24,19 +24,6 @@ pub struct ASN1Time {
 }
 
 impl ASN1Time {
-    pub(crate) fn from_der_opt(i: &[u8]) -> X509Result<Option<Self>> {
-        if i.is_empty() {
-            return Ok((i, None));
-        }
-        match parse_choice_of_time(i) {
-            Ok((rem, time)) => Ok((rem, Some(time))),
-            Err(Err::Error(Error::InvalidTag)) | Err(Err::Error(Error::UnexpectedTag { .. })) => {
-                Ok((i, None))
-            }
-            Err(_) => Err(Err::Error(X509Error::InvalidDate)),
-        }
-    }
-
     #[inline]
     pub const fn new(dt: OffsetDateTime) -> Self {
         let generalized = dt.year() > 2049;
