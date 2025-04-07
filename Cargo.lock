@@ -5,7 +5,7 @@ version = 3
 [[package]]
 name = "asn1-rs"
 version = "0.8.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#c58b7c2c077171c98d15b91645d28772505c4f7e"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#0b26039f1333819100b000aa61270ff6024cd603"
 dependencies = [
  "asn1-rs-derive",
  "asn1-rs-impl",
@@ -23,7 +23,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-derive"
 version = "0.7.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#c58b7c2c077171c98d15b91645d28772505c4f7e"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#0b26039f1333819100b000aa61270ff6024cd603"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-impl"
 version = "0.3.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#c58b7c2c077171c98d15b91645d28772505c4f7e"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#0b26039f1333819100b000aa61270ff6024cd603"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -88,6 +88,12 @@ checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
 dependencies = [
  "powerfmt",
 ]
+
+[[package]]
+name = "diff"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "displaydoc"
@@ -203,6 +209,16 @@ name = "powerfmt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
+
+[[package]]
+name = "pretty_assertions"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ae130e2f271fbc2ac3a40fb1d07180839cdbbe443c7a27e1e3c13c5cac0116d"
+dependencies = [
+ "diff",
+ "yansi",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -466,8 +482,15 @@ dependencies = [
  "lazy_static",
  "nom",
  "oid-registry",
+ "pretty_assertions",
  "ring",
  "rusticata-macros",
  "thiserror",
  "time",
 ]
+
+[[package]]
+name = "yansi"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"

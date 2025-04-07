@@ -1,4 +1,4 @@
-use der_parser::oid::Oid;
+use asn1_rs::Oid;
 use nom::HexDisplay;
 use std::cmp::min;
 use std::env;
@@ -27,8 +27,8 @@ fn print_authority_key_identifier(aki: &AuthorityKeyIdentifier, level: usize) {
     if aki.authority_cert_issuer.is_some() {
         unimplemented!();
     }
-    if let Some(serial) = aki.authority_cert_serial {
-        let s = format_serial(serial);
+    if let Some(serial) = &aki.authority_cert_serial {
+        let s = format_serial(serial.as_raw_slice().unwrap());
         println!("{:indent$}serial: {}", "", &s, indent = level);
     }
 }

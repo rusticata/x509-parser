@@ -113,7 +113,7 @@ impl<'i> DerParser<'i> for ReasonFlags {
             return Err(Err::Error(X509Error::InvalidAttributes));
         }
         bitslice.reverse();
-        let flags = bitslice.load::<u16>();
+        let flags = bitslice.load_be::<u16>();
         Ok((rem, Self { flags }))
     }
 }

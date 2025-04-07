@@ -111,7 +111,13 @@ impl<'a> DerParser<'a> for GeneralName<'a> {
                 (rem, GeneralName::X400Address(any))
             }
             4 => {
-                let (rem, name) = X509Name::from_der_content(header, input)?;
+                // NOTE: using `parse_der` works like an EXPLICIT tag, which is not expected here. However, our
+                // test files (generated using openssl) shows the sequence: A4 4D 30 4B 31 0B 30 09
+                // A4 .. 30 means the sequence tag is visible
+                // But we have an IMPLICIT [4] Name, name is a CHOICE { RDNSequence }
+                // and RDNSequence is a SEQUENCE of SETs, so we should see A4 .. 31 (the sets) and
+                // not 30 .. (3rd and 4th bytes)
+                let (rem, name) = X509Name::parse_der(input)?;
                 (rem, GeneralName::DirectoryName(name))
             }
             5 => {
@@ -141,71 +147,6 @@ impl<'a> DerParser<'a> for GeneralName<'a> {
         Ok((rem, gn))
     }
 }
-
-// impl<'a> TryFrom<Any<'a>> for GeneralName<'a> {
-//     type Error = Error;
-
-//     fn try_from(any: Any<'a>) -> Result<Self, Self::Error> {
-//         any.class().assert_eq(Class::ContextSpecific)?;
-
-//         let name = match parse_generalname_entry(any.clone()) {
-//             Ok(name) => name,
-//             Err(_) => GeneralName::Invalid(any.tag(), any.data.as_bytes2()),
-//         };
-//         Ok(name)
-//     }
-// }
-
-// fn parse_generalname_entry(
-//     any: Any<'_>,
-// ) -> Result<GeneralName<'_>, <GeneralName<'_> as TryFrom<Any<'_>>>::Error> {
-//     Ok(match any.tag().0 {
-//         0 => {
-//             // otherName SEQUENCE { OID, [0] explicit any defined by oid }
-//             let (rest, oid) = Oid::from_der(any.data.as_bytes2())?;
-//             GeneralName::OtherName(oid, rest)
-//         }
-//         1 => GeneralName::RFC822Name(ia5str(any)?),
-//         2 => GeneralName::DNSName(ia5str(any)?),
-//         3 => {
-//             // XXX Not yet implemented
-//             GeneralName::X400Address(any)
-//         }
-//         4 => {
-//             // directoryName, name
-//             let (_, name) = all_consuming(X509Name::from_der).parse(any.data.as_bytes2())
-//                 .or(Err(Error::Unsupported)) // XXX remove me
-//                 ?;
-//             GeneralName::DirectoryName(name)
-//         }
-//         5 => {
-//             // XXX Not yet implemented
-//             GeneralName::EDIPartyName(any)
-//         }
-//         6 => GeneralName::URI(ia5str(any)?),
-//         7 => {
-//             // IPAddress, OctetString
-//             GeneralName::IPAddress(any.data.as_bytes2())
-//         }
-//         8 => {
-//             let oid = Oid::new(any.data.as_bytes2().into());
-//             GeneralName::RegisteredID(oid)
-//         }
-//         _ => return Err(Error::unexpected_tag(None, any.tag())),
-//     })
-// }
-
-// impl CheckDerConstraints for GeneralName<'_> {
-//     fn check_constraints(any: &Any) -> asn1_rs::Result<()> {
-//         Sequence::check_constraints(any)
-//     }
-// }
-
-// impl<'a> FromDer<'a, X509Error> for GeneralName<'a> {
-//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-//         parse_generalname(i).map_err(Err::convert)
-//     }
-// }
 
 impl fmt::Display for GeneralName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -239,9 +180,3 @@ fn ia5str_relaxed(input: Input) -> Result<(Input, &str), Err<X509Error>> {
         .map_err(|_| Err::Failure(X509Error::DerParser(InnerError::StringInvalidCharset)))?;
     Ok((rem, s))
 }
-
-// pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName, X509Error> {
-//     let (rest, any) = Any::from_der(i)?;
-//     let (_, gn) = GeneralName::try_from(any)?;
-//     Ok((rest, gn))
-// }
