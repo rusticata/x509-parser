@@ -95,7 +95,7 @@ impl<'a> Validator<'a> for X509ExtensionsValidator {
                 ParsedExtension::SubjectAlternativeName(san) => {
                     // SHOULD be non-critical
                     test_critical!(SHOULD NOT ext, l, "SubjectAltName");
-                    for name in &san.general_names {
+                    for name in san.general_names() {
                         match name {
                             GeneralName::DNSName(ref s) | GeneralName::RFC822Name(ref s) => {
                                 // should be an ia5string

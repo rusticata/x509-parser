@@ -10,9 +10,8 @@ use crate::public_key::*;
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Alias, Any, AnyIterator, BerError, BitString, BmpString, DerMode, DerParser,
-    FromDer, Header, Input, Integer, OptTaggedExplicit, OptTaggedParser, Sequence, Tag,
-    Tagged,
+    Alias, Any, AnyIterator, BerError, BitString, BmpString, DerMode, DerParser, Enumerated,
+    FromDer, Header, Input, Integer, OptTaggedExplicit, OptTaggedParser, Sequence, Tag, Tagged,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -474,11 +473,10 @@ impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
 //     }
 // }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct ReasonCode(pub u8);
-
-newtype_enum! {
-impl display ReasonCode {
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Enumerated)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
+pub enum ReasonCode {
     Unspecified = 0,
     KeyCompromise = 1,
     CACompromise = 2,
@@ -491,7 +489,22 @@ impl display ReasonCode {
     PrivilegeWithdrawn = 9,
     AACompromise = 10,
 }
-}
+
+// newtype_enum! {
+// impl display ReasonCode {
+//     Unspecified = 0,
+//     KeyCompromise = 1,
+//     CACompromise = 2,
+//     AffiliationChanged = 3,
+//     Superseded = 4,
+//     CessationOfOperation = 5,
+//     CertificateHold = 6,
+//     // value 7 is not used
+//     RemoveFromCRL = 8,
+//     PrivilegeWithdrawn = 9,
+//     AACompromise = 10,
+// }
+// }
 
 impl Default for ReasonCode {
     fn default() -> Self {

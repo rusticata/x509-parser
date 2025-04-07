@@ -2,7 +2,7 @@ use asn1_rs::Alias;
 
 use crate::error::X509Error;
 
-use super::GeneralNames;
+use super::{GeneralName, GeneralNames};
 
 /// Subject Alternative Name
 ///
@@ -17,3 +17,9 @@ use super::GeneralNames;
 #[asn1(parse = "DER", encode = "")]
 #[error(X509Error)]
 pub struct SubjectAlternativeName<'a>(pub GeneralNames<'a>);
+
+impl<'a> SubjectAlternativeName<'a> {
+    pub fn general_names(&self) -> impl Iterator<Item = &GeneralName> {
+        self.0.iter()
+    }
+}

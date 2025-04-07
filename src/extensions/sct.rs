@@ -4,13 +4,14 @@
 
 use std::convert::TryInto;
 
-use asn1_rs::{Error, FromDer};
-// use der_parser::error::BerError;
+use asn1_rs::{DerParser, Error, Input};
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, map_parser};
 use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u64, be_u8};
-use nom::{IResult, Parser as _};
+use nom::{Err, IResult, Parser as _};
+
+use crate::error::X509Error;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignedCertificateTimestamp<'a> {
@@ -51,17 +52,18 @@ pub struct DigitallySigned<'a> {
 
 /// Parses a list of Signed Certificate Timestamp entries
 pub fn parse_ct_signed_certificate_timestamp_list(
-    i: &[u8],
-) -> IResult<&[u8], Vec<SignedCertificateTimestamp>, Error> {
-    // use nom::HexDisplay;
-    // eprintln!("{}", i.to_hex(16));
-    let (rem, b) = <&[u8]>::from_der(i)?;
+    input: Input,
+) -> IResult<Input, Vec<SignedCertificateTimestamp>, X509Error> {
+    let (rem, b) = <&[u8]>::parse_der(input).map_err(Err::convert)?;
+
     let (b, sct_len) = be_u16(b)?;
     let (_, sct_list) = map_parser(
         take(sct_len as usize),
         many1(complete(parse_ct_signed_certificate_timestamp)),
     )
-    .parse(b)?;
+    .parse(b)
+    .map_err(Err::convert)?;
+
     Ok((rem, sct_list))
 }
 
