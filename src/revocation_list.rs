@@ -1,11 +1,8 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
-use crate::parser_utils::parse_object_with_span;
 use crate::time::ASN1Time;
 use crate::utils::format_serial;
-use crate::x509::{
-    parse_serial, parse_signature_value, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
-};
+use crate::x509::{parse_serial, AlgorithmIdentifier, ReasonCode, X509Name, X509Version};
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
@@ -13,9 +10,7 @@ use crate::verify::verify_signature;
 use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{BitString, DerParser, FromDer, Header, Input, Sequence, Tag, Tagged};
-use nom::combinator::{all_consuming, complete, map, opt};
-use nom::multi::many0;
-use nom::{Err, IResult, Input as _, Offset, Parser as _};
+use nom::{Err, IResult, Input as _};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -46,7 +41,16 @@ use std::collections::HashMap;
 /// }
 /// # }
 /// ```
-#[derive(Clone, Debug)]
+///
+/// <pre>
+/// CertificateList  ::=  SEQUENCE  {
+///      tbsCertList          TBSCertList,
+///      signatureAlgorithm   AlgorithmIdentifier,
+///      signatureValue       BIT STRING  }
+/// </pre>
+#[derive(Clone, Debug, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
@@ -118,30 +122,19 @@ impl<'a> CertificateRevocationList<'a> {
             public_key,
             &self.signature_algorithm,
             &self.signature_value,
-            self.tbs_cert_list.raw,
+            self.tbs_cert_list.raw.as_bytes2(),
         )
     }
 }
 
-/// <pre>
-/// CertificateList  ::=  SEQUENCE  {
-///      tbsCertList          TBSCertList,
-///      signatureAlgorithm   AlgorithmIdentifier,
-///      signatureValue       BIT STRING  }
-/// </pre>
 impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
-            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = parse_signature_value(i)?;
-            let crl = CertificateRevocationList {
-                tbs_cert_list,
-                signature_algorithm,
-                signature_value,
-            };
-            Ok((i, crl))
-        })(i)
+        let input = Input::from(i);
+        // run parser with default options
+        match Self::parse_der(input) {
+            Ok((rem, res)) => Ok((rem.as_bytes2(), res)),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -168,9 +161,7 @@ impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
 ///                                      -- if present, version MUST be v2
 ///                             }
 /// </pre>
-#[derive(Clone, Debug, PartialEq, Sequence)]
-#[asn1(parse = "DER", encode = "")]
-#[error(X509Error)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TbsCertList<'a> {
     pub version: Option<X509Version>,
     pub signature: AlgorithmIdentifier<'a>,
@@ -179,7 +170,9 @@ pub struct TbsCertList<'a> {
     pub next_update: Option<ASN1Time>,
     pub revoked_certificates: Vec<RevokedCertificate<'a>>,
     extensions: Vec<X509Extension<'a>>,
-    raw: &'a [u8],
+    /// `raw` is used for signature verification
+    raw: Input<'a>,
+    // raw: &'a [u8],
 }
 
 impl TbsCertList<'_> {
@@ -218,11 +211,63 @@ impl TbsCertList<'_> {
     }
 }
 
-// impl AsRef<[u8]> for TbsCertList<'_> {
-//     fn as_ref(&self) -> &[u8] {
-//         self.raw
-//     }
-// }
+impl AsRef<[u8]> for TbsCertList<'_> {
+    fn as_ref(&self) -> &[u8] {
+        self.raw.as_bytes2()
+    }
+}
+
+impl Tagged for TbsCertList<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'i> DerParser<'i> for TbsCertList<'i> {
+    type Error = X509Error;
+
+    fn parse_der(input: Input<'i>) -> IResult<Input<'i>, Self, Self::Error> {
+        let orig_input = input.clone();
+
+        let (rem, mut tbs) = Sequence::parse_der_and_then(input, |header, input| {
+            Self::from_der_content(&header, input)
+        })?;
+
+        // update `raw` field to contain full sequence (including header)
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
+        tbs.raw = raw;
+        Ok((rem, tbs))
+    }
+
+    fn from_der_content(
+        header: &'_ Header<'i>,
+        input: Input<'i>,
+    ) -> IResult<Input<'i>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+
+        let raw = input.clone();
+        let (rem, version) = X509Version::parse_der_optional(input)?;
+        let (rem, signature) = AlgorithmIdentifier::parse_der(rem)?;
+        let (rem, issuer) = X509Name::parse_der(rem)?;
+        let (rem, this_update) = ASN1Time::parse_der(rem)?;
+        let (rem, next_update) = ASN1Time::parse_der_optional(rem)?;
+        let (rem, revoked_certificates) = <Vec<RevokedCertificate>>::parse_der_optional(rem)?;
+        let (rem, extensions) = parse_opt_tagged_extensions::<0>(rem)?;
+        let tbs = TbsCertList {
+            version,
+            signature,
+            issuer,
+            this_update,
+            next_update,
+            revoked_certificates: revoked_certificates.unwrap_or_default(),
+            extensions,
+            raw,
+        };
+        Ok((rem, tbs))
+    }
+}
 
 // impl<'a> FromDer<'a, X509Error> for TbsCertList<'a> {
 //     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
@@ -253,6 +298,14 @@ impl TbsCertList<'_> {
 //     }
 // }
 
+/// <pre>
+/// revokedCertificates     SEQUENCE OF SEQUENCE  {
+///     userCertificate         CertificateSerialNumber,
+///     revocationDate          Time,
+///     crlEntryExtensions      Extensions OPTIONAL
+///                                   -- if present, MUST be v2
+///                          }  OPTIONAL,
+/// </pre>
 #[derive(Clone, Debug, PartialEq)]
 pub struct RevokedCertificate<'a> {
     /// The Serial number of the revoked certificate
@@ -336,31 +389,60 @@ impl RevokedCertificate<'_> {
     }
 }
 
-// revokedCertificates     SEQUENCE OF SEQUENCE  {
-//     userCertificate         CertificateSerialNumber,
-//     revocationDate          Time,
-//     crlEntryExtensions      Extensions OPTIONAL
-//                                   -- if present, MUST be v2
-//                          }  OPTIONAL,
-impl<'a> FromDer<'a, X509Error> for RevokedCertificate<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
-            let (i, revocation_date) = ASN1Time::from_der(i)?;
-            let (i, extensions) = opt(complete(parse_extension_sequence)).parse(i)?;
-            let revoked = RevokedCertificate {
-                user_certificate,
-                revocation_date,
-                extensions: extensions.unwrap_or_default(),
-                raw_serial,
-            };
-            Ok((i, revoked))
-        })(i)
+impl Tagged for RevokedCertificate<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'i> DerParser<'i> for RevokedCertificate<'i> {
+    type Error = X509Error;
+
+    fn from_der_content(
+        header: &'_ Header<'i>,
+        input: Input<'i>,
+    ) -> IResult<Input<'i>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+
+        let (rem, (raw_serial, user_certificate)) = parse_serial(input)?;
+        let (rem, revocation_date) = ASN1Time::parse_der(rem)?;
+        let (rem, extensions) = <Vec<X509Extension>>::parse_der_optional(rem)?;
+        let revoked = RevokedCertificate {
+            user_certificate,
+            revocation_date,
+            extensions: extensions.unwrap_or_default(),
+            raw_serial,
+        };
+        Ok((rem, revoked))
     }
 }
 
-fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
-    parse_der_sequence_defined_g(|a, _| {
-        all_consuming(many0(complete(RevokedCertificate::from_der))).parse(a)
-    })(i)
-}
+// // revokedCertificates     SEQUENCE OF SEQUENCE  {
+// //     userCertificate         CertificateSerialNumber,
+// //     revocationDate          Time,
+// //     crlEntryExtensions      Extensions OPTIONAL
+// //                                   -- if present, MUST be v2
+// //                          }  OPTIONAL,
+// impl<'a> FromDer<'a, X509Error> for RevokedCertificate<'a> {
+//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
+//         parse_der_sequence_defined_g(|i, _| {
+//             let (i, (raw_serial, user_certificate)) = parse_serial(i)?;
+//             let (i, revocation_date) = ASN1Time::from_der(i)?;
+//             let (i, extensions) = opt(complete(parse_extension_sequence)).parse(i)?;
+//             let revoked = RevokedCertificate {
+//                 user_certificate,
+//                 revocation_date,
+//                 extensions: extensions.unwrap_or_default(),
+//                 raw_serial,
+//             };
+//             Ok((i, revoked))
+//         })(i)
+//     }
+// }
+
+// fn parse_revoked_certificates(i: &[u8]) -> X509Result<Vec<RevokedCertificate>> {
+//     parse_der_sequence_defined_g(|a, _| {
+//         all_consuming(many0(complete(RevokedCertificate::from_der))).parse(a)
+//     })(i)
+// }

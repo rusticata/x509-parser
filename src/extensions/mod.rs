@@ -629,12 +629,12 @@ pub(crate) fn parse_extension_sequence<'i>(
     <Vec<X509Extension>>::parse_der(i)
 }
 
-/// Parse a tagged sequence of extensions (with extensions content parsed)
+/// Parse a tagged (optional) sequence of extensions (with extensions content parsed)
 ///
 /// <pre>
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 /// </pre>
-pub(crate) fn parse_tagged_extensions<'i, const TAG: u32>(
+pub(crate) fn parse_opt_tagged_extensions<'i, const TAG: u32>(
     input: Input<'i>,
 ) -> IResult<Input<'i>, Vec<X509Extension<'i>>, X509Error> {
     if input.is_empty() {
@@ -653,12 +653,12 @@ pub(crate) fn parse_tagged_extensions<'i, const TAG: u32>(
     Ok((rem, seq))
 }
 
-/// Parse a tagged sequence of extensions (not going into extensions content)
+/// Parse a tagged sequence (optional) of extensions (not going into extensions content)
 ///
 /// <pre>
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 /// </pre>
-pub(crate) fn parse_tagged_extensions_envelope_only<'i, const TAG: u32>(
+pub(crate) fn parse_opt_tagged_extensions_envelope_only<'i, const TAG: u32>(
     input: Input<'i>,
 ) -> IResult<Input<'i>, Vec<X509Extension<'i>>, X509Error> {
     if input.is_empty() {

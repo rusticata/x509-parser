@@ -37,6 +37,7 @@ use std::ops::Range;
 /// </pre>
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Alias)]
 #[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct X509Version(pub u32);
 
 impl X509Version {

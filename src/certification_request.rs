@@ -7,17 +7,28 @@ use crate::x509::{
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
-use asn1_rs::{BitString, FromDer, Oid};
-// use der_parser::der::*;
-// use der_parser::*;
-use nom::Offset;
+use asn1_rs::{
+    BitString, DerParser, FromDer, Header, Input, Oid, OptTaggedExplicit, Sequence, Tag, Tagged,
+};
+use nom::{Err, IResult, Input as _};
 use std::collections::HashMap;
 
 /// Certification Signing Request (CSR)
-#[derive(Debug, PartialEq)]
+///
+/// <pre>
+/// CertificationRequest ::= SEQUENCE {
+///     certificationRequestInfo CertificationRequestInfo,
+///     signatureAlgorithm AlgorithmIdentifier{{ SignatureAlgorithms }},
+///     signature          BIT STRING
+/// }
+/// </pre>
+#[derive(Debug, PartialEq, Sequence)]
+#[asn1(parse = "DER", encode = "")]
+#[error(X509Error)]
 pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
+    #[asn1(parse = "parse_signature_value")]
     pub signature_value: BitString,
 }
 
@@ -45,7 +56,7 @@ impl X509CertificationRequest<'_> {
             spki,
             &self.signature_algorithm,
             &self.signature_value,
-            self.certification_request_info.raw,
+            self.certification_request_info.raw.as_bytes2(),
         )
     }
 }
@@ -59,17 +70,12 @@ impl X509CertificationRequest<'_> {
 /// </pre>
 impl<'a> FromDer<'a, X509Error> for X509CertificationRequest<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_sequence_defined_g(|i, _| {
-            let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
-            let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
-            let (i, signature_value) = parse_signature_value(i)?;
-            let cert = X509CertificationRequest {
-                certification_request_info,
-                signature_algorithm,
-                signature_value,
-            };
-            Ok((i, cert))
-        })(i)
+        let input = Input::from(i);
+        // run parser with default options
+        match Self::parse_der(input) {
+            Ok((rem, res)) => Ok((rem.as_bytes2(), res)),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -96,7 +102,8 @@ pub struct X509CertificationRequestInfo<'a> {
     pub subject: X509Name<'a>,
     pub subject_pki: SubjectPublicKeyInfo<'a>,
     attributes: Vec<X509CriAttribute<'a>>,
-    pub raw: &'a [u8],
+    /// `raw` is used for signature verification
+    raw: Input<'a>,
 }
 
 impl X509CertificationRequestInfo<'_> {
@@ -133,33 +140,58 @@ impl X509CertificationRequestInfo<'_> {
                 Ok(m)
             })
     }
+
+    /// Return a pointer to the raw data
+    pub fn raw(&self) -> &[u8] {
+        self.raw.as_bytes2()
+    }
 }
 
-/// <pre>
-/// CertificationRequestInfo ::= SEQUENCE {
-///      version       INTEGER { v1(0) } (v1,...),
-///      subject       Name,
-///      subjectPKInfo SubjectPublicKeyInfo{{ PKInfoAlgorithms }},
-///      attributes    [0] Attributes{{ CRIAttributes }}
-/// }
-/// </pre>
-impl<'a> FromDer<'a, X509Error> for X509CertificationRequestInfo<'a> {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        let start_i = i;
-        parse_der_sequence_defined_g(move |i, _| {
-            let (i, version) = X509Version::from_der(i)?;
-            let (i, subject) = X509Name::from_der(i)?;
-            let (i, subject_pki) = SubjectPublicKeyInfo::from_der(i)?;
-            let (i, attributes) = parse_cri_attributes(i)?;
-            let len = start_i.offset(i);
-            let tbs = X509CertificationRequestInfo {
-                version,
-                subject,
-                subject_pki,
-                attributes,
-                raw: &start_i[..len],
-            };
-            Ok((i, tbs))
-        })(i)
+impl Tagged for X509CertificationRequestInfo<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'i> DerParser<'i> for X509CertificationRequestInfo<'i> {
+    type Error = X509Error;
+
+    fn parse_der(input: Input<'i>) -> IResult<Input<'i>, Self, Self::Error> {
+        let orig_input = input.clone();
+
+        let (rem, mut tbs) = Sequence::parse_der_and_then(input, |header, input| {
+            Self::from_der_content(&header, input)
+        })?;
+
+        // update `raw` field to contain full sequence (including header)
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
+        tbs.raw = raw;
+        Ok((rem, tbs))
+    }
+
+    fn from_der_content(
+        header: &'_ Header<'i>,
+        input: Input<'i>,
+    ) -> IResult<Input<'i>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+
+        let raw = input.clone();
+        let (rem, version) = X509Version::parse_der(input)?;
+        let (rem, subject) = X509Name::parse_der(rem)?;
+        let (rem, subject_pki) = SubjectPublicKeyInfo::parse_der(rem)?;
+        let (rem, opt_attributes) =
+            <OptTaggedExplicit<Vec<X509CriAttribute>, X509Error, 0>>::parse_der(rem)?;
+        let attributes = opt_attributes.map(|o| o.into_inner()).unwrap_or_default();
+
+        let tbs = X509CertificationRequestInfo {
+            version,
+            subject,
+            subject_pki,
+            attributes,
+            raw,
+        };
+        Ok((rem, tbs))
     }
 }

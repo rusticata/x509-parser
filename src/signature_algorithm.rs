@@ -88,7 +88,6 @@ fn test_ecdsa_oid(oid: &Oid) -> bool {
 //     trailerField       [3] INTEGER DEFAULT 1  }
 #[derive(Debug, PartialEq, Sequence)]
 #[asn1(parse = "DER", encode = "")]
-#[debug_derive]
 #[error(X509Error)]
 pub struct RsaSsaPssParams<'a> {
     #[tag_explicit(0)]
@@ -222,7 +221,6 @@ impl<'a, 'b> MaskGenAlgorithm<'a, 'b> {
 //  nullOctetString  OCTET STRING (SIZE (0))  ::=  { ''H }
 #[derive(Debug, PartialEq, Sequence)]
 #[asn1(parse = "DER", encode = "")]
-#[debug_derive]
 #[error(X509Error)]
 pub struct RsaAesOaepParams<'a> {
     #[tag_explicit(0)]

@@ -15,4 +15,4 @@ pub use crate::validate::*;
 pub use crate::x509::*;
 pub use crate::*;
 
-pub use asn1_rs::FromDer;
+pub use asn1_rs::{DerParser, FromDer};

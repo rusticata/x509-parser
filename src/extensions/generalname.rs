@@ -51,13 +51,13 @@ pub enum GeneralName<'a> {
 
 impl DynTagged for GeneralName<'_> {
     fn constructed(&self) -> bool {
-        match self {
+        matches!(
+            self,
             GeneralName::OtherName(_, _)
-            | GeneralName::X400Address(_)
-            | GeneralName::DirectoryName(_)
-            | GeneralName::EDIPartyName(_) => true,
-            _ => false,
-        }
+                | GeneralName::X400Address(_)
+                | GeneralName::DirectoryName(_)
+                | GeneralName::EDIPartyName(_)
+        )
     }
 
     fn tag(&self) -> Tag {
