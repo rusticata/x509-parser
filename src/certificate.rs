@@ -640,6 +640,7 @@ impl Tagged for TbsCertificate<'_> {
 /// Parse a DER-encoded TbsCertificate object
 ///
 /// <pre>
+/// -- EXPLICIT tags
 /// TBSCertificate  ::=  SEQUENCE  {
 ///      version         [0]  Version DEFAULT v1,
 ///      serialNumber         CertificateSerialNumber,
@@ -678,7 +679,7 @@ impl<'a> DerParser<'a> for TbsCertificate<'a> {
         let (rem, subject_pki) = SubjectPublicKeyInfo::parse_der(rem)?;
         let (rem, issuer_uid) = UniqueIdentifier::parse_der_issuer(rem)?;
         let (rem, subject_uid) = UniqueIdentifier::parse_der_subject(rem)?;
-        let (rem, extensions) = parse_extensions(rem, Tag(3))?;
+        let (rem, extensions) = parse_tagged_extensions::<3>(rem)?;
         todo!()
     }
 }
@@ -728,9 +729,9 @@ impl<'a> Parser<Input<'a>> for TbsCertificateParser {
             let (i, issuer_uid) = UniqueIdentifier::from_der_issuer(i)?;
             let (i, subject_uid) = UniqueIdentifier::from_der_subject(i)?;
             let (i, extensions) = if self.deep_parse_extensions {
-                parse_extensions(i, Tag(3))?
+                parse_tagged_extensions::<3>(i)?
             } else {
-                parse_extensions_envelope(i, Tag(3))?
+                parse_tagged_extensions_envelope_only::<3>(i)?
             };
             let len = start_i.offset(i);
             let tbs = TbsCertificate {

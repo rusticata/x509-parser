@@ -2,6 +2,7 @@ use asn1_rs::num_bigint::BigUint;
 use asn1_rs::BitString;
 use oid_registry::*;
 
+use crate::error::X509Error;
 use crate::extensions::*;
 use crate::revocation_list::*;
 use crate::time::ASN1Time;
@@ -138,7 +139,7 @@ pub trait CertificateRevocationListVisitor {
     fn visit_extension_parse_error(
         &mut self,
         _extension: &X509Extension,
-        _error: &asn1_rs::Err<asn1_rs::Error>,
+        _error: &asn1_rs::Err<X509Error>,
     ) {
     }
 }

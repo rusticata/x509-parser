@@ -1,5 +1,5 @@
-use crate::error::{X509Error, X509Result};
-use asn1_rs::{bitvec::field::BitField, oid, BitString, Error, FromDer, Oid};
+use crate::error::X509Error;
+use asn1_rs::{bitvec::field::BitField, BitString, DerParser, Header, Input, Tag, Tagged};
 use nom::{Err, IResult};
 use std::fmt;
 
@@ -69,19 +69,24 @@ impl fmt::Display for KeyUsage {
     }
 }
 
-impl<'a> FromDer<'a, X509Error> for KeyUsage {
-    fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_keyusage(i).map_err(Err::convert)
-    }
+impl Tagged for KeyUsage {
+    const TAG: Tag = Tag::BitString;
 }
 
-pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, Error> {
-    let (rest, mut obj) = BitString::from_der(i)?;
-    let bits = obj.as_mut_bitslice();
-    if bits.len() > 16 {
-        return Err(Err::Error(Error::BerValueError));
+impl<'i> DerParser<'i> for KeyUsage {
+    type Error = X509Error;
+
+    fn from_der_content(
+        header: &'_ Header<'i>,
+        input: Input<'i>,
+    ) -> IResult<Input<'i>, Self, Self::Error> {
+        let (rem, mut obj) = BitString::from_der_content(header, input).map_err(Err::convert)?;
+        let bitslice = obj.as_mut_bitslice();
+        if bitslice.len() > 16 {
+            return Err(Err::Error(X509Error::InvalidAttributes));
+        }
+        bitslice.reverse();
+        let flags = bitslice.load::<u16>();
+        Ok((rem, Self { flags }))
     }
-    bits.reverse();
-    let flags = bits.load::<u16>();
-    Ok((rest, KeyUsage { flags }))
 }

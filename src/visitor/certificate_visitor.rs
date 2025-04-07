@@ -2,6 +2,7 @@ use asn1_rs::BitString;
 use oid_registry::*;
 
 use crate::certificate::*;
+use crate::error::X509Error;
 use crate::extensions::*;
 use crate::x509::*;
 
@@ -176,7 +177,7 @@ pub trait X509CertificateVisitor {
     fn visit_extension_parse_error(
         &mut self,
         _extension: &X509Extension,
-        _error: &asn1_rs::Err<asn1_rs::Error>,
+        _error: &asn1_rs::Err<X509Error>,
     ) {
     }
 }

@@ -1,12 +1,8 @@
-use core::fmt;
-use std::fmt::LowerHex;
-
-use asn1_rs::{Alias, Integer, Sequence};
+use asn1_rs::{Integer, Sequence};
 
 use crate::error::X509Error;
-use crate::utils::format_serial;
 
-use super::GeneralName;
+use super::{GeneralName, KeyIdentifier};
 
 /// <pre>
 /// -- IMPLICIT tags
@@ -34,19 +30,4 @@ pub struct AuthorityKeyIdentifier<'a> {
     #[tag_implicit(2)]
     #[optional]
     pub authority_cert_serial: Option<Integer<'a>>,
-}
-
-// <pre>
-// KeyIdentifier ::= OCTET STRING
-// </pre>
-#[derive(Clone, Debug, PartialEq, Eq, Alias)]
-#[asn1(parse = "DER", encode = "")]
-#[error(X509Error)]
-pub struct KeyIdentifier<'a>(pub &'a [u8]);
-
-impl LowerHex for KeyIdentifier<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = format_serial(self.0);
-        f.write_str(&s)
-    }
 }

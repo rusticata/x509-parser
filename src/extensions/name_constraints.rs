@@ -39,10 +39,10 @@ pub struct GeneralSubtree<'a> {
     pub base: GeneralName<'a>,
     #[tag_explicit(0)]
     #[default(0)]
-    minimum: u32,
+    pub minimum: u32,
     #[tag_explicit(1)]
     #[optional]
-    maximum: Option<u32>,
+    pub maximum: Option<u32>,
 }
 
 #[cfg(test)]
