@@ -129,20 +129,39 @@ impl<'a> DerParser<'a> for ASN1Time {
     type Error = X509Error;
 
     fn from_der_content(
-        _: &'_ Header<'a>,
+        header: &'_ Header<'a>,
         input: Input<'a>,
     ) -> IResult<Input<'a>, Self, Self::Error> {
-        if let Ok((rem, t)) = UtcTime::parse_der(input.clone()) {
-            let dt = t
-                .utc_adjusted_datetime()
-                .map_err(|e| Err::Error(e.into()))?;
-            Ok((rem, ASN1Time::new_utc(dt)))
-        } else if let Ok((rem, t)) = GeneralizedTime::parse_der(input.clone()) {
-            let dt = t.utc_datetime().map_err(|e| Err::Error(e.into()))?;
-            Ok((rem, ASN1Time::new_utc(dt)))
-        } else {
-            parse_malformed_date(input).map_err(Err::convert)
+        match header.tag() {
+            Tag::GeneralizedTime => {
+                let (rem, t) = GeneralizedTime::from_der_content(header, input)
+                    .map_err(|_| X509Error::InvalidDate)?;
+                let dt = t.utc_datetime().map_err(|e| Err::Error(e.into()))?;
+                Ok((rem, ASN1Time::new_utc(dt)))
+            }
+            Tag::UtcTime => {
+                if let Ok((rem, t)) = UtcTime::from_der_content(header, input.clone()) {
+                    let dt = t
+                        .utc_adjusted_datetime()
+                        .map_err(|e| Err::Error(e.into()))?;
+                    Ok((rem, ASN1Time::new_utc(dt)))
+                } else {
+                    parse_malformed_date(input).map_err(Err::convert)
+                }
+            }
+            _ => Err(Err::Error(X509Error::InvalidDate)),
         }
+        // if let Ok((rem, t)) = UtcTime::parse_der(input.clone()) {
+        //     let dt = t
+        //         .utc_adjusted_datetime()
+        //         .map_err(|e| Err::Error(e.into()))?;
+        //     Ok((rem, ASN1Time::new_utc(dt)))
+        // } else if let Ok((rem, t)) = GeneralizedTime::parse_der(input.clone()) {
+        //     let dt = t.utc_datetime().map_err(|e| Err::Error(e.into()))?;
+        //     Ok((rem, ASN1Time::new_utc(dt)))
+        // } else {
+        //     parse_malformed_date(input).map_err(Err::convert)
+        // }
     }
 }
 
@@ -159,7 +178,7 @@ impl<'a> DerParser<'a> for ASN1Time {
 // }
 
 // allow relaxed parsing of UTCTime (ex: 370116130016+0000)
-fn parse_malformed_date<'a>(input: Input<'a>) -> IResult<Input<'a>, ASN1Time, BerError<Input<'a>>> {
+fn parse_malformed_date(input: Input<'_>) -> IResult<Input<'_>, ASN1Time, BerError<Input<'_>>> {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     // fn check_char(b: &u8) -> bool {
     //     (0x20 <= *b && *b <= 0x7f) || (*b == b'+')
@@ -184,7 +203,11 @@ fn parse_malformed_date<'a>(input: Input<'a>) -> IResult<Input<'a>, ASN1Time, Be
             // Ok((rem, obj))
             Err(BerError::nom_err_input(&input, InnerError::BerValueError))
         }
-        _ => Err(Err::Error(BerError::unexpected_tag(input, None, hdr.tag()))),
+        _ => Err(Err::Error(BerError::unexpected_tag(
+            input,
+            Some(Tag::UtcTime),
+            hdr.tag(),
+        ))),
     }
 }
 

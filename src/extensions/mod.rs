@@ -4,14 +4,16 @@ use crate::error::X509Error;
 use crate::time::ASN1Time;
 use crate::x509::ReasonCode;
 
-use asn1_rs::{Any, BigUint, DerParser, Header, Input, Sequence, Tag, Tagged, TaggedExplicit};
+use asn1_rs::{
+    Any, BigUint, DerParser, DynTagged, Header, Input, Sequence, Tag, Tagged, TaggedExplicit,
+};
 // use der_parser::ber::parse_ber_bool;
 // use der_parser::der::*;
 // use der_parser::error::{BerError, BerResult};
 // use der_parser::num_bigint::BigUint;
 use nom::combinator::{all_consuming, complete, map};
 use nom::multi::many0;
-use nom::{Err, IResult, Input as _, Parser};
+use nom::{Err, IResult, Input as _, Mode, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -260,7 +262,14 @@ impl<'i> Parser<Input<'i>> for X509ExtensionParser {
         &mut self,
         input: Input<'i>,
     ) -> nom::PResult<OM, Input<'i>, Self::Output, Self::Error> {
-        todo!()
+        // inspired from nom `impl Parser for F: FnMut`
+        let (i, o) = self.parse(input).map_err(|e| match e {
+            Err::Incomplete(i) => Err::Incomplete(i),
+            Err::Error(e) => Err::Error(OM::Error::bind(|| e)),
+            Err::Failure(e) => Err::Failure(e),
+        })?;
+
+        Ok((i, OM::Output::bind(|| o)))
     }
 }
 
@@ -620,9 +629,9 @@ pub(crate) mod parser {
 /// <pre>
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 /// </pre>
-pub(crate) fn parse_extension_sequence<'i>(
-    i: Input<'i>,
-) -> IResult<Input<'i>, Vec<X509Extension<'i>>, X509Error> {
+pub(crate) fn parse_extension_sequence(
+    i: Input<'_>,
+) -> IResult<Input<'_>, Vec<X509Extension<'_>>, X509Error> {
     // parse_der_sequence_defined_g(|a, _| {
     //     all_consuming(many0(complete(X509Extension::from_der))).parse(a)
     // })(i)
@@ -634,9 +643,9 @@ pub(crate) fn parse_extension_sequence<'i>(
 /// <pre>
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 /// </pre>
-pub(crate) fn parse_opt_tagged_extensions<'i, const TAG: u32>(
-    input: Input<'i>,
-) -> IResult<Input<'i>, Vec<X509Extension<'i>>, X509Error> {
+pub(crate) fn parse_opt_tagged_extensions<const TAG: u32>(
+    input: Input<'_>,
+) -> IResult<Input<'_>, Vec<X509Extension<'_>>, X509Error> {
     if input.is_empty() {
         return Ok((input, Vec::new()));
     }
@@ -644,11 +653,16 @@ pub(crate) fn parse_opt_tagged_extensions<'i, const TAG: u32>(
     let (rem, tagged) = TaggedExplicit::<Any, X509Error, TAG>::parse_der(input)
         .map_err(|_| Err::Error(X509Error::InvalidExtensions))?;
 
-    let parser = X509ExtensionParser::new();
+    // in the above parser, TaggedExplicit will consume the outer tag, and Any will contain the Sequence tag
+    let any = tagged.into_inner();
+    if any.tag() != Tag::Sequence || !any.constructed() {
+        return Err(Err::Error(X509Error::InvalidExtensions));
+    }
 
-    let (_, seq) = Sequence::parse_der_and_then(tagged.into_inner().data, |_, input| {
-        all_consuming(many0(complete(parser))).parse(input)
-    })?;
+    let parser = X509ExtensionParser::new();
+    let inner_data = any.data;
+
+    let (_, seq) = all_consuming(many0(complete(parser))).parse(inner_data)?;
 
     Ok((rem, seq))
 }
@@ -658,9 +672,9 @@ pub(crate) fn parse_opt_tagged_extensions<'i, const TAG: u32>(
 /// <pre>
 /// Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
 /// </pre>
-pub(crate) fn parse_opt_tagged_extensions_envelope_only<'i, const TAG: u32>(
-    input: Input<'i>,
-) -> IResult<Input<'i>, Vec<X509Extension<'i>>, X509Error> {
+pub(crate) fn parse_opt_tagged_extensions_envelope_only<const TAG: u32>(
+    input: Input<'_>,
+) -> IResult<Input<'_>, Vec<X509Extension<'_>>, X509Error> {
     if input.is_empty() {
         return Ok((input, Vec::new()));
     }
@@ -668,16 +682,21 @@ pub(crate) fn parse_opt_tagged_extensions_envelope_only<'i, const TAG: u32>(
     let (rem, tagged) = TaggedExplicit::<Any, X509Error, TAG>::parse_der(input)
         .map_err(|_| Err::Error(X509Error::InvalidExtensions))?;
 
-    let parser = X509ExtensionParser::new().with_deep_parse_extensions(false);
+    // in the above parser, TaggedExplicit will consume the outer tag, and Any will contain the Sequence tag
+    let any = tagged.into_inner();
+    if any.tag() != Tag::Sequence || !any.constructed() {
+        return Err(Err::Error(X509Error::InvalidExtensions));
+    }
 
-    let (_, seq) = Sequence::parse_der_and_then(tagged.into_inner().data, |_, input| {
-        all_consuming(many0(complete(parser))).parse(input)
-    })?;
+    let parser = X509ExtensionParser::new().with_deep_parse_extensions(false);
+    let inner_data = any.data;
+
+    let (_, seq) = all_consuming(many0(complete(parser))).parse(inner_data)?;
 
     Ok((rem, seq))
 }
 
-fn der_read_critical<'i>(input: Input<'i>) -> IResult<Input<'i>, bool, X509Error> {
+fn der_read_critical(input: Input<'_>) -> IResult<Input<'_>, bool, X509Error> {
     // Some certificates do not respect the DER BOOLEAN constraint (true must be encoded as 0xff)
     // so we attempt to parse as BER
     use asn1_rs::BerParser;
@@ -798,7 +817,7 @@ mod tests {
             assert_eq!(alt_names[5], GeneralName::RegisteredID(oid! {1.2.90.0}));
             assert!(matches!(
                 &alt_names[6],
-                GeneralName::OtherName(oid , any) if *oid == oid! {1.2.3.4} && any.data.as_bytes2() == b"\xA0\x17\x0C\x15some other identifier"
+                GeneralName::OtherName(oid , any) if *oid == oid! {1.2.3.4} && any.data.as_bytes2() == b"\x0C\x15some other identifier"
             ));
         }
 
@@ -876,11 +895,10 @@ mod tests {
         }
         // CRLDistributionPoints has 1 entry with 1 URI
         {
-            let crt = crate::parse_x509_certificate(include_bytes!(
+            let (_, crt) = crate::parse_x509_certificate(include_bytes!(
                 "../../assets/crl-ext/crl-simple.der"
             ))
-            .unwrap()
-            .1;
+            .unwrap();
             let crl = crt
                 .tbs_certificate
                 .extensions_map()
@@ -888,6 +906,7 @@ mod tests {
                 .get(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
                 .unwrap()
                 .parsed_extension();
+            eprintln!("crl distribution point: {crl:?}");
             assert!(matches!(crl, ParsedExtension::CRLDistributionPoints(_)));
             if let ParsedExtension::CRLDistributionPoints(crl) = crl {
                 assert_eq!(crl.len(), 1);

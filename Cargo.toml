@@ -55,6 +55,7 @@ time = { version="0.3.35", features=["formatting"] }
 
 [dev-dependencies]
 hex-literal = "0.4"
+pretty_assertions = "1.4"
 
 # XXX: remove this before release!
 [patch.crates-io]

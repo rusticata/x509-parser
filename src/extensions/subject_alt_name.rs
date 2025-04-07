@@ -18,7 +18,7 @@ use super::{GeneralName, GeneralNames};
 #[error(X509Error)]
 pub struct SubjectAlternativeName<'a>(pub GeneralNames<'a>);
 
-impl<'a> SubjectAlternativeName<'a> {
+impl SubjectAlternativeName<'_> {
     pub fn general_names(&self) -> impl Iterator<Item = &GeneralName> {
         self.0.iter()
     }
