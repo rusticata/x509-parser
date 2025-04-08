@@ -27,9 +27,6 @@ impl<'a, 'b> TryFrom<&'b AlgorithmIdentifier<'a>> for SignatureAlgorithm<'a> {
                     Some(any) => any,
                     None => return Err(X509Error::InvalidSignatureValue),
                 };
-                // let params = RsaSsaPssParams::try_from(params)
-                //     .map_err(|_| X509Error::InvalidSignatureValue)?;
-                // FIXME: check this
                 let (_, params) =
                     RsaSsaPssParams::from_der_content(&params.header, params.data.clone())
                         .map_err(|_| X509Error::InvalidSignatureValue)?;
@@ -54,9 +51,6 @@ impl<'a, 'b> TryFrom<&'b AlgorithmIdentifier<'a>> for SignatureAlgorithm<'a> {
                 Some(any) => any,
                 None => return Err(X509Error::InvalidSignatureValue),
             };
-            // let params =
-            //     RsaAesOaepParams::try_from(params).map_err(|_| X509Error::InvalidSignatureValue)?;
-            // FIXME: check this
             let (_, params) =
                 RsaAesOaepParams::from_der_content(&params.header, params.data.clone())
                     .map_err(|_| X509Error::InvalidSignatureValue)?;
