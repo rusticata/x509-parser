@@ -897,12 +897,12 @@ pub struct UniqueIdentifier(pub BitString);
 
 impl UniqueIdentifier {
     // issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn parse_der_issuer<'a>(i: Input<'a>) -> IResult<Input<'a>, Option<Self>, X509Error> {
+    fn parse_der_issuer(i: Input<'_>) -> IResult<Input<'_>, Option<Self>, X509Error> {
         Self::parse::<1>(i).map_err(|_| X509Error::InvalidIssuerUID.into())
     }
 
     // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn parse_der_subject<'a>(i: Input<'a>) -> IResult<Input<'a>, Option<Self>, X509Error> {
+    fn parse_der_subject(i: Input<'_>) -> IResult<Input<'_>, Option<Self>, X509Error> {
         Self::parse::<2>(i).map_err(|_| X509Error::InvalidSubjectUID.into())
     }
 

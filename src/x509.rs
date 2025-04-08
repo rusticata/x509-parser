@@ -10,8 +10,8 @@ use crate::public_key::*;
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Alias, Any, AnyIterator, BerError, BitString, BmpString, DerMode, DerParser, Enumerated,
-    FromDer, Header, Input, Integer, OptTaggedExplicit, OptTaggedParser, Sequence, Tag, Tagged,
+    Alias, Any, BerError, BitString, BmpString, DerParser, Enumerated, FromDer, Header, Input,
+    Integer, OptTaggedExplicit, Sequence, Tag, Tagged,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -42,18 +42,9 @@ pub struct X509Version(pub u32);
 
 impl X509Version {
     /// Parse `[0]` EXPLICIT Version DEFAULT v1
-    pub(crate) fn from_der_tagged_0(i: &[u8]) -> X509Result<X509Version> {
-        let (rem, opt_version) = OptTaggedParser::from(0)
-            .parse_der(i, |_, data| Self::from_der(data))
-            .map_err(Err::convert)?;
-        let version = opt_version.unwrap_or(X509Version::V1);
-        Ok((rem, version))
-    }
-
-    /// Parse `[0]` EXPLICIT Version DEFAULT v1
-    pub(crate) fn parse_der_tagged_0<'a>(
-        input: Input<'a>,
-    ) -> IResult<Input<'a>, X509Version, X509Error> {
+    pub(crate) fn parse_der_tagged_0(
+        input: Input<'_>,
+    ) -> IResult<Input<'_>, X509Version, X509Error> {
         type T<'a> = OptTaggedExplicit<X509Version, BerError<Input<'a>>, 0>;
         let (rem, opt_version) = <T>::parse_der(input).map_err(Err::convert)?;
         let version = opt_version
@@ -645,23 +636,23 @@ mod tests {
     fn test_x509_version() {
         // correct version
         let data: &[u8] = &[0xa0, 0x03, 0x02, 0x01, 0x00];
-        let r = X509Version::from_der_tagged_0(data);
+        let r = X509Version::parse_der_tagged_0(Input::from(data));
         assert!(r.is_ok());
 
         // wrong tag
         let data: &[u8] = &[0xa1, 0x03, 0x02, 0x01, 0x00];
-        let r = X509Version::from_der_tagged_0(data);
+        let r = X509Version::parse_der_tagged_0(Input::from(data));
         assert!(r.is_ok());
 
         // short read
         let data: &[u8] = &[0xa0, 0x01];
-        let r = X509Version::from_der_tagged_0(data);
+        let r = X509Version::parse_der_tagged_0(Input::from(data));
         assert!(r.is_err());
 
-        // short read with wrong tag
+        // short read with wrong tag: no fail, since tag is wrong and object is optional, it returns None
         let data: &[u8] = &[0xa1, 0x01];
-        let r = X509Version::from_der_tagged_0(data);
-        assert!(r.is_err());
+        let r = X509Version::parse_der_tagged_0(Input::from(data));
+        assert!(r.is_ok());
     }
 
     #[test]

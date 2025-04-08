@@ -175,7 +175,7 @@ mod tests {
     use asn1_rs::{DerParser, Input};
     use hex_literal::hex;
 
-    use crate::prelude::{CRLDistributionPoint, GeneralName};
+    use crate::prelude::CRLDistributionPoint;
 
     use super::{CRLDistributionPoints, DistributionPointName};
 
