@@ -1,9 +1,10 @@
 use crate::{error::X509Error, extensions::X509Extension};
 
+use asn1_rs::{Any, AnyIterator, BerError, DerMode, Set};
 use asn1_rs::{DerParser, Header, Input, Oid, Tag, Tagged};
 use nom::Err;
+use nom::IResult;
 use nom::Parser as _;
-use nom::{IResult, Input as _};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -21,14 +22,21 @@ pub struct X509CriAttribute<'a> {
     pub oid: Oid<'a>,
     /// Unparsed data
     pub value: Input<'a>,
-    pub(crate) parsed_attribute: ParsedCriAttribute<'a>,
+    pub(crate) parsed_attributes: Vec<ParsedCriAttribute<'a>>,
 }
 
 impl<'a> X509CriAttribute<'a> {
-    /// Return the attribute type or `UnsupportedAttribute` if the attribute is unknown.
+    /// Return the parsed attribute values or `UnsupportedAttribute` if the attribute is unknown.
     #[inline]
-    pub fn parsed_attribute(&self) -> &ParsedCriAttribute<'a> {
-        &self.parsed_attribute
+    pub fn parsed_attributes(&self) -> &[ParsedCriAttribute<'a>] {
+        &self.parsed_attributes
+    }
+
+    /// Iterate over the unparsed values of 'SET OF AttributeValue'
+    pub fn iter_raw_values(
+        &self,
+    ) -> impl Iterator<Item = Result<(Input<'a>, Any<'a>), BerError<Input<'a>>>> {
+        AnyIterator::<DerMode>::new(self.value.clone())
     }
 }
 
@@ -49,30 +57,40 @@ impl<'i> DerParser<'i> for X509CriAttribute<'i> {
             .map_err(|e| Err::Error(e.into()))?;
 
         let (rem, oid) = Oid::parse_der(input).map_err(Err::convert)?;
-        let (rem, value) = rem.take_split(rem.input_len());
-        let (_, parsed_attribute) = parser::parse_attribute(&oid, value.clone())
-            .map_err(|_| Err::Error(X509Error::InvalidAttributes))?;
+
+        // `value` is the content of a 'SET OF AttributeValue'. Iterate and parse values
+        let value = rem.clone();
+        // read DER header (ensuring it is a set) and content (as `value`)
+        let (rem, (_, content)) = <Set>::parse_der_as_input(rem).map_err(Err::convert)?;
+        let parsed_attributes = AnyIterator::<DerMode>::new(content)
+            .map(|r| {
+                let (input, _) = r?;
+                // parse attribute
+                let (_, attr) = parser::parse_attribute(&oid, input)?;
+                Ok::<_, X509Error>(attr)
+            })
+            .collect::<Result<_, _>>()?;
 
         let attribute = X509CriAttribute {
             oid,
             value,
-            parsed_attribute,
+            parsed_attributes,
         };
         Ok((rem, attribute))
     }
 }
 
-/// Section 3.1 of rfc 5272
+/// Simple PKI Request
+///
+/// Section 3.1 of RFC 5272
+///
+/// <pre>
+/// ExtensionReq ::= SEQUENCE SIZE (1..MAX) OF Extension
+/// </pre>
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtensionRequest<'a> {
     pub extensions: Vec<X509Extension<'a>>,
 }
-
-// impl<'a> FromDer<'a, X509Error> for ExtensionRequest<'a> {
-//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-//         parser::parse_extension_request(i).map_err(Err::convert)
-//     }
-// }
 
 impl Tagged for ExtensionRequest<'_> {
     const CONSTRUCTED: bool = true;
@@ -105,10 +123,6 @@ pub(crate) mod parser {
     use crate::cri_attributes::*;
     use crate::utils::DirectoryString;
     use asn1_rs::{DerParser, Input};
-    // use der_parser::der::{
-    //     parse_der_bmpstring, parse_der_printablestring, parse_der_t61string,
-    //     parse_der_universalstring, parse_der_utf8string,
-    // };
     use lazy_static::lazy_static;
     use nom::combinator::map;
 
@@ -134,8 +148,10 @@ pub(crate) mod parser {
         };
     }
 
-    // look into the parser map if the extension is known, and parse it
-    // otherwise, leave it as UnsupportedExtension
+    /// Look into the parser map if the extension is known, and parse it,
+    /// otherwise leave it as UnsupportedExtension
+    ///
+    /// Note: `Input` points to the start of the SET
     pub(crate) fn parse_attribute<'a>(
         oid: &Oid,
         value: Input<'a>,
@@ -147,16 +163,19 @@ pub(crate) mod parser {
         }
     }
 
-    pub(super) fn parse_extension_request<'a>(
-        input: Input<'a>,
-    ) -> IResult<Input<'a>, ExtensionRequest<'a>, X509Error> {
+    /// Simple PKI Request (RFC 5272 Section 3.1)
+    ///
+    /// Note: `Input` points to the start of the SET
+    pub(super) fn parse_extension_request(
+        input: Input<'_>,
+    ) -> IResult<Input<'_>, ExtensionRequest<'_>, X509Error> {
         crate::extensions::parse_extension_sequence(input)
             .map(|(i, extensions)| (i, ExtensionRequest { extensions }))
     }
 
-    fn parse_extension_request_attr<'a>(
-        value: Input<'a>,
-    ) -> IResult<Input<'a>, ParsedCriAttribute<'a>, X509Error> {
+    fn parse_extension_request_attr(
+        value: Input<'_>,
+    ) -> IResult<Input<'_>, ParsedCriAttribute<'_>, X509Error> {
         map(
             parse_extension_request,
             ParsedCriAttribute::ExtensionRequest,
@@ -171,18 +190,18 @@ pub(crate) mod parser {
     //            SINGLE VALUE TRUE
     //            ID pkcs-9-at-challengePassword
     //    }
-    pub(super) fn parse_challenge_password<'a>(
-        input: Input<'a>,
-    ) -> IResult<Input<'a>, ChallengePassword, X509Error> {
+    pub(super) fn parse_challenge_password(
+        input: Input<'_>,
+    ) -> IResult<Input<'_>, ChallengePassword, X509Error> {
         let (rem, ds) = DirectoryString::parse_der(input)
             .map_err(|_| Err::Error(X509Error::InvalidAttributes))?;
 
         Ok((rem, ChallengePassword(ds.to_string())))
     }
 
-    fn parse_challenge_password_attr<'a>(
-        value: Input<'a>,
-    ) -> IResult<Input<'a>, ParsedCriAttribute<'a>, X509Error> {
+    fn parse_challenge_password_attr(
+        value: Input<'_>,
+    ) -> IResult<Input<'_>, ParsedCriAttribute<'_>, X509Error> {
         map(
             parse_challenge_password,
             ParsedCriAttribute::ChallengePassword,

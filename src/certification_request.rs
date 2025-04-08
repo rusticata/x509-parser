@@ -8,7 +8,7 @@ use crate::x509::{
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;
 use asn1_rs::{
-    BitString, DerParser, FromDer, Header, Input, Oid, OptTaggedExplicit, Sequence, Tag, Tagged,
+    BitString, DerParser, FromDer, Header, Input, Oid, OptTaggedImplicit, Sequence, Tag, Tagged,
 };
 use nom::{Err, IResult, Input as _};
 use std::collections::HashMap;
@@ -33,15 +33,31 @@ pub struct X509CertificationRequest<'a> {
 }
 
 impl X509CertificationRequest<'_> {
-    pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension>> {
+    /// Return an iterator over the Requested Extensions
+    ///
+    /// The requested extensions can be specified in different attributes, each attribute being a set of values.
+    /// The iterator will go through every value of type 'ExtensionRequest` of every attribute.
+    ///
+    /// The returned iterator can be empty.
+    ///
+    /// _Note_: only successfully parsed values are returned (invalid extensions are *not* returned)
+    pub fn requested_extensions(&self) -> impl Iterator<Item = &ParsedExtension> {
+        // iterator on all attribute, and flatten for each value of attribute
         self.certification_request_info
             .iter_attributes()
-            .find_map(|attr| {
-                if let ParsedCriAttribute::ExtensionRequest(requested) = &attr.parsed_attribute {
-                    Some(requested.extensions.iter().map(|ext| &ext.parsed_extension))
-                } else {
-                    None
-                }
+            .flat_map(|cri_attribute| {
+                // return an iterator matching ExtensionRequest only
+                cri_attribute
+                    .parsed_attributes()
+                    .iter()
+                    .filter_map(|p| {
+                        if let ParsedCriAttribute::ExtensionRequest(r) = &p {
+                            Some(r.extensions.iter().map(|ext| &ext.parsed_extension))
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten()
             })
     }
 
@@ -79,11 +95,12 @@ impl<'a> FromDer<'a, X509Error> for X509CertificationRequest<'a> {
     }
 }
 
-/// Certification Request Info structure
+/// Certification Request Info structure (RFC 2986 Section 4.1)
 ///
 /// Certification request information is defined by the following ASN.1 structure:
 ///
 /// <pre>
+/// -- IMPLICIT tags
 /// CertificationRequestInfo ::= SEQUENCE {
 ///      version       INTEGER { v1(0) } (v1,...),
 ///      subject       Name,
@@ -182,7 +199,7 @@ impl<'i> DerParser<'i> for X509CertificationRequestInfo<'i> {
         let (rem, subject) = X509Name::parse_der(rem)?;
         let (rem, subject_pki) = SubjectPublicKeyInfo::parse_der(rem)?;
         let (rem, opt_attributes) =
-            <OptTaggedExplicit<Vec<X509CriAttribute>, X509Error, 0>>::parse_der(rem)?;
+            <OptTaggedImplicit<Vec<X509CriAttribute>, X509Error, 0>>::parse_der(rem)?;
         let attributes = opt_attributes.map(|o| o.into_inner()).unwrap_or_default();
 
         let tbs = X509CertificationRequestInfo {
