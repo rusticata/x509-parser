@@ -77,26 +77,33 @@ fn test_ecdsa_oid(oid: &Oid) -> bool {
     oid.starts_with(&oid! {1.2.840.10045.4})
 }
 
-// RSASSA-PSS public keys [RFC4055](https://www.rfc-editor.org/rfc/rfc4055.html)
-
-// RSASSA-PSS-params  ::=  SEQUENCE  {
-//     hashAlgorithm      [0] HashAlgorithm DEFAULT
-//                               sha1Identifier,
-//     maskGenAlgorithm   [1] MaskGenAlgorithm DEFAULT
-//                               mgf1SHA1Identifier,
-//     saltLength         [2] INTEGER DEFAULT 20,
-//     trailerField       [3] INTEGER DEFAULT 1  }
+/// RSASSA-PSS public keys [RFC4055](https://www.rfc-editor.org/rfc/rfc4055.html)
+///
+/// <pre>
+/// -- EXPLICIT tags
+/// RSASSA-PSS-params  ::=  SEQUENCE  {
+///     hashAlgorithm      [0] HashAlgorithm DEFAULT
+///                               sha1Identifier,
+///     maskGenAlgorithm   [1] MaskGenAlgorithm DEFAULT
+///                               mgf1SHA1Identifier,
+///     saltLength         [2] INTEGER DEFAULT 20,
+///     trailerField       [3] INTEGER DEFAULT 1  }
+/// </pre>
 #[derive(Debug, PartialEq, Sequence)]
 #[asn1(parse = "DER", encode = "")]
 #[error(X509Error)]
 pub struct RsaSsaPssParams<'a> {
     #[tag_explicit(0)]
+    #[optional]
     hash_alg: Option<AlgorithmIdentifier<'a>>,
     #[tag_explicit(1)]
+    #[optional]
     mask_gen_algorithm: Option<AlgorithmIdentifier<'a>>,
     #[tag_explicit(2)]
+    #[optional]
     salt_length: Option<u32>,
     #[tag_explicit(3)]
+    #[optional]
     trailer_field: Option<u32>,
 }
 

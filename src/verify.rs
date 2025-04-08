@@ -99,7 +99,6 @@ fn get_rsa_pss_verification_algo(
     use ring::signature;
 
     let params = params.as_ref()?;
-    // let params = RsaSsaPssParams::try_from(params).ok()?;
     let (_, params) =
         RsaSsaPssParams::from_der_content(&params.header, params.data.clone()).ok()?;
     let hash_algo = params.hash_algorithm_oid();
