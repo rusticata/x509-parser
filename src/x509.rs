@@ -521,25 +521,21 @@ pub enum ReasonCode {
 
 impl fmt::Display for ReasonCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", *self as u8)
+        let s = match *self {
+            ReasonCode::Unspecified => "Unspecified",
+            ReasonCode::KeyCompromise => "KeyCompromise",
+            ReasonCode::CACompromise => "CACompromise",
+            ReasonCode::AffiliationChanged => "AffiliationChanged",
+            ReasonCode::Superseded => "Superseded",
+            ReasonCode::CessationOfOperation => "CessationOfOperation",
+            ReasonCode::CertificateHold => "CertificateHold",
+            ReasonCode::RemoveFromCRL => "RemoveFromCRL",
+            ReasonCode::PrivilegeWithdrawn => "PrivilegeWithdrawn",
+            ReasonCode::AACompromise => "AACompromise",
+        };
+        write!(f, "{}", s)
     }
 }
-
-// newtype_enum! {
-// impl display ReasonCode {
-//     Unspecified = 0,
-//     KeyCompromise = 1,
-//     CACompromise = 2,
-//     AffiliationChanged = 3,
-//     Superseded = 4,
-//     CessationOfOperation = 5,
-//     CertificateHold = 6,
-//     // value 7 is not used
-//     RemoveFromCRL = 8,
-//     PrivilegeWithdrawn = 9,
-//     AACompromise = 10,
-// }
-// }
 
 // Attempt to convert attribute to string. If type is not a string, return value is the hex
 // encoding of the attribute value
