@@ -76,7 +76,7 @@ fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, X509Error> {
     let modulus = o1
         .as_raw_slice()
         .ok_or(Err::Error(InnerError::LifetimeError.into()))?;
-    let exponent = o1
+    let exponent = o2
         .as_raw_slice()
         .ok_or(Err::Error(InnerError::LifetimeError.into()))?;
     let key = RSAPublicKey { modulus, exponent };
