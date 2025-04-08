@@ -28,7 +28,7 @@ use crate::x509::*;
 /// # Example
 ///
 /// ```rust
-/// use der_parser::num_bigint::BigUint;
+/// use asn1_rs::num_bigint::BigUint;
 /// use x509_parser::prelude::*;
 /// use x509_parser::visitor::CertificateRevocationListVisitor;
 /// #[derive(Debug, Default)]

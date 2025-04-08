@@ -22,7 +22,7 @@ use core::ops::Deref;
 // use der_parser::error::*;
 // use der_parser::num_bigint::BigUint;
 // use der_parser::*;
-use nom::{Err, IResult, Input as _, Parser};
+use nom::{Err, IResult, Input as _, Mode, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 use time::Duration;
@@ -202,6 +202,7 @@ impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
 /// ```rust
 /// use x509_parser::certificate::X509CertificateParser;
 /// use x509_parser::nom::Parser;
+/// use x509_parser::asn1_rs::Input;
 ///
 /// # static DER: &'static [u8] = include_bytes!("../assets/IGC_A.der");
 /// #
@@ -209,7 +210,7 @@ impl<'a> FromDer<'a, X509Error> for X509Certificate<'a> {
 /// // create a parser that will not parse extensions
 /// let mut parser = X509CertificateParser::new()
 ///     .with_deep_parse_extensions(false);
-/// let res = parser.parse(DER);
+/// let res = parser.parse(Input::from(DER));
 /// match res {
 ///     Ok((_rem, x509)) => {
 ///         let subject = x509.subject();
@@ -274,7 +275,14 @@ impl<'a> Parser<Input<'a>> for X509CertificateParser {
         &mut self,
         input: Input<'a>,
     ) -> nom::PResult<OM, Input<'a>, Self::Output, Self::Error> {
-        todo!()
+        // inspired from nom `impl Parser for F: FnMut`
+        let (i, o) = self.parse(input).map_err(|e| match e {
+            Err::Incomplete(i) => Err::Incomplete(i),
+            Err::Error(e) => Err::Error(OM::Error::bind(|| e)),
+            Err::Failure(e) => Err::Failure(e),
+        })?;
+
+        Ok((i, OM::Output::bind(|| o)))
     }
 }
 
@@ -786,7 +794,14 @@ impl<'a> Parser<Input<'a>> for TbsCertificateParser {
         &mut self,
         input: Input<'a>,
     ) -> nom::PResult<OM, Input<'a>, Self::Output, Self::Error> {
-        todo!()
+        // inspired from nom `impl Parser for F: FnMut`
+        let (i, o) = self.parse(input).map_err(|e| match e {
+            Err::Incomplete(i) => Err::Incomplete(i),
+            Err::Error(e) => Err::Error(OM::Error::bind(|| e)),
+            Err::Failure(e) => Err::Failure(e),
+        })?;
+
+        Ok((i, OM::Output::bind(|| o)))
     }
 }
 
@@ -894,9 +909,9 @@ impl UniqueIdentifier {
     // Parse a [tag] UniqueIdentifier OPTIONAL
     //
     // UniqueIdentifier  ::=  BIT STRING
-    fn parse<'a, const TAG: u32>(
-        i: Input<'a>,
-    ) -> IResult<Input<'a>, Option<Self>, BerError<Input<'a>>> {
+    fn parse<const TAG: u32>(
+        i: Input<'_>,
+    ) -> IResult<Input<'_>, Option<Self>, BerError<Input<'_>>> {
         let (rem, unique_id) = OptTaggedImplicit::<BitString, Error, TAG>::parse_der(i)?;
         let unique_id = unique_id.map(|u| UniqueIdentifier(u.into_inner()));
         Ok((rem, unique_id))
