@@ -947,11 +947,11 @@ mod tests {
                 let reasons = crl[0].reasons.as_ref().unwrap();
                 assert!(reasons.key_compromise());
                 assert!(reasons.ca_compromise());
-                assert!(!reasons.affilation_changed());
+                assert!(!reasons.affiliation_changed());
                 assert!(!reasons.superseded());
                 assert!(!reasons.cessation_of_operation());
                 assert!(!reasons.certificate_hold());
-                assert!(!reasons.privelege_withdrawn());
+                assert!(!reasons.privilege_withdrawn());
                 assert!(reasons.aa_compromise());
                 assert_eq!(
                     format!("{}", reasons),
@@ -979,11 +979,11 @@ mod tests {
                 let reasons = crl[1].reasons.as_ref().unwrap();
                 assert!(reasons.key_compromise());
                 assert!(reasons.ca_compromise());
-                assert!(!reasons.affilation_changed());
+                assert!(!reasons.affiliation_changed());
                 assert!(!reasons.superseded());
                 assert!(!reasons.cessation_of_operation());
                 assert!(!reasons.certificate_hold());
-                assert!(!reasons.privelege_withdrawn());
+                assert!(!reasons.privilege_withdrawn());
                 assert!(!reasons.aa_compromise());
                 assert_eq!(format!("{}", reasons), "Key Compromise, CA Compromise");
                 assert!(crl[1].crl_issuer.is_none());
