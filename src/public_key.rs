@@ -31,7 +31,6 @@ impl PublicKey<'_> {
 }
 
 /// RSA public Key, defined in rfc3279
-/// FIXME: replace this with a derive(Sequence)
 #[derive(Debug, PartialEq, Eq)]
 pub struct RSAPublicKey<'a> {
     /// Raw bytes of the modulus
