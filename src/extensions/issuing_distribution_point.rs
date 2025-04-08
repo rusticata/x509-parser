@@ -20,7 +20,9 @@ use super::{DistributionPointName, ReasonFlags};
 #[asn1(parse = "DER", encode = "")]
 #[error(X509Error)]
 pub struct IssuingDistributionPoint<'a> {
-    #[tag_implicit(0)]
+    // `DistributionPointName` is a CHOICE, so this tag is converted to EXPLICIT
+    // See `CRLDistributionPoint` documentation for details
+    #[tag_explicit(0)]
     #[optional]
     pub distribution_point: Option<DistributionPointName<'a>>,
 

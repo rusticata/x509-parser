@@ -125,11 +125,25 @@ impl<'i> DerParser<'i> for ReasonFlags {
 ///     reasons                 [1]     ReasonFlags OPTIONAL,
 ///     cRLIssuer               [2]     GeneralNames OPTIONAL }
 /// </pre>
+///
+/// Note: this object has implicit tags, however ASN.1 specifications (X.680) contain the following note:
+///
+/// <pre>
+/// The tagging construction specifies explicit tagging if any of the following holds:
+///
+/// c) the "Tag Type" alternative is used and the value of "TagDefault" for the module is
+/// IMPLICIT TAGS or AUTOMATIC TAGS, but the type defined by "Type" is an untagged choice type,
+/// an untagged open type, or an untagged "DummyReference"
+/// (see Rec. ITU-T X.683 | ISO/IEC 8824-4, 8.3).
+/// </pre>
+///
+/// Thus, the fields using tags (like `DistributionPointName`) use *explicit* tags here.
 #[derive(Clone, Debug, PartialEq, Sequence)]
 #[asn1(parse = "DER", encode = "")]
 #[error(X509Error)]
+// #[debug_derive]
 pub struct CRLDistributionPoint<'a> {
-    #[tag_implicit(0)]
+    #[tag_explicit(0)]
     #[optional]
     pub distribution_point: Option<DistributionPointName<'a>>,
     #[tag_implicit(1)]
@@ -153,5 +167,59 @@ impl<'a> std::ops::Deref for CRLDistributionPoints<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use asn1_rs::{DerParser, Input};
+    use hex_literal::hex;
+
+    use crate::prelude::{CRLDistributionPoint, GeneralName};
+
+    use super::{CRLDistributionPoints, DistributionPointName};
+
+    #[test]
+    fn parse_crl_distribution_points() {
+        let bytes = &hex!(
+            "30 23 30 21
+             A0 1F A0 1D 86 1B 68 74  74 70 3A 2F 2F 65 78 61
+             6D 70 6C 65 2E 63 6F 6D  2F 6D 79 63 61 2E 63 72
+             6C"
+        );
+
+        let (rem, crl_distribution_points) =
+            CRLDistributionPoints::parse_der(Input::from(bytes)).expect("Parsing failed");
+        assert!(rem.is_empty());
+        assert_eq!(crl_distribution_points.0.len(), 1);
+    }
+
+    #[test]
+    fn parse_distribution_point() {
+        let bytes: &[u8; 35] = &hex!(
+            "30 21
+             A0 1F A0 1D 86 1B 68 74  74 70 3A 2F 2F 65 78 61
+             6D 70 6C 65 2E 63 6F 6D  2F 6D 79 63 61 2E 63 72
+             6C"
+        );
+
+        let (rem, obj) =
+            CRLDistributionPoint::parse_der(Input::from(bytes)).expect("Parsing failed");
+        assert!(rem.is_empty());
+        assert!(obj.distribution_point.is_some());
+    }
+
+    #[test]
+    fn parse_distribution_point_name() {
+        let bytes = &hex!(
+            "A0 1D 86 1B 68 74  74 70 3A 2F 2F 65 78 61
+             6D 70 6C 65 2E 63 6F 6D  2F 6D 79 63 61 2E 63 72
+             6C"
+        );
+
+        let (rem, obj) =
+            DistributionPointName::parse_der(Input::from(bytes)).expect("Parsing failed");
+        assert!(rem.is_empty());
+        assert!(matches!(obj, DistributionPointName::FullName(_)));
     }
 }
