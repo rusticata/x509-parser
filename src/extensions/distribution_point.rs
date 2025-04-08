@@ -48,7 +48,7 @@ impl ReasonFlags {
     pub fn ca_compromise(&self) -> bool {
         (self.flags >> 2) & 1 == 1
     }
-    pub fn affilation_changed(&self) -> bool {
+    pub fn affiliation_changed(&self) -> bool {
         (self.flags >> 3) & 1 == 1
     }
     pub fn superseded(&self) -> bool {
@@ -60,7 +60,7 @@ impl ReasonFlags {
     pub fn certificate_hold(&self) -> bool {
         (self.flags >> 6) & 1 == 1
     }
-    pub fn privelege_withdrawn(&self) -> bool {
+    pub fn privilege_withdrawn(&self) -> bool {
         (self.flags >> 7) & 1 == 1
     }
     pub fn aa_compromise(&self) -> bool {

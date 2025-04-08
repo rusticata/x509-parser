@@ -92,7 +92,7 @@ fn test_only_some_reasons_crl_idp() {
         .as_ref()
         .expect("missing only_some_reasons");
     assert!(reasons.key_compromise());
-    assert!(reasons.affilation_changed());
+    assert!(reasons.affiliation_changed());
 }
 
 #[test]
