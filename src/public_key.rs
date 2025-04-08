@@ -1,5 +1,5 @@
 use crate::error::*;
-use asn1_rs::{BerError, DerParser, Error, FromDer, InnerError, Input, Integer};
+use asn1_rs::{DerParser, FromDer, InnerError, Input, Integer};
 use nom::{Err, IResult};
 
 /// Public Key value
