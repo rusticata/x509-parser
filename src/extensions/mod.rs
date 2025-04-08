@@ -84,8 +84,9 @@ pub use subject_key_identifier::{KeyIdentifier, SubjectKeyIdentifier};
 /// # Example
 ///
 /// ```rust
-/// use x509_parser::prelude::FromDer;
+/// use x509_parser::prelude::DerParser;
 /// use x509_parser::extensions::{X509Extension, ParsedExtension};
+/// use x509_parser::asn1_rs::Input;
 ///
 /// static DER: &[u8] = &[
 ///    0x30, 0x1D, 0x06, 0x03, 0x55, 0x1D, 0x0E, 0x04, 0x16, 0x04, 0x14, 0xA3, 0x05, 0x2F, 0x18,
@@ -93,7 +94,7 @@ pub use subject_key_identifier::{KeyIdentifier, SubjectKeyIdentifier};
 ///    0x36 ];
 ///
 /// # fn main() {
-/// let res = X509Extension::from_der(DER);
+/// let res = X509Extension::parse_der(Input::from(DER));
 /// match res {
 ///     Ok((_rem, ext)) => {
 ///         println!("Extension OID: {}", ext.oid);
