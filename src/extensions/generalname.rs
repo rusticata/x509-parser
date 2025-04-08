@@ -111,12 +111,8 @@ impl<'a> DerParser<'a> for GeneralName<'a> {
                 (rem, GeneralName::X400Address(any))
             }
             4 => {
-                // NOTE: using `parse_der` works like an EXPLICIT tag, which is not expected here. However, our
-                // test files (generated using openssl) shows the sequence: A4 4D 30 4B 31 0B 30 09
-                // A4 .. 30 means the sequence tag is visible
-                // But we have an IMPLICIT [4] Name, name is a CHOICE { RDNSequence }
-                // and RDNSequence is a SEQUENCE of SETs, so we should see A4 .. 31 (the sets) and
-                // not 30 .. (3rd and 4th bytes)
+                // Field is 'IMPLICIT [4] Name', but name is a CHOICE { RDNSequence }
+                // so tags are EXPLICIT
                 let (rem, name) = X509Name::parse_der(input)?;
                 (rem, GeneralName::DirectoryName(name))
             }
