@@ -10,7 +10,7 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies.nom]
-version = "7"
+version = "8"
 [dependencies.rand]
 version = "0.8"
 [dependencies.x509-parser]
@@ -35,7 +35,8 @@ doc = false
 
 [patch.crates-io]
 # der-parser = { path="../../der-parser" }
-oid-registry = { git="https://github.com/rusticata/oid-registry" }
+asn1-rs = { git="https://github.com/rusticata/asn1-rs", branch = "master" }
+oid-registry = { git="https://github.com/rusticata/oid-registry", branch="oid-registry-0.9" }
 
 [[bin]]
 name = "certreq"
