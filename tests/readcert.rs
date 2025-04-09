@@ -6,8 +6,6 @@ use oid_registry::*;
 use std::{collections::HashMap, ops::Range};
 use x509_parser::prelude::*;
 
-use pretty_assertions::assert_eq;
-
 static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 static NO_EXTENSIONS_DER: &[u8] = include_bytes!("../assets/no_extensions.der");
 static V1: &[u8] = include_bytes!("../assets/v1.der");
