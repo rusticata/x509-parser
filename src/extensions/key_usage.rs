@@ -85,6 +85,9 @@ impl<'i> DerParser<'i> for KeyUsage {
         if bitslice.len() > 16 {
             return Err(Err::Error(X509Error::InvalidAttributes));
         }
+        if bitslice.is_empty() {
+            return Ok((rem, Self { flags: 0 }));
+        }
         bitslice.reverse();
         let flags = bitslice.load_be::<u16>();
         Ok((rem, Self { flags }))
