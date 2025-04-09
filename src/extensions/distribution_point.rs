@@ -112,6 +112,9 @@ impl<'i> DerParser<'i> for ReasonFlags {
         if bitslice.len() > 9 {
             return Err(Err::Error(X509Error::InvalidAttributes));
         }
+        if bitslice.is_empty() {
+            return Ok((rem, Self { flags: 0 }));
+        }
         bitslice.reverse();
         let flags = bitslice.load_be::<u16>();
         Ok((rem, Self { flags }))

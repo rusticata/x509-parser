@@ -85,6 +85,9 @@ impl<'i> DerParser<'i> for NSCertType {
         if bitslice.len() > 8 {
             return Err(Err::Error(X509Error::InvalidAttributes));
         }
+        if bitslice.is_empty() {
+            return Ok((rem, Self(0)));
+        }
         bitslice.reverse();
         let flags = bitslice.load::<u8>();
         Ok((rem, Self(flags)))
