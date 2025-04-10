@@ -1,6 +1,6 @@
 [package]
 name = "x509-parser"
-version = "0.18.0"
+version = "0.18.0-beta.1"
 description = "Parser for the X.509 v3 format (RFC 5280 certificates)"
 license = "MIT OR Apache-2.0"
 keywords = ["X509","Certificate","parser","nom"]
@@ -42,11 +42,11 @@ verify = ["ring"]
 validate = []
 
 [dependencies]
-asn1-rs = { version = "0.8.0", features=["bigint", "datetime"] }
+asn1-rs = { version = "0.8.0-beta.1", features=["bigint", "datetime"] }
 data-encoding = "2.2.1"
 lazy_static = "1.4"
 nom = "8.0"
-oid-registry = { version="0.9", features=["crypto", "x509", "x962"] }
+oid-registry = { version="0.9.0-beta.1", features=["crypto", "x509", "x962"] }
 rusticata-macros = "5.0"
 ring = { version="0.17.12", optional=true }
 # der-parser = { version = "10.0", features=["bigint"] }

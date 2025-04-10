@@ -4,8 +4,8 @@ version = 3
 
 [[package]]
 name = "asn1-rs"
-version = "0.8.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#0b26039f1333819100b000aa61270ff6024cd603"
+version = "0.8.0-beta.1"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#bad265dea09ea351811f5dc98085d93c1d0dcc8d"
 dependencies = [
  "asn1-rs-derive",
  "asn1-rs-impl",
@@ -23,7 +23,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-derive"
 version = "0.7.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#0b26039f1333819100b000aa61270ff6024cd603"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#bad265dea09ea351811f5dc98085d93c1d0dcc8d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "asn1-rs-impl"
 version = "0.3.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#0b26039f1333819100b000aa61270ff6024cd603"
+source = "git+https://github.com/rusticata/asn1-rs?branch=master#bad265dea09ea351811f5dc98085d93c1d0dcc8d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -192,8 +192,8 @@ dependencies = [
 
 [[package]]
 name = "oid-registry"
-version = "0.9.0"
-source = "git+https://github.com/rusticata/oid-registry?branch=oid-registry-0.9#f3279b50b4b6263a88e703d023e117ab46764cba"
+version = "0.9.0-beta.1"
+source = "git+https://github.com/rusticata/oid-registry?branch=oid-registry-0.9#53ddabcb88942eb513f308929baca105f0659b9e"
 dependencies = [
  "asn1-rs",
 ]
@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "x509-parser"
-version = "0.18.0"
+version = "0.18.0-beta.1"
 dependencies = [
  "asn1-rs",
  "data-encoding",
