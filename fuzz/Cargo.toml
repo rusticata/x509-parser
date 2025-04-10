@@ -43,3 +43,9 @@ name = "certreq"
 path = "fuzz_targets/certreq.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "crl"
+path = "fuzz_targets/crl.rs"
+test = false
+doc = false
