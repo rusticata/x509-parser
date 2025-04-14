@@ -5,7 +5,8 @@ version = 3
 [[package]]
 name = "asn1-rs"
 version = "0.8.0-beta.1"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#bad265dea09ea351811f5dc98085d93c1d0dcc8d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a606c1df702c88d5de54d19f3edf48ba1e393bc9c791e1d68d3f6e68f9bddd4"
 dependencies = [
  "asn1-rs-derive",
  "asn1-rs-impl",
@@ -23,7 +24,8 @@ dependencies = [
 [[package]]
 name = "asn1-rs-derive"
 version = "0.7.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#bad265dea09ea351811f5dc98085d93c1d0dcc8d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f55c9ab2612aafd3227c0125fe3e7200e0eebf88be213f9ebbd72ee34b259604"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -34,7 +36,8 @@ dependencies = [
 [[package]]
 name = "asn1-rs-impl"
 version = "0.3.0"
-source = "git+https://github.com/rusticata/asn1-rs?branch=master#bad265dea09ea351811f5dc98085d93c1d0dcc8d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee963fda5b644c1b4471b3f2bfe0c8585838d9b87839c2c930048d3cf2c0116c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -61,9 +64,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.18"
+version = "1.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "525046617d8376e3db1deffb079e91cef90a89fc3ca5c185bbf8c9ecdd15cd5c"
+checksum = "8e3a13707ac958681c13b39b458c073d0d9bc8a22cb1b2f4c8e55eb72c13f362"
 dependencies = [
  "shlex",
 ]
@@ -76,9 +79,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "data-encoding"
-version = "2.8.0"
+version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "575f75dfd25738df5b91b8e43e14d44bda14637a58fae779fd2b064f8bf3e010"
+checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "deranged"
@@ -193,7 +196,8 @@ dependencies = [
 [[package]]
 name = "oid-registry"
 version = "0.9.0-beta.1"
-source = "git+https://github.com/rusticata/oid-registry?branch=oid-registry-0.9#53ddabcb88942eb513f308929baca105f0659b9e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da6b3ee02e58698b17960ce876601bf39c925e49228c0e71bcb0fc91d8f120fc"
 dependencies = [
  "asn1-rs",
 ]
