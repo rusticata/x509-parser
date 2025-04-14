@@ -56,7 +56,3 @@ time = { version="0.3.35", features=["formatting"] }
 [dev-dependencies]
 hex-literal = "0.4"
 
-# XXX: remove this before release!
-[patch.crates-io]
-oid-registry = { git="https://github.com/rusticata/oid-registry", branch="oid-registry-0.9" }
-asn1-rs = { git="https://github.com/rusticata/asn1-rs", branch="master" }
