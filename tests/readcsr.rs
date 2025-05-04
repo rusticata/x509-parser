@@ -1,13 +1,16 @@
-use asn1_rs::Set;
+use asn1_rs::{oid, Oid, Set};
 use oid_registry::{
-    OID_PKCS1_SHA256WITHRSA, OID_PKCS9_CHALLENGE_PASSWORD, OID_SIG_ECDSA_WITH_SHA256,
-    OID_X509_COMMON_NAME,
+    OID_PKCS1_SHA256WITHRSA, OID_PKCS9_CHALLENGE_PASSWORD, OID_PKCS9_EXTENSION_REQUEST,
+    OID_SIG_ECDSA_WITH_SHA256, OID_X509_COMMON_NAME,
 };
 use x509_parser::prelude::*;
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 const CSR_DATA: &[u8] = include_bytes!("../assets/test.csr");
 const CSR_CHALLENGE_PASSWORD: &[u8] = include_bytes!("../assets/csr-challenge-password.pem");
+const CSR_CUSTOM_EXTENSION: &[u8] = include_bytes!("../assets/csr-custom-extension.pem");
+const OID_CUSTOM_EXTENSION: Oid<'static> = oid!(1.2.3);
+const VALUE_CUSTOM_EXTENSION: &[u8] = &[1, 2, 3];
 #[test]
 fn read_csr_empty_attrib() {
     let (rem, csr) =
@@ -128,4 +131,43 @@ fn read_csr_verify() {
 
     let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
     csr.verify_signature().unwrap_err();
+}
+
+#[test]
+fn read_csr_with_custom_extension() {
+    let der = pem::parse_x509_pem(CSR_CUSTOM_EXTENSION).unwrap().1;
+    let (rem, csr) = X509CertificationRequest::from_der(&der.contents)
+        .expect("Could not parse CSR with custom extension");
+
+    assert!(rem.is_empty());
+    dbg!(csr.certification_request_info.attributes());
+    let cri = &csr.certification_request_info;
+    assert_eq!(cri.version, X509Version(0));
+    assert_eq!(cri.attributes().len(), 1);
+
+    let custom_attr = csr
+        .certification_request_info
+        .find_attribute(&OID_PKCS9_EXTENSION_REQUEST)
+        .expect("Custom extension not found in CSR");
+    for attr in custom_attr.parsed_attributes() {
+        match attr {
+            ParsedCriAttribute::ExtensionRequest(req) => {
+                assert_eq!(req.extensions.len(), 1);
+                let extension = req.extensions.first().unwrap();
+                assert_eq!(extension.oid, OID_CUSTOM_EXTENSION);
+                assert_eq!(extension.critical, false);
+                assert_eq!(extension.value.as_bytes2(), VALUE_CUSTOM_EXTENSION);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    let extensions = csr.requested_extensions();
+    for extension in extensions {
+        if let ParsedExtension::UnsupportedExtension(ext) = extension {
+            assert_eq!(ext.oid, OID_CUSTOM_EXTENSION);
+            assert_eq!(ext.value, VALUE_CUSTOM_EXTENSION);
+            assert_eq!(ext.critical, false);
+        }
+    }
 }
