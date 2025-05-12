@@ -168,9 +168,6 @@ use certificate::X509Certificate;
 use error::X509Result;
 use revocation_list::CertificateRevocationList;
 
-/// Default maximum object size (2^32)
-pub const MAX_OBJECT_SIZE: usize = 4_294_967_295;
-
 /// Parse a **DER-encoded** X.509 Certificate, and return the remaining of the input and the built
 /// object.
 ///
