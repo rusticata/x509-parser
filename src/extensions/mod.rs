@@ -7,10 +7,6 @@ use crate::x509::ReasonCode;
 use asn1_rs::{
     Any, BigUint, DerParser, DynTagged, Header, Input, Sequence, Tag, Tagged, TaggedExplicit,
 };
-// use der_parser::ber::parse_ber_bool;
-// use der_parser::der::*;
-// use der_parser::error::{BerError, BerResult};
-// use der_parser::num_bigint::BigUint;
 use nom::combinator::{all_consuming, complete, map};
 use nom::multi::many0;
 use nom::{Err, IResult, Input as _, Mode, Parser};
@@ -189,18 +185,6 @@ impl<'a> DerParser<'a> for X509Extension<'a> {
         Ok((rem, ext))
     }
 }
-
-// /// <pre>
-// /// Extension  ::=  SEQUENCE  {
-// ///     extnID      OBJECT IDENTIFIER,
-// ///     critical    BOOLEAN DEFAULT FALSE,
-// ///     extnValue   OCTET STRING  }
-// /// </pre>
-// impl<'a> FromDer<'a, X509Error> for X509Extension<'a> {
-//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-//         X509ExtensionParser::new().parse(i)
-//     }
-// }
 
 /// `X509Extension` parser builder
 #[derive(Clone, Copy, Debug)]
@@ -633,9 +617,6 @@ pub(crate) mod parser {
 pub(crate) fn parse_extension_sequence(
     i: Input<'_>,
 ) -> IResult<Input<'_>, Vec<X509Extension<'_>>, X509Error> {
-    // parse_der_sequence_defined_g(|a, _| {
-    //     all_consuming(many0(complete(X509Extension::from_der))).parse(a)
-    // })(i)
     <Vec<X509Extension>>::parse_der(i)
 }
 

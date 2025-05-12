@@ -117,7 +117,7 @@ impl<'a> DerParser<'a> for GeneralName<'a> {
                 (rem, GeneralName::DirectoryName(name))
             }
             5 => {
-                // XXX Not yet implemented
+                // Deep parsing not yet implemented, so just read Any
                 let rem = input.take_from(input.input_len());
                 let any = Any::new(header.clone(), input);
                 (rem, GeneralName::EDIPartyName(any))
