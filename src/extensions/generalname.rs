@@ -147,15 +147,15 @@ impl<'a> DerParser<'a> for GeneralName<'a> {
 impl fmt::Display for GeneralName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GeneralName::OtherName(oid, _) => write!(f, "OtherName({}, [...])", oid),
-            GeneralName::RFC822Name(s) => write!(f, "RFC822Name({})", s),
-            GeneralName::DNSName(s) => write!(f, "DNSName({})", s),
+            GeneralName::OtherName(oid, _) => write!(f, "OtherName({oid}, [...])"),
+            GeneralName::RFC822Name(s) => write!(f, "RFC822Name({s})"),
+            GeneralName::DNSName(s) => write!(f, "DNSName({s})"),
             GeneralName::X400Address(_) => write!(f, "X400Address(<unparsed>)"),
-            GeneralName::DirectoryName(dn) => write!(f, "DirectoryName({})", dn),
+            GeneralName::DirectoryName(dn) => write!(f, "DirectoryName({dn})"),
             GeneralName::EDIPartyName(_) => write!(f, "EDIPartyName(<unparsed>)"),
-            GeneralName::URI(s) => write!(f, "URI({})", s),
+            GeneralName::URI(s) => write!(f, "URI({s})"),
             GeneralName::IPAddress(b) => write!(f, "IPAddress({})", format_serial(b)),
-            GeneralName::RegisteredID(oid) => write!(f, "RegisteredID({})", oid),
+            GeneralName::RegisteredID(oid) => write!(f, "RegisteredID({oid})"),
             GeneralName::Invalid(any) => {
                 write!(
                     f,

@@ -936,7 +936,7 @@ mod tests {
                 assert!(!reasons.privilege_withdrawn());
                 assert!(reasons.aa_compromise());
                 assert_eq!(
-                    format!("{}", reasons),
+                    format!("{reasons}"),
                     "Key Compromise, CA Compromise, AA Compromise"
                 );
                 let issuers = crl[0].crl_issuer.as_ref().unwrap();
@@ -967,7 +967,7 @@ mod tests {
                 assert!(!reasons.certificate_hold());
                 assert!(!reasons.privilege_withdrawn());
                 assert!(!reasons.aa_compromise());
-                assert_eq!(format!("{}", reasons), "Key Compromise, CA Compromise");
+                assert_eq!(format!("{reasons}"), "Key Compromise, CA Compromise");
                 assert!(crl[1].crl_issuer.is_none());
                 let distribution_point = crl[1].distribution_point.as_ref().unwrap();
                 assert!(matches!(
