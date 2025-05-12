@@ -1,8 +1,9 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
-use crate::utils::format_serial;
-use crate::x509::{parse_serial, AlgorithmIdentifier, ReasonCode, X509Name, X509Version};
+use crate::x509::{
+    format_serial, parse_serial, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
+};
 
 #[cfg(feature = "verify")]
 use crate::verify::verify_signature;

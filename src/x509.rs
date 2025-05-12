@@ -10,8 +10,9 @@ use crate::public_key::*;
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Alias, Any, BerError, BitString, DerParser, Enumerated, FromDer, Header, Input, Integer,
-    OptTaggedExplicit, Sequence, Tag, Tagged,
+    Alias, Any, BerError, BitString, BmpString, Choice, DerParser, Enumerated, FromDer, Header,
+    Input, Integer, OptTaggedExplicit, PrintableString, Sequence, Tag, Tagged, TeletexString,
+    UniversalString, Utf8String,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -68,6 +69,41 @@ newtype_enum! {
         V1 = 0,
         V2 = 1,
         V3 = 2,
+    }
+}
+
+/// The DirectoryString type is defined as a choice of PrintableString, TeletexString,
+/// BMPString, UTF8String, and UniversalString.
+///
+/// <pre>
+/// RFC 5280, 4.1.2.4.  Issuer
+///    DirectoryString ::= CHOICE {
+///          teletexString           TeletexString (SIZE (1..MAX)),
+///          printableString         PrintableString (SIZE (1..MAX)),
+///          universalString         UniversalString (SIZE (1..MAX)),
+///          utf8String              UTF8String (SIZE (1..MAX)),
+///          bmpString               BMPString (SIZE (1..MAX))
+///    }
+/// </pre>
+#[derive(Debug, PartialEq, Eq, Choice)]
+#[asn1(parse = "DER", encode = "")]
+pub enum DirectoryString<'a> {
+    Teletex(TeletexString<'a>),
+    Printable(PrintableString<'a>),
+    Universal(UniversalString<'a>),
+    Utf8(Utf8String<'a>),
+    Bmp(BmpString<'a>),
+}
+
+impl fmt::Display for DirectoryString<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DirectoryString::Teletex(s) => f.write_str(s.as_ref()),
+            DirectoryString::Printable(s) => f.write_str(s.as_ref()),
+            DirectoryString::Universal(s) => f.write_str(s.as_ref()),
+            DirectoryString::Utf8(s) => f.write_str(s.as_ref()),
+            DirectoryString::Bmp(s) => f.write_str(s.as_ref()),
+        }
     }
 }
 
@@ -584,6 +620,15 @@ pub(crate) fn parse_serial(input: Input<'_>) -> IResult<Input<'_>, (&[u8], BigUi
     Ok((rem, (slice, big)))
 }
 
+/// Formats a slice to a colon-separated hex string (for ex `01:02:ff:ff`)
+pub fn format_serial(i: &[u8]) -> String {
+    let mut s = i.iter().fold(String::with_capacity(3 * i.len()), |a, b| {
+        a + &format!("{b:02x}:")
+    });
+    s.pop();
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use crate::certificate::Validity;
@@ -613,6 +658,12 @@ mod tests {
         let data: &[u8] = &[0xa1, 0x01];
         let r = X509Version::parse_der_tagged_0(Input::from(data));
         assert!(r.is_ok());
+    }
+
+    #[test]
+    fn test_format_serial() {
+        let b: &[u8] = &[1, 2, 3, 4, 0xff];
+        assert_eq!("01:02:03:04:ff", format_serial(b));
     }
 
     #[test]

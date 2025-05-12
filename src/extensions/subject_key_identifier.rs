@@ -4,7 +4,7 @@ use std::ops::Deref;
 use asn1_rs::Alias;
 
 use crate::error::X509Error;
-use crate::utils::format_serial;
+use crate::x509::format_serial;
 
 /// <pre>
 /// SubjectKeyIdentifier ::= KeyIdentifier
