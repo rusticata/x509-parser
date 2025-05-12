@@ -53,5 +53,5 @@ thiserror = "2.0"
 time = { version="0.3.35", features=["formatting"] }
 
 [dev-dependencies]
-hex-literal = "0.4"
+hex-literal = "1.0"
 
