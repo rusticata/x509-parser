@@ -10,8 +10,8 @@ use crate::public_key::*;
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Alias, Any, BerError, BitString, BmpString, DerParser, Enumerated, FromDer, Header, Input,
-    Integer, OptTaggedExplicit, Sequence, Tag, Tagged,
+    Alias, Any, BerError, BitString, DerParser, Enumerated, FromDer, Header, Input, Integer,
+    OptTaggedExplicit, Sequence, Tag, Tagged,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -524,28 +524,8 @@ impl fmt::Display for ReasonCode {
 // Attempt to convert attribute to string. If type is not a string, return value is the hex
 // encoding of the attribute value
 fn attribute_value_to_string(attr: &Any, _attr_type: &Oid) -> Result<String, X509Error> {
-    // TODO: replace this with helper function, when it is added to asn1-rs
-    match attr.tag() {
-        Tag::NumericString
-        | Tag::VisibleString
-        | Tag::PrintableString
-        | Tag::GeneralString
-        | Tag::ObjectDescriptor
-        | Tag::GraphicString
-        | Tag::T61String
-        | Tag::VideotexString
-        | Tag::Utf8String
-        | Tag::Ia5String => {
-            let s = core::str::from_utf8(attr.data.as_bytes2())
-                .map_err(|_| X509Error::InvalidAttributes)?;
-            Ok(s.to_owned())
-        }
-        Tag::BmpString => {
-            // TODO: remove this when a new release of asn1-rs removes the need to consume attr in try_from
-            let any = attr.clone();
-            let s = BmpString::try_from(any).map_err(|_| X509Error::InvalidAttributes)?;
-            Ok(s.string())
-        }
+    match attr.as_any_string() {
+        Ok(s) => Ok(s),
         _ => {
             // type is not a string, get slice and convert it to base64
             Ok(HEXUPPER.encode(attr.as_bytes()))
