@@ -3,12 +3,11 @@
 use crate::error::{X509Error, X509Result};
 use crate::extensions::*;
 use crate::time::ASN1Time;
-use crate::utils::format_serial;
 #[cfg(feature = "validate")]
 use crate::validate::*;
 use crate::x509::{
-    parse_serial, parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name,
-    X509Version,
+    format_serial, parse_serial, parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo,
+    X509Name, X509Version,
 };
 
 #[cfg(feature = "verify")]

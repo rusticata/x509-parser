@@ -121,7 +121,7 @@ pub enum ParsedCriAttribute<'a> {
 
 pub(crate) mod parser {
     use crate::cri_attributes::*;
-    use crate::utils::DirectoryString;
+    use crate::x509::DirectoryString;
     use asn1_rs::{DerParser, Input};
     use lazy_static::lazy_static;
     use nom::combinator::map;

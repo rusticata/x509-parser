@@ -147,7 +147,6 @@ pub mod revocation_list;
 pub mod signature_algorithm;
 pub mod signature_value;
 pub mod time;
-pub mod utils;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
