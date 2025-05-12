@@ -1,7 +1,6 @@
 //! X.509 errors
 
 use asn1_rs::{BerError, Error, InnerError, Input};
-// use der_parser::error::BerError;
 use nom::error::{ErrorKind, ParseError};
 use nom::IResult;
 

@@ -104,13 +104,6 @@ impl ASN1Time {
     }
 }
 
-// impl FromDer<'_, X509Error> for ASN1Time {
-//     fn from_der(i: &[u8]) -> X509Result<Self> {
-//         let (rem, time) = parse_choice_of_time(i).map_err(|_| X509Error::InvalidDate)?;
-//         Ok((rem, time))
-//     }
-// }
-
 impl DynTagged for ASN1Time {
     fn tag(&self) -> Tag {
         if self.is_generalizedtime() {
@@ -151,31 +144,8 @@ impl<'a> DerParser<'a> for ASN1Time {
             }
             _ => Err(Err::Error(X509Error::InvalidDate)),
         }
-        // if let Ok((rem, t)) = UtcTime::parse_der(input.clone()) {
-        //     let dt = t
-        //         .utc_adjusted_datetime()
-        //         .map_err(|e| Err::Error(e.into()))?;
-        //     Ok((rem, ASN1Time::new_utc(dt)))
-        // } else if let Ok((rem, t)) = GeneralizedTime::parse_der(input.clone()) {
-        //     let dt = t.utc_datetime().map_err(|e| Err::Error(e.into()))?;
-        //     Ok((rem, ASN1Time::new_utc(dt)))
-        // } else {
-        //     parse_malformed_date(input).map_err(Err::convert)
-        // }
     }
 }
-
-// pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<ASN1Time> {
-//     if let Ok((rem, t)) = UtcTime::from_der(i) {
-//         let dt = t.utc_adjusted_datetime()?;
-//         return Ok((rem, ASN1Time::new_utc(dt)));
-//     }
-//     if let Ok((rem, t)) = GeneralizedTime::from_der(i) {
-//         let dt = t.utc_datetime()?;
-//         return Ok((rem, ASN1Time::new_generalized(dt)));
-//     }
-//     parse_malformed_date(i)
-// }
 
 // allow relaxed parsing of UTCTime (ex: 370116130016+0000)
 fn parse_malformed_date(input: Input<'_>) -> IResult<Input<'_>, ASN1Time, BerError<Input<'_>>> {

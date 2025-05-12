@@ -258,9 +258,9 @@ impl SubjectPublicKeyInfo<'_> {
 #[asn1(parse = "DER", encode = "")]
 #[error(X509Error)]
 pub struct AlgorithmIdentifier<'a> {
-    // #[map_err(|_| X509Error::InvalidAlgorithmIdentifier)]
+    #[map_err(|_| X509Error::InvalidAlgorithmIdentifier)]
     pub algorithm: Oid<'a>,
-    // #[optional]
+    #[optional]
     pub parameters: Option<Any<'a>>,
 }
 
@@ -445,22 +445,6 @@ impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
         name.rdn_seq
     }
 }
-
-// impl<'a> FromDer<'a, X509Error> for X509Name<'a> {
-//     /// Parse the X.501 type Name, used for ex in issuer and subject of a X.509 certificate
-//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-//         let start_i = i;
-//         parse_der_sequence_defined_g(move |i, _| {
-//             let (i, rdn_seq) = many0(complete(RelativeDistinguishedName::from_der)).parse(i)?;
-//             let len = start_i.offset(i);
-//             let name = X509Name {
-//                 rdn_seq,
-//                 raw: &start_i[..len],
-//             };
-//             Ok((i, name))
-//         })(i)
-//     }
-// }
 
 impl Tagged for X509Name<'_> {
     const CONSTRUCTED: bool = false;

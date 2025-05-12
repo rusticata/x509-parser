@@ -23,12 +23,6 @@ pub struct BasicConstraints {
     pub path_len_constraint: Option<u32>,
 }
 
-// impl<'a> FromDer<'a, X509Error> for BasicConstraints {
-//     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-//         parser::parse_basicconstraints(i).map_err(Err::convert)
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use crate::extensions::BasicConstraints;
