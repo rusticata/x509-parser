@@ -18,7 +18,7 @@ use std::collections::HashMap;
 /// </pre>
 #[derive(Clone, Debug, PartialEq)]
 pub struct X509CriAttribute<'a> {
-    /// Atribute identifier
+    /// Attribute identifier
     pub oid: Oid<'a>,
     /// Unparsed data
     pub value: Input<'a>,

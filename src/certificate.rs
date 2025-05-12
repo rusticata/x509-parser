@@ -329,7 +329,7 @@ pub struct TbsCertificate<'a> {
     pub issuer_uid: Option<UniqueIdentifier>,
     pub subject_uid: Option<UniqueIdentifier>,
     extensions: Vec<X509Extension<'a>>,
-    /// `raw` is used to verity signature
+    /// `raw` is used to verify signature
     pub(crate) raw: Input<'a>,
     pub(crate) raw_serial: &'a [u8],
 }
