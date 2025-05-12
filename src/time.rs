@@ -187,7 +187,7 @@ impl fmt::Display for ASN1Time {
         let s = self
             .time
             .format(format)
-            .unwrap_or_else(|e| format!("Invalid date: {}", e));
+            .unwrap_or_else(|e| format!("Invalid date: {e}"));
         f.write_str(&s)
     }
 }

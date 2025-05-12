@@ -312,7 +312,7 @@ pub struct X509Name<'a> {
 impl fmt::Display for X509Name<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match x509name_to_string(&self.rdn_seq, oid_registry()) {
-            Ok(o) => write!(f, "{}", o),
+            Ok(o) => write!(f, "{o}"),
             Err(_) => write!(f, "<X509Error: Invalid X.509 name>"),
         }
     }
@@ -517,7 +517,7 @@ impl fmt::Display for ReasonCode {
             ReasonCode::PrivilegeWithdrawn => "PrivilegeWithdrawn",
             ReasonCode::AACompromise => "AACompromise",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -553,7 +553,7 @@ fn x509name_to_string(
                     Ok(s) => String::from(s),
                     _ => format!("{:?}", attr.attr_type),
                 };
-                let rdn = format!("{}={}", abbrev, val_str);
+                let rdn = format!("{abbrev}={val_str}");
                 match acc2.len() {
                     0 => Ok(rdn),
                     _ => Ok(acc2 + " + " + &rdn),
