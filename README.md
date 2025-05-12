@@ -113,7 +113,7 @@ dependencies and for proc-macro attributes support.
 
 ## Changes
 
-See [CHANGELOG.md](CHANGELOG.md)
+See [CHANGELOG.md](CHANGELOG.md) and [`UPGRADING.md`](UPGRADING.md) for instructions for upgrading major versions.
 
 # License
 
