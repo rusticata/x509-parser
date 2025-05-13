@@ -175,7 +175,7 @@ impl<'a> DerParser<'a> for X509Extension<'a> {
         let (rem, (_, value)) = <&[u8]>::parse_der_as_input(rem)
             .map_err(|_| Err::Error(X509Error::InvalidExtensions))?;
 
-        let (_, parsed_extension) = parser::parse_extension(value.clone(), &oid)?;
+        let parsed_extension = parser::parse_extension(value.clone(), &oid, critical);
         let ext = X509Extension {
             oid,
             critical,
@@ -226,10 +226,11 @@ impl<'i> Parser<Input<'i>> for X509ExtensionParser {
             let (rem, (_, value)) = <&[u8]>::parse_der_as_input(rem)
                 .map_err(|_| Err::Error(X509Error::InvalidExtensions))?;
 
-            let (_, parsed_extension) = if self.deep_parse_extensions {
-                parser::parse_extension(value.clone(), &oid)?
+            let parsed_extension = if self.deep_parse_extensions {
+                parser::parse_extension(value.clone(), &oid, critical)
             } else {
-                (rem.take(rem.input_len()), ParsedExtension::Unparsed)
+                rem.take(rem.input_len());
+                ParsedExtension::Unparsed
             };
 
             let ext = X509Extension {
@@ -258,12 +259,21 @@ impl<'i> Parser<Input<'i>> for X509ExtensionParser {
     }
 }
 
+/// A unsupported extension.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnsupportedExtension<'a> {
+    /// The Object ID of the extension.
+    pub oid: Oid<'a>,
+    /// The unparsed value.
+    pub value: &'a [u8],
+    /// Whether the extension is critical.
+    pub critical: bool,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParsedExtension<'a> {
     /// Crate parser does not support this extension (yet)
-    UnsupportedExtension {
-        oid: Oid<'a>,
-    },
+    UnsupportedExtension(UnsupportedExtension<'a>),
     ParseError {
         error: Err<X509Error>,
     },
@@ -422,30 +432,27 @@ pub(crate) mod parser {
 
     // look into the parser map if the extension is known, and parse it
     // otherwise, leave it as UnsupportedExtension
-    fn parse_extension0<'i>(
-        input: Input<'i>,
-        oid: &Oid,
-    ) -> IResult<Input<'i>, ParsedExtension<'i>, X509Error> {
+    fn parse_extension0<'i>(input: Input<'i>, oid: &Oid, critical: bool) -> ParsedExtension<'i> {
         if let Some(parser) = EXTENSION_PARSERS.get(oid) {
             match parser(input.clone()) {
-                Ok((rem, ext)) => Ok((rem, ext)),
-                Err(error) => Ok((input, ParsedExtension::ParseError { error })),
+                Ok((_, ext)) => ext,
+                Err(error) => ParsedExtension::ParseError { error },
             }
         } else {
-            Ok((
-                input,
-                ParsedExtension::UnsupportedExtension {
-                    oid: oid.to_owned(),
-                },
-            ))
+            ParsedExtension::UnsupportedExtension(UnsupportedExtension {
+                oid: oid.to_owned(),
+                value: input.as_bytes2(),
+                critical,
+            })
         }
     }
 
     pub(crate) fn parse_extension<'i>(
         input: Input<'i>,
         oid: &Oid,
-    ) -> IResult<Input<'i>, ParsedExtension<'i>, X509Error> {
-        parse_extension0(input, oid)
+        critical: bool,
+    ) -> ParsedExtension<'i> {
+        parse_extension0(input, oid, critical)
     }
 
     fn parse_basicconstraints_ext(input: Input) -> IResult<Input, ParsedExtension, X509Error> {
