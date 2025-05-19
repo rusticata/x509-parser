@@ -120,33 +120,32 @@ pub enum ParsedCriAttribute<'a> {
 }
 
 pub(crate) mod parser {
+    use std::sync::LazyLock;
+
     use crate::cri_attributes::*;
     use crate::x509::DirectoryString;
     use asn1_rs::{DerParser, Input};
-    use lazy_static::lazy_static;
     use nom::combinator::map;
 
     type AttrParser =
         for<'a> fn(Input<'a>) -> IResult<Input<'a>, ParsedCriAttribute<'a>, X509Error>;
 
-    lazy_static! {
-        static ref ATTRIBUTE_PARSERS: HashMap<Oid<'static>, AttrParser> = {
-            macro_rules! add {
-                ($m:ident, $oid:ident, $p:ident) => {
-                    $m.insert($oid, $p as AttrParser);
-                };
-            }
+    static ATTRIBUTE_PARSERS: LazyLock<HashMap<Oid<'static>, AttrParser>> = LazyLock::new(|| {
+        macro_rules! add {
+            ($m:ident, $oid:ident, $p:ident) => {
+                $m.insert($oid, $p as AttrParser);
+            };
+        }
 
-            let mut m = HashMap::new();
-            add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_attr);
-            add!(
-                m,
-                OID_PKCS9_CHALLENGE_PASSWORD,
-                parse_challenge_password_attr
-            );
-            m
-        };
-    }
+        let mut m = HashMap::new();
+        add!(m, OID_PKCS9_EXTENSION_REQUEST, parse_extension_request_attr);
+        add!(
+            m,
+            OID_PKCS9_CHALLENGE_PASSWORD,
+            parse_challenge_password_attr
+        );
+        m
+    });
 
     /// Look into the parser map if the extension is known, and parse it,
     /// otherwise leave it as UnsupportedExtension

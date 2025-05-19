@@ -20,31 +20,28 @@
 
 use crate::error::NidError;
 use asn1_rs::oid;
-use lazy_static::lazy_static;
 use oid_registry::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
-lazy_static! {
-    static ref OID_REGISTRY: OidRegistry<'static> = {
-        let mut reg = OidRegistry::default().with_all_crypto().with_x509();
-        // OIDs not in the default registry can be added here
-        let entry = OidEntry::new("id-mgf1", "Mask Generator Function 1 (MGF1)");
-        reg.insert(oid! {1.2.840.113549.1.1.8}, entry);
-        reg
-    };
-    static ref ABBREV_MAP: HashMap<Oid<'static>, &'static str> = {
-        let mut m = HashMap::new();
-        m.insert(OID_X509_COMMON_NAME, "CN");
-        m.insert(OID_X509_COUNTRY_NAME, "C");
-        m.insert(OID_X509_LOCALITY_NAME, "L");
-        m.insert(OID_X509_STATE_OR_PROVINCE_NAME, "ST");
-        m.insert(OID_X509_ORGANIZATION_NAME, "O");
-        m.insert(OID_X509_ORGANIZATIONAL_UNIT, "OU");
-        m.insert(OID_DOMAIN_COMPONENT, "DC");
-        m.insert(OID_PKCS9_EMAIL_ADDRESS, "Email");
-        m
-    };
-}
+static OID_REGISTRY: LazyLock<OidRegistry<'static>> = LazyLock::new(|| {
+    let mut reg = OidRegistry::default().with_all_crypto().with_x509();
+    // OIDs not in the default registry can be added here
+    let entry = OidEntry::new("id-mgf1", "Mask Generator Function 1 (MGF1)");
+    reg.insert(oid! {1.2.840.113549.1.1.8}, entry);
+    reg
+});
+static ABBREV_MAP: LazyLock<HashMap<Oid<'static>, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert(OID_X509_COMMON_NAME, "CN");
+    m.insert(OID_X509_COUNTRY_NAME, "C");
+    m.insert(OID_X509_LOCALITY_NAME, "L");
+    m.insert(OID_X509_STATE_OR_PROVINCE_NAME, "ST");
+    m.insert(OID_X509_ORGANIZATION_NAME, "O");
+    m.insert(OID_X509_ORGANIZATIONAL_UNIT, "OU");
+    m.insert(OID_DOMAIN_COMPONENT, "DC");
+    m.insert(OID_PKCS9_EMAIL_ADDRESS, "Email");
+    m
+});
 
 /// Return the abbreviation (for ex. CN for Common Name), or if not found, the OID short name
 pub fn oid2abbrev<'a>(oid: &'a Oid, registry: &'a OidRegistry) -> Result<&'a str, NidError> {
