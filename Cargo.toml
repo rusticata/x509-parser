@@ -10,7 +10,7 @@ repository = "https://github.com/rusticata/x509-parser.git"
 categories = ["parser-implementations", "cryptography"]
 readme = "README.md"
 edition = "2018"
-rust-version = "1.67.1"
+rust-version = "1.80.0"
 
 include = [
   "CHANGELOG.md",
@@ -44,7 +44,6 @@ validate = []
 [dependencies]
 asn1-rs = { version = "0.8.0-beta.1", features=["bigint", "datetime"] }
 data-encoding = "2.2.1"
-lazy_static = "1.4"
 nom = "8.0"
 oid-registry = { version="0.9.0-beta.1", features=["crypto", "x509", "x962"] }
 rusticata-macros = "5.0"
