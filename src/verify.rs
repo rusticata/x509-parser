@@ -8,19 +8,25 @@ use oid_registry::{
     OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ED25519,
 };
 
+// Since the `signature` object is similar in ring and in aws-lc-rs, we just use simple logic
+// to determine which one to use.
+// If both verify and verify-aws features are enabled, aws will be used.
+#[cfg(feature = "verify-aws")]
+use aws_lc_rs::signature;
+#[cfg(all(feature = "verify", not(feature = "verify-aws")))]
+use ring::signature;
+
 /// Verify the cryptographic signature of the raw data (can be a certificate, a CRL or a CSR).
 ///
 /// `public_key` is the public key of the **signer**.
 ///
-/// Not all algorithms are supported, this function is limited to what `ring` supports.
+/// Not all algorithms are supported, this function is limited to what `aws_lc_rs` or `ring` supports.
 pub fn verify_signature(
     public_key: &SubjectPublicKeyInfo,
     signature_algorithm: &AlgorithmIdentifier,
     signature_value: &BitString,
     raw_data: &[u8],
 ) -> Result<(), X509Error> {
-    use ring::signature;
-
     let AlgorithmIdentifier {
         algorithm: signature_algorithm,
         parameters: signature_algorithm_parameters,
@@ -64,12 +70,11 @@ pub fn verify_signature(
 
 /// Find the verification algorithm for the given EC curve and SHA digest size
 ///
-/// Not all algorithms are supported, we are limited to what `ring` supports.
+/// Not all algorithms are supported, we are limited to what `aws_lc_rs`  or `ring`supports.
 fn get_ec_curve_sha(
     pubkey_alg: &AlgorithmIdentifier,
     sha_len: usize,
-) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
-    use ring::signature;
+) -> Option<&'static dyn signature::VerificationAlgorithm> {
     let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
     // let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
     if curve_oid == OID_EC_P256 {
@@ -91,13 +96,11 @@ fn get_ec_curve_sha(
 
 /// Find the verification algorithm for the given RSA-PSS parameters
 ///
-/// Not all algorithms are supported, we are limited to what `ring` supports.
+/// Not all algorithms are supported, we are limited to what `aws_lc_rs` or `ring` supports.
 /// Notably, the SHA-1 hash algorithm is not supported.
 fn get_rsa_pss_verification_algo(
     params: &Option<Any>,
-) -> Option<&'static dyn ring::signature::VerificationAlgorithm> {
-    use ring::signature;
-
+) -> Option<&'static dyn signature::VerificationAlgorithm> {
     let params = params.as_ref()?;
     let (_, params) =
         RsaSsaPssParams::from_der_content(&params.header, params.data.clone()).ok()?;
