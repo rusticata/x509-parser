@@ -70,6 +70,7 @@ jobs:
           - --features=default
           - --all-features
           - --features=verify
+          - --features=verify-aws
           - --features=validate
     steps:
       - uses: actions/checkout@v4
