@@ -155,7 +155,7 @@ fn read_csr_with_custom_extension() {
                 assert_eq!(req.extensions.len(), 1);
                 let extension = req.extensions.first().unwrap();
                 assert_eq!(extension.oid, OID_CUSTOM_EXTENSION);
-                assert_eq!(extension.critical, false);
+                assert!(!extension.critical);
                 assert_eq!(extension.value.as_bytes2(), VALUE_CUSTOM_EXTENSION);
             }
             _ => unreachable!(),
@@ -167,7 +167,7 @@ fn read_csr_with_custom_extension() {
         if let ParsedExtension::UnsupportedExtension(ext) = extension {
             assert_eq!(ext.oid, OID_CUSTOM_EXTENSION);
             assert_eq!(ext.value, VALUE_CUSTOM_EXTENSION);
-            assert_eq!(ext.critical, false);
+            assert!(!ext.critical);
         }
     }
 }

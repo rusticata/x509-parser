@@ -247,7 +247,7 @@ pub struct SubjectPublicKeyInfo<'a> {
 
 impl SubjectPublicKeyInfo<'_> {
     /// Attempt to parse the public key, and return the parsed version or an error
-    pub fn parsed(&self) -> Result<PublicKey, X509Error> {
+    pub fn parsed(&self) -> Result<PublicKey<'_>, X509Error> {
         let b = self.subject_public_key.as_raw_slice();
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
             let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;

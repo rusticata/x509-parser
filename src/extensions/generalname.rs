@@ -168,7 +168,7 @@ impl fmt::Display for GeneralName<'_> {
     }
 }
 
-fn ia5str_relaxed(input: Input) -> Result<(Input, &str), Err<X509Error>> {
+fn ia5str_relaxed(input: Input<'_>) -> Result<(Input<'_>, &str), Err<X509Error>> {
     let (rem, input) = input.take_split(input.input_len());
     // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
     // are using unicode characters

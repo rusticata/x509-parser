@@ -5,7 +5,7 @@ use crate::error::X509Error;
 
 /// The value is an IA5String representing a comment
 /// that may be displayed to the user when the certificate is viewed
-pub fn parse_der_nscomment(input: Input) -> IResult<Input, &str, X509Error> {
+pub fn parse_der_nscomment(input: Input<'_>) -> IResult<Input<'_>, &str, X509Error> {
     match Ia5String::parse_der(input.clone()) {
         Ok((rem, obj)) => {
             let s = obj
