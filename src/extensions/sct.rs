@@ -70,7 +70,7 @@ pub fn parse_ct_signed_certificate_timestamp_list(
 /// Parses as single Signed Certificate Timestamp entry
 pub fn parse_ct_signed_certificate_timestamp(
     i: &[u8],
-) -> IResult<&[u8], SignedCertificateTimestamp, Error> {
+) -> IResult<&[u8], SignedCertificateTimestamp<'_>, Error> {
     map_parser(
         length_data(be_u16),
         parse_ct_signed_certificate_timestamp_content,
@@ -80,7 +80,7 @@ pub fn parse_ct_signed_certificate_timestamp(
 
 pub(crate) fn parse_ct_signed_certificate_timestamp_content(
     i: &[u8],
-) -> IResult<&[u8], SignedCertificateTimestamp, Error> {
+) -> IResult<&[u8], SignedCertificateTimestamp<'_>, Error> {
     let (i, version) = be_u8(i)?;
     let (i, id) = parse_log_id(i)?;
     let (i, timestamp) = be_u64(i)?;
@@ -97,7 +97,7 @@ pub(crate) fn parse_ct_signed_certificate_timestamp_content(
 }
 
 // Safety: cannot fail, take() returns exactly 32 bytes
-fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID, Error> {
+fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID<'_>, Error> {
     let (i, key_id) = take(32usize)(i)?;
     Ok((
         i,
@@ -109,13 +109,13 @@ fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID, Error> {
     ))
 }
 
-fn parse_ct_extensions(i: &[u8]) -> IResult<&[u8], CtExtensions, Error> {
+fn parse_ct_extensions(i: &[u8]) -> IResult<&[u8], CtExtensions<'_>, Error> {
     let (i, ext_len) = be_u16(i)?;
     let (i, ext_data) = take(ext_len as usize)(i)?;
     Ok((i, CtExtensions(ext_data)))
 }
 
-fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned, Error> {
+fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned<'_>, Error> {
     let (i, hash_alg_id) = be_u8(i)?;
     let (i, sign_alg_id) = be_u8(i)?;
     let (i, data) = length_data(be_u16).parse(i)?;

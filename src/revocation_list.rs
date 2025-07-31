@@ -66,7 +66,7 @@ impl<'a> CertificateRevocationList<'a> {
 
     /// Get the certificate issuer.
     #[inline]
-    pub fn issuer(&self) -> &X509Name {
+    pub fn issuer(&self) -> &X509Name<'_> {
         &self.tbs_cert_list.issuer
     }
 
@@ -89,7 +89,7 @@ impl<'a> CertificateRevocationList<'a> {
 
     /// Get the CRL extensions.
     #[inline]
-    pub fn extensions(&self) -> &[X509Extension] {
+    pub fn extensions(&self) -> &[X509Extension<'_>] {
         &self.tbs_cert_list.extensions
     }
 
@@ -179,27 +179,27 @@ pub struct TbsCertList<'a> {
 impl TbsCertList<'_> {
     /// Returns the certificate extensions
     #[inline]
-    pub fn extensions(&self) -> &[X509Extension] {
+    pub fn extensions(&self) -> &[X509Extension<'_>] {
         &self.extensions
     }
 
     /// Returns an iterator over the certificate extensions
     #[inline]
-    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension> {
+    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension<'_>> {
         self.extensions.iter()
     }
 
     /// Searches for an extension with the given `Oid`.
     ///
     /// Note: if there are several extensions with the same `Oid`, the first one is returned.
-    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension> {
+    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension<'_>> {
         self.extensions.iter().find(|&ext| ext.oid == *oid)
     }
 
     /// Builds and returns a map of extensions.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
-    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension>, X509Error> {
+    pub fn extensions_map(&self) -> Result<HashMap<Oid<'_>, &X509Extension<'_>>, X509Error> {
         self.extensions
             .iter()
             .try_fold(HashMap::new(), |mut m, ext| {
@@ -297,27 +297,27 @@ impl RevokedCertificate<'_> {
 
     /// Get the CRL entry extensions.
     #[inline]
-    pub fn extensions(&self) -> &[X509Extension] {
+    pub fn extensions(&self) -> &[X509Extension<'_>] {
         &self.extensions
     }
 
     /// Returns an iterator over the CRL entry extensions
     #[inline]
-    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension> {
+    pub fn iter_extensions(&self) -> impl Iterator<Item = &X509Extension<'_>> {
         self.extensions.iter()
     }
 
     /// Searches for a CRL entry extension with the given `Oid`.
     ///
     /// Note: if there are several extensions with the same `Oid`, the first one is returned.
-    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension> {
+    pub fn find_extension(&self, oid: &Oid) -> Option<&X509Extension<'_>> {
         self.extensions.iter().find(|&ext| ext.oid == *oid)
     }
 
     /// Builds and returns a map of CRL entry extensions.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
-    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension>, X509Error> {
+    pub fn extensions_map(&self) -> Result<HashMap<Oid<'_>, &X509Extension<'_>>, X509Error> {
         self.extensions
             .iter()
             .try_fold(HashMap::new(), |mut m, ext| {
