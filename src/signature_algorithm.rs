@@ -103,12 +103,12 @@ pub struct RsaSsaPssParams<'a> {
 
 impl<'a> RsaSsaPssParams<'a> {
     /// Get a reference to the rsa ssa pss params's hash algorithm.
-    pub fn hash_algorithm(&self) -> Option<&AlgorithmIdentifier> {
+    pub fn hash_algorithm(&self) -> Option<&AlgorithmIdentifier<'_>> {
         self.hash_alg.as_ref()
     }
 
     /// Return the hash algorithm OID, or SHA1 if absent (RFC4055)
-    pub fn hash_algorithm_oid(&self) -> &'a Oid {
+    pub fn hash_algorithm_oid(&self) -> &'a Oid<'_> {
         const SHA1: &Oid = &OID_HASH_SHA1;
         self.hash_alg
             .as_ref()
@@ -117,14 +117,14 @@ impl<'a> RsaSsaPssParams<'a> {
     }
 
     /// Get a reference to the rsa ssa pss params's mask generation algorithm.
-    pub fn mask_gen_algorithm_raw(&self) -> Option<&AlgorithmIdentifier> {
+    pub fn mask_gen_algorithm_raw(&self) -> Option<&AlgorithmIdentifier<'_>> {
         self.mask_gen_algorithm.as_ref()
     }
 
     /// Get the rsa ssa pss params's mask generation algorithm.
     ///
     /// If the algorithm encoding is invalid, raise an error `InvalidAlgorithmIdentifier`
-    pub fn mask_gen_algorithm(&self) -> Result<MaskGenAlgorithm, X509Error> {
+    pub fn mask_gen_algorithm(&self) -> Result<MaskGenAlgorithm<'_, '_>, X509Error> {
         match self.mask_gen_algorithm.as_ref() {
             Some(alg) => {
                 let (_, hash) = alg
@@ -209,12 +209,12 @@ impl<'a> RsaAesOaepParams<'a> {
     );
 
     /// Get a reference to the rsa aes oaep params's hash algorithm.
-    pub fn hash_algorithm(&self) -> Option<&AlgorithmIdentifier> {
+    pub fn hash_algorithm(&self) -> Option<&AlgorithmIdentifier<'_>> {
         self.hash_alg.as_ref()
     }
 
     /// Return the hash algorithm OID, or SHA1 if absent (RFC4055)
-    pub fn hash_algorithm_oid(&self) -> &'a Oid {
+    pub fn hash_algorithm_oid(&self) -> &'a Oid<'_> {
         const SHA1: &Oid = &OID_HASH_SHA1;
         self.hash_alg
             .as_ref()
@@ -223,14 +223,14 @@ impl<'a> RsaAesOaepParams<'a> {
     }
 
     /// Get a reference to the rsa ssa pss params's mask generation algorithm.
-    pub fn mask_gen_algorithm_raw(&self) -> Option<&AlgorithmIdentifier> {
+    pub fn mask_gen_algorithm_raw(&self) -> Option<&AlgorithmIdentifier<'_>> {
         self.mask_gen_alg.as_ref()
     }
 
     /// Get the rsa ssa pss params's mask generation algorithm.
     ///
     /// If the algorithm encoding is invalid, raise an error `InvalidAlgorithmIdentifier`
-    pub fn mask_gen_algorithm(&self) -> Result<MaskGenAlgorithm, X509Error> {
+    pub fn mask_gen_algorithm(&self) -> Result<MaskGenAlgorithm<'_, '_>, X509Error> {
         match self.mask_gen_alg.as_ref() {
             Some(alg) => {
                 let hash = alg

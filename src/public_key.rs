@@ -69,7 +69,7 @@ impl RSAPublicKey<'_> {
     }
 }
 
-fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey, X509Error> {
+fn parse_rsa_key(bytes: &[u8]) -> IResult<&[u8], RSAPublicKey<'_>, X509Error> {
     let input = Input::from(bytes);
     let (rem, (o1, o2)) = <(Integer, Integer)>::parse_der(input).map_err(Err::convert)?;
     let modulus = o1

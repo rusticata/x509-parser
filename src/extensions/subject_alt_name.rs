@@ -19,7 +19,7 @@ use super::{GeneralName, GeneralNames};
 pub struct SubjectAlternativeName<'a>(pub GeneralNames<'a>);
 
 impl SubjectAlternativeName<'_> {
-    pub fn general_names(&self) -> impl Iterator<Item = &GeneralName> {
+    pub fn general_names(&self) -> impl Iterator<Item = &GeneralName<'_>> {
         self.0.iter()
     }
 }

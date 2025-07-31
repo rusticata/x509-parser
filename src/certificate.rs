@@ -341,13 +341,13 @@ impl<'a> TbsCertificate<'a> {
 
     /// Get the certificate subject.
     #[inline]
-    pub fn subject(&self) -> &X509Name {
+    pub fn subject(&self) -> &X509Name<'_> {
         &self.subject
     }
 
     /// Get the certificate issuer.
     #[inline]
-    pub fn issuer(&self) -> &X509Name {
+    pub fn issuer(&self) -> &X509Name<'_> {
         &self.issuer
     }
 
@@ -359,7 +359,7 @@ impl<'a> TbsCertificate<'a> {
 
     /// Get the certificate public key information.
     #[inline]
-    pub fn public_key(&self) -> &SubjectPublicKeyInfo {
+    pub fn public_key(&self) -> &SubjectPublicKeyInfo<'_> {
         &self.subject_pki
     }
 
@@ -406,7 +406,7 @@ impl<'a> TbsCertificate<'a> {
     /// Builds and returns a map of extensions.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
-    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension<'a>>, X509Error> {
+    pub fn extensions_map(&self) -> Result<HashMap<Oid<'_>, &X509Extension<'a>>, X509Error> {
         self.extensions
             .iter()
             .try_fold(HashMap::new(), |mut m, ext| {
@@ -456,7 +456,7 @@ impl<'a> TbsCertificate<'a> {
     /// or an error if the extension is invalid, or is present twice or more.
     pub fn extended_key_usage(
         &self,
-    ) -> Result<Option<BasicExtension<&ExtendedKeyUsage>>, X509Error> {
+    ) -> Result<Option<BasicExtension<&ExtendedKeyUsage<'_>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_EXTENDED_KEY_USAGE)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::ExtendedKeyUsage(ref value) => {
@@ -502,7 +502,9 @@ impl<'a> TbsCertificate<'a> {
     ///
     /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
     /// or an error if the extension is invalid, or is present twice or more.
-    pub fn policy_mappings(&self) -> Result<Option<BasicExtension<&PolicyMappings>>, X509Error> {
+    pub fn policy_mappings(
+        &self,
+    ) -> Result<Option<BasicExtension<&PolicyMappings<'_>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_POLICY_MAPPINGS)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::PolicyMappings(ref value) => {
@@ -532,7 +534,9 @@ impl<'a> TbsCertificate<'a> {
     ///
     /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
     /// or an error if the extension is invalid, or is present twice or more.
-    pub fn name_constraints(&self) -> Result<Option<BasicExtension<&NameConstraints>>, X509Error> {
+    pub fn name_constraints(
+        &self,
+    ) -> Result<Option<BasicExtension<&NameConstraints<'_>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_NAME_CONSTRAINTS)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::NameConstraints(ref value) => {
