@@ -105,6 +105,13 @@
 //! }
 //! ```
 //!
+//! - The `verify-aws` feature offers the same support for signature verification, but based on
+//!   `aws-lc-rs` instead of `ring`.
+//!
+//! - _Note_: if both `verify` and `verify-aws` features are enabled (which happens when using
+//!   `--all-features`), the verification will use `aws-lc-rs`. It also has the side-effect of
+//!   having a dependency on `ring`, even if it is not used.
+//!
 //! - The `validate` features add methods to run more validation functions on the certificate structure
 //!   and values using the [`Validate`](validate/trait.Validate.html) trait.
 //!   It does not validate any cryptographic parameter (see `verify` above).
