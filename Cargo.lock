@@ -448,8 +448,3 @@ dependencies = [
  "thiserror",
  "time",
 ]
-
-[[patch.unused]]
-name = "oid-registry"
-version = "0.9.0-beta.1"
-source = "git+https://github.com/rusticata/oid-registry?branch=master#4bf1446eb8a3834ee481f49116674c23d48e5caa"
