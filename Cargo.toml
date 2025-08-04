@@ -53,6 +53,3 @@ der-parser = { version = "10.0", features=["bigint"] }
 thiserror = "2.0"
 time = { version="0.3.35", features=["formatting"] }
 
-# XXX: remove this before release!
-[patch.crates-io]
-oid-registry = { git="https://github.com/rusticata/oid-registry", branch="master" }
