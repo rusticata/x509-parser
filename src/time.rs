@@ -16,7 +16,7 @@ pub struct ASN1Time {
 }
 
 impl ASN1Time {
-    pub(crate) fn from_der_opt(i: &[u8]) -> X509Result<Option<Self>> {
+    pub(crate) fn from_der_opt(i: &[u8]) -> X509Result<'_, Option<Self>> {
         if i.is_empty() {
             return Ok((i, None));
         }
@@ -110,13 +110,13 @@ impl ASN1Time {
 }
 
 impl FromDer<'_, X509Error> for ASN1Time {
-    fn from_der(i: &[u8]) -> X509Result<Self> {
+    fn from_der(i: &[u8]) -> X509Result<'_, Self> {
         let (rem, time) = parse_choice_of_time(i).map_err(|_| X509Error::InvalidDate)?;
         Ok((rem, time))
     }
 }
 
-pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<ASN1Time> {
+pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<'_, ASN1Time> {
     if let Ok((rem, t)) = UtcTime::from_der(i) {
         let dt = t.utc_adjusted_datetime()?;
         return Ok((rem, ASN1Time::new_utc(dt)));
@@ -129,7 +129,7 @@ pub(crate) fn parse_choice_of_time(i: &[u8]) -> ParseResult<ASN1Time> {
 }
 
 // allow relaxed parsing of UTCTime (ex: 370116130016+0000)
-fn parse_malformed_date(i: &[u8]) -> ParseResult<ASN1Time> {
+fn parse_malformed_date(i: &[u8]) -> ParseResult<'_, ASN1Time> {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     // fn check_char(b: &u8) -> bool {
     //     (0x20 <= *b && *b <= 0x7f) || (*b == b'+')

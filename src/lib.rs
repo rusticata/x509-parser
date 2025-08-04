@@ -177,7 +177,7 @@ use revocation_list::CertificateRevocationList;
 ///
 /// For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
 #[inline]
-pub fn parse_x509_certificate(i: &[u8]) -> X509Result<X509Certificate> {
+pub fn parse_x509_certificate(i: &[u8]) -> X509Result<'_, X509Certificate<'_>> {
     X509Certificate::from_der(i)
 }
 
@@ -187,7 +187,7 @@ pub fn parse_x509_certificate(i: &[u8]) -> X509Result<X509Certificate> {
 /// This function is an alias to [CertificateRevocationList::from_der](revocation_list::CertificateRevocationList::from_der). See this function
 /// for more information.
 #[inline]
-pub fn parse_x509_crl(i: &[u8]) -> X509Result<CertificateRevocationList> {
+pub fn parse_x509_crl(i: &[u8]) -> X509Result<'_, CertificateRevocationList<'_>> {
     CertificateRevocationList::from_der(i)
 }
 
@@ -197,7 +197,7 @@ pub fn parse_x509_crl(i: &[u8]) -> X509Result<CertificateRevocationList> {
     note = "please use `parse_x509_certificate` or `X509Certificate::from_der` instead"
 )]
 #[inline]
-pub fn parse_x509_der(i: &[u8]) -> X509Result<X509Certificate> {
+pub fn parse_x509_der(i: &[u8]) -> X509Result<'_, X509Certificate<'_>> {
     X509Certificate::from_der(i)
 }
 
@@ -208,6 +208,6 @@ pub fn parse_x509_der(i: &[u8]) -> X509Result<X509Certificate> {
     note = "please use `parse_x509_crl` or `CertificateRevocationList::from_der` instead"
 )]
 #[inline]
-pub fn parse_crl_der(i: &[u8]) -> X509Result<CertificateRevocationList> {
+pub fn parse_crl_der(i: &[u8]) -> X509Result<'_, CertificateRevocationList<'_>> {
     CertificateRevocationList::from_der(i)
 }

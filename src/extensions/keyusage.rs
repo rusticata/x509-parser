@@ -110,7 +110,7 @@ pub(crate) fn parse_keyusage(i: &[u8]) -> IResult<&[u8], KeyUsage, BerError> {
     Ok((rest, KeyUsage { flags }))
 }
 
-pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage, BerError> {
+pub(crate) fn parse_extendedkeyusage(i: &[u8]) -> IResult<&[u8], ExtendedKeyUsage<'_>, BerError> {
     let (ret, seq) = <Vec<Oid>>::from_der(i)?;
     let mut seen = std::collections::HashSet::new();
     let mut eku = ExtendedKeyUsage {
