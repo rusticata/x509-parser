@@ -40,7 +40,7 @@ pub struct X509Version(pub u32);
 
 impl X509Version {
     /// Parse `[0]` EXPLICIT Version DEFAULT v1
-    pub(crate) fn from_der_tagged_0(i: &[u8]) -> X509Result<X509Version> {
+    pub(crate) fn from_der_tagged_0(i: &[u8]) -> X509Result<'_, X509Version> {
         let (rem, opt_version) = OptTaggedParser::from(0)
             .parse_der(i, |_, data| Self::from_der(data))
             .map_err(Err::convert)?;
@@ -153,11 +153,11 @@ impl<'a> FromDer<'a, X509Error> for AttributeTypeAndValue<'a> {
 
 // AttributeValue          ::= ANY -- DEFINED BY AttributeType
 #[inline]
-fn parse_attribute_value(i: &[u8]) -> ParseResult<Any, Error> {
+fn parse_attribute_value(i: &[u8]) -> ParseResult<'_, Any<'_>, Error> {
     alt((Any::from_der, parse_malformed_string))(i)
 }
 
-fn parse_malformed_string(i: &[u8]) -> ParseResult<Any, Error> {
+fn parse_malformed_string(i: &[u8]) -> ParseResult<'_, Any<'_>, Error> {
     let (rem, hdr) = Header::from_der(i)?;
     let len = hdr.length().definite()?;
     if len > MAX_OBJECT_SIZE {
@@ -231,7 +231,7 @@ pub struct SubjectPublicKeyInfo<'a> {
 
 impl SubjectPublicKeyInfo<'_> {
     /// Attempt to parse the public key, and return the parsed version or an error
-    pub fn parsed(&self) -> Result<PublicKey, X509Error> {
+    pub fn parsed(&self) -> Result<PublicKey<'_>, X509Error> {
         let b = &self.subject_public_key.data;
         if self.algorithm.algorithm == OID_PKCS1_RSAENCRYPTION {
             let (_, key) = RSAPublicKey::from_der(b).map_err(|_| X509Error::InvalidSPKI)?;
@@ -571,11 +571,11 @@ fn x509name_to_string(
     })
 }
 
-pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<BitString> {
+pub(crate) fn parse_signature_value(i: &[u8]) -> X509Result<'_, BitString<'_>> {
     BitString::from_der(i).or(Err(Err::Error(X509Error::InvalidSignatureValue)))
 }
 
-pub(crate) fn parse_serial(i: &[u8]) -> X509Result<(&[u8], BigUint)> {
+pub(crate) fn parse_serial(i: &[u8]) -> X509Result<'_, (&[u8], BigUint)> {
     let (rem, any) = Any::from_ber(i).map_err(|_| X509Error::InvalidSerial)?;
     // RFC 5280 4.1.2.2: "The serial number MUST be a positive integer"
     // however, many CAs do not respect this and send integers with MSB set,

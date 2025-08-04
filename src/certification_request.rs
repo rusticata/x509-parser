@@ -22,7 +22,7 @@ pub struct X509CertificationRequest<'a> {
 }
 
 impl X509CertificationRequest<'_> {
-    pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension>> {
+    pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension<'_>>> {
         self.certification_request_info
             .iter_attributes()
             .find_map(|attr| {
@@ -102,27 +102,27 @@ pub struct X509CertificationRequestInfo<'a> {
 impl X509CertificationRequestInfo<'_> {
     /// Get the CRL entry extensions.
     #[inline]
-    pub fn attributes(&self) -> &[X509CriAttribute] {
+    pub fn attributes(&self) -> &[X509CriAttribute<'_>] {
         &self.attributes
     }
 
     /// Returns an iterator over the CRL entry extensions
     #[inline]
-    pub fn iter_attributes(&self) -> impl Iterator<Item = &X509CriAttribute> {
+    pub fn iter_attributes(&self) -> impl Iterator<Item = &X509CriAttribute<'_>> {
         self.attributes.iter()
     }
 
     /// Searches for a CRL entry extension with the given `Oid`.
     ///
     /// Note: if there are several extensions with the same `Oid`, the first one is returned.
-    pub fn find_attribute(&self, oid: &Oid) -> Option<&X509CriAttribute> {
+    pub fn find_attribute(&self, oid: &Oid) -> Option<&X509CriAttribute<'_>> {
         self.attributes.iter().find(|&ext| ext.oid == *oid)
     }
 
     /// Builds and returns a map of CRL entry extensions.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
-    pub fn attributes_map(&self) -> Result<HashMap<Oid, &X509CriAttribute>, X509Error> {
+    pub fn attributes_map(&self) -> Result<HashMap<Oid<'_>, &X509CriAttribute<'_>>, X509Error> {
         self.attributes
             .iter()
             .try_fold(HashMap::new(), |mut m, ext| {

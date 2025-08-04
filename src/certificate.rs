@@ -288,13 +288,13 @@ impl<'a> TbsCertificate<'a> {
 
     /// Get the certificate subject.
     #[inline]
-    pub fn subject(&self) -> &X509Name {
+    pub fn subject(&self) -> &X509Name<'_> {
         &self.subject
     }
 
     /// Get the certificate issuer.
     #[inline]
-    pub fn issuer(&self) -> &X509Name {
+    pub fn issuer(&self) -> &X509Name<'_> {
         &self.issuer
     }
 
@@ -306,7 +306,7 @@ impl<'a> TbsCertificate<'a> {
 
     /// Get the certificate public key information.
     #[inline]
-    pub fn public_key(&self) -> &SubjectPublicKeyInfo {
+    pub fn public_key(&self) -> &SubjectPublicKeyInfo<'_> {
         &self.subject_pki
     }
 
@@ -353,7 +353,7 @@ impl<'a> TbsCertificate<'a> {
     /// Builds and returns a map of extensions.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
-    pub fn extensions_map(&self) -> Result<HashMap<Oid, &X509Extension<'a>>, X509Error> {
+    pub fn extensions_map(&self) -> Result<HashMap<Oid<'_>, &X509Extension<'a>>, X509Error> {
         self.extensions
             .iter()
             .try_fold(HashMap::new(), |mut m, ext| {
@@ -403,7 +403,7 @@ impl<'a> TbsCertificate<'a> {
     /// or an error if the extension is invalid, or is present twice or more.
     pub fn extended_key_usage(
         &self,
-    ) -> Result<Option<BasicExtension<&ExtendedKeyUsage>>, X509Error> {
+    ) -> Result<Option<BasicExtension<&ExtendedKeyUsage<'_>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_EXTENDED_KEY_USAGE)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::ExtendedKeyUsage(ref value) => {
@@ -449,7 +449,9 @@ impl<'a> TbsCertificate<'a> {
     ///
     /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
     /// or an error if the extension is invalid, or is present twice or more.
-    pub fn policy_mappings(&self) -> Result<Option<BasicExtension<&PolicyMappings>>, X509Error> {
+    pub fn policy_mappings(
+        &self,
+    ) -> Result<Option<BasicExtension<&PolicyMappings<'_>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_POLICY_MAPPINGS)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::PolicyMappings(ref value) => {
@@ -479,7 +481,9 @@ impl<'a> TbsCertificate<'a> {
     ///
     /// Return `Ok(Some(extension))` if exactly one was found, `Ok(None)` if none was found,
     /// or an error if the extension is invalid, or is present twice or more.
-    pub fn name_constraints(&self) -> Result<Option<BasicExtension<&NameConstraints>>, X509Error> {
+    pub fn name_constraints(
+        &self,
+    ) -> Result<Option<BasicExtension<&NameConstraints<'_>>>, X509Error> {
         self.get_extension_unique(&OID_X509_EXT_NAME_CONSTRAINTS)?
             .map_or(Ok(None), |ext| match ext.parsed_extension {
                 ParsedExtension::NameConstraints(ref value) => {
@@ -716,7 +720,7 @@ impl Validity {
 }
 
 impl FromDer<'_, X509Error> for Validity {
-    fn from_der(i: &[u8]) -> X509Result<Self> {
+    fn from_der(i: &[u8]) -> X509Result<'_, Self> {
         parse_der_sequence_defined_g(|i, _| {
             let (i, not_before) = ASN1Time::from_der(i)?;
             let (i, not_after) = ASN1Time::from_der(i)?;
@@ -739,14 +743,14 @@ impl<'a> UniqueIdentifier<'a> {
     }
 
     // subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL
-    fn from_der_subject(i: &[u8]) -> X509Result<Option<UniqueIdentifier>> {
+    fn from_der_subject(i: &[u8]) -> X509Result<'_, Option<UniqueIdentifier<'_>>> {
         Self::parse::<2>(i).map_err(|_| X509Error::InvalidSubjectUID.into())
     }
 
     // Parse a [tag] UniqueIdentifier OPTIONAL
     //
     // UniqueIdentifier  ::=  BIT STRING
-    fn parse<const TAG: u32>(i: &[u8]) -> BerResult<Option<UniqueIdentifier>> {
+    fn parse<const TAG: u32>(i: &[u8]) -> BerResult<'_, Option<UniqueIdentifier<'_>>> {
         let (rem, unique_id) = OptTaggedImplicit::<BitString, Error, TAG>::from_der(i)?;
         let unique_id = unique_id.map(|u| UniqueIdentifier(u.into_inner()));
         Ok((rem, unique_id))

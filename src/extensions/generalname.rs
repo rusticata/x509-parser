@@ -118,13 +118,13 @@ impl fmt::Display for GeneralName<'_> {
     }
 }
 
-fn ia5str(any: Any) -> Result<&str, Err<Error>> {
+fn ia5str(any: Any<'_>) -> Result<&str, Err<Error>> {
     // Relax constraints from RFC here: we are expecting an IA5String, but many certificates
     // are using unicode characters
     std::str::from_utf8(any.data).map_err(|_| Err::Failure(Error::BerValueError))
 }
 
-pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName, Error> {
+pub(crate) fn parse_generalname(i: &[u8]) -> IResult<&[u8], GeneralName<'_>, Error> {
     let (rest, any) = Any::from_der(i)?;
     let gn = GeneralName::try_from(any)?;
     Ok((rest, gn))
