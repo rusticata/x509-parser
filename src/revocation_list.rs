@@ -131,6 +131,12 @@ impl<'a> CertificateRevocationList<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for CertificateRevocationList<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_raw()
+    }
+}
+
 /// <pre>
 /// CertificateList  ::=  SEQUENCE  {
 ///      tbsCertList          TBSCertList,
