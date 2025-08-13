@@ -64,9 +64,23 @@ pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitString,
+
+    pub(crate) raw: Input<'a>,
 }
 
-impl X509Certificate<'_> {
+impl<'a> X509Certificate<'a> {
+    /// Return a reference to the raw bytes used to parse the certificate
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw.as_bytes2()
+    }
+
+    /// Return a reference to the raw input used to parse the certificate
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw_input(&self) -> Input<'a> {
+        self.raw.clone()
+    }
+
     /// Verify the cryptographic signature of this certificate
     ///
     /// `public_key` is the public key of the **signer**. For a self-signed certificate,
@@ -120,14 +134,18 @@ impl<'a> DerParser<'a> for X509Certificate<'a> {
         header
             .assert_constructed_input(&input)
             .map_err(|e| Err::Error(e.into()))?;
+        let orig_input = input.clone();
         let (rem, tbs_certificate) = TbsCertificate::parse_der(input)?;
         let (rem, signature_algorithm) = AlgorithmIdentifier::parse_der(rem)?;
         let (rem, signature_value) = BitString::parse_der(rem).map_err(Err::convert)?;
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
 
         let cert = X509Certificate {
             tbs_certificate,
             signature_algorithm,
             signature_value,
+            raw,
         };
         Ok((rem, cert))
     }
@@ -250,7 +268,8 @@ impl<'a> Parser<Input<'a>> for X509CertificateParser {
     type Error = X509Error;
 
     fn parse(&mut self, input: Input<'a>) -> IResult<Input<'a>, X509Certificate<'a>, X509Error> {
-        Sequence::parse_der_and_then(input, |_, i| {
+        let orig_input = input.clone();
+        let (rem, mut cert) = Sequence::parse_der_and_then(input, |_, i| {
             // pass options to TbsCertificate parser
             let mut tbs_parser =
                 TbsCertificateParser::new().with_deep_parse_extensions(self.deep_parse_extensions);
@@ -261,9 +280,13 @@ impl<'a> Parser<Input<'a>> for X509CertificateParser {
                 tbs_certificate,
                 signature_algorithm,
                 signature_value,
+                raw: Input::default(),
             };
             Ok((i, cert))
-        })
+        })?;
+        // this is safe because `rem` is built from `orig_input`
+        cert.raw = orig_input.take(rem.start() - orig_input.start());
+        Ok((rem, cert))
     }
 
     fn process<OM: nom::OutputMode>(

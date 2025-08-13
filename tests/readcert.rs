@@ -153,6 +153,10 @@ fn parse_certificate_igca() {
     assert!(tbs_cert.is_ca());
     //
     assert_eq!(tbs_cert.as_ref(), &IGCA_DER[4..(8 + 746)]);
+    // check that cert.as_raw() returns the certificate bytes
+    assert_eq!(cert.as_raw(), IGCA_DER);
+    let (_rem, cert2) = X509Certificate::parse_der(IGCA_DER.into()).expect("X.509 parsing failed");
+    assert_eq!(cert2.as_raw(), IGCA_DER);
 }
 
 #[test]
