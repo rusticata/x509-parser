@@ -19,9 +19,17 @@ pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitString<'a>,
+
+    pub(crate) raw: &'a [u8],
 }
 
-impl X509CertificationRequest<'_> {
+impl<'a> X509CertificationRequest<'a> {
+    /// Return a reference to the raw bytes used to parse the Certificate Request
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw
+    }
+
     pub fn requested_extensions(&self) -> Option<impl Iterator<Item = &ParsedExtension<'_>>> {
         self.certification_request_info
             .iter_attributes()
@@ -59,7 +67,8 @@ impl X509CertificationRequest<'_> {
 /// </pre>
 impl<'a> FromDer<'a, X509Error> for X509CertificationRequest<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_sequence_defined_g(|i, _| {
+        let start_i = i;
+        let (rem, mut req) = parse_der_sequence_defined_g(|i, _| {
             let (i, certification_request_info) = X509CertificationRequestInfo::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
@@ -67,9 +76,13 @@ impl<'a> FromDer<'a, X509Error> for X509CertificationRequest<'a> {
                 certification_request_info,
                 signature_algorithm,
                 signature_value,
+                raw: &[],
             };
             Ok((i, cert))
-        })(i)
+        })(i)?;
+        let len = start_i.offset(rem);
+        req.raw = &start_i[..len];
+        Ok((rem, req))
     }
 }
 
