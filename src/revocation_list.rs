@@ -51,6 +51,8 @@ pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitString<'a>,
+
+    pub(crate) raw: &'a [u8],
 }
 
 impl<'a> CertificateRevocationList<'a> {
@@ -121,6 +123,12 @@ impl<'a> CertificateRevocationList<'a> {
             self.tbs_cert_list.raw,
         )
     }
+    ///
+    /// Return a reference to the raw bytes used to parse the Certificate Revocation List
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw
+    }
 }
 
 /// <pre>
@@ -131,7 +139,8 @@ impl<'a> CertificateRevocationList<'a> {
 /// </pre>
 impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
     fn from_der(i: &'a [u8]) -> X509Result<'a, Self> {
-        parse_der_sequence_defined_g(|i, _| {
+        let start_i = i;
+        let (rem, mut crl) = parse_der_sequence_defined_g(|i, _| {
             let (i, tbs_cert_list) = TbsCertList::from_der(i)?;
             let (i, signature_algorithm) = AlgorithmIdentifier::from_der(i)?;
             let (i, signature_value) = parse_signature_value(i)?;
@@ -139,9 +148,13 @@ impl<'a> FromDer<'a, X509Error> for CertificateRevocationList<'a> {
                 tbs_cert_list,
                 signature_algorithm,
                 signature_value,
+                raw: &[],
             };
             Ok((i, crl))
-        })(i)
+        })(i)?;
+        let len = start_i.offset(rem);
+        crl.raw = &start_i[..len];
+        Ok((rem, crl))
     }
 }
 
