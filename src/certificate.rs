@@ -66,9 +66,17 @@ pub struct X509Certificate<'a> {
     pub tbs_certificate: TbsCertificate<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitString<'a>,
+
+    pub(crate) raw: &'a [u8],
 }
 
-impl X509Certificate<'_> {
+impl<'a> X509Certificate<'a> {
+    /// Return a reference to the raw bytes used to parse the certificate
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw
+    }
+
     /// Verify the cryptographic signature of this certificate
     ///
     /// `public_key` is the public key of the **signer**. For a self-signed certificate,
@@ -212,7 +220,8 @@ impl Default for X509CertificateParser {
 
 impl<'a> Parser<&'a [u8], X509Certificate<'a>, X509Error> for X509CertificateParser {
     fn parse(&mut self, input: &'a [u8]) -> IResult<&'a [u8], X509Certificate<'a>, X509Error> {
-        parse_der_sequence_defined_g(|i, _| {
+        let start_i = input;
+        let (rem, mut cert) = parse_der_sequence_defined_g(|i, _| {
             // pass options to TbsCertificate parser
             let mut tbs_parser =
                 TbsCertificateParser::new().with_deep_parse_extensions(self.deep_parse_extensions);
@@ -223,9 +232,13 @@ impl<'a> Parser<&'a [u8], X509Certificate<'a>, X509Error> for X509CertificatePar
                 tbs_certificate,
                 signature_algorithm,
                 signature_value,
+                raw: &[],
             };
             Ok((i, cert))
-        })(input)
+        })(input)?;
+        let len = start_i.offset(rem);
+        cert.raw = &start_i[..len];
+        Ok((rem, cert))
     }
 }
 
