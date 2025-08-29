@@ -49,13 +49,13 @@ use std::collections::HashMap;
 ///      signatureAlgorithm   AlgorithmIdentifier,
 ///      signatureValue       BIT STRING  }
 /// </pre>
-#[derive(Clone, Debug, Sequence)]
-#[asn1(parse = "DER", encode = "")]
-#[error(X509Error)]
+#[derive(Clone, Debug)]
 pub struct CertificateRevocationList<'a> {
     pub tbs_cert_list: TbsCertList<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitString,
+
+    pub(crate) raw: Input<'a>,
 }
 
 impl<'a> CertificateRevocationList<'a> {
@@ -111,6 +111,18 @@ impl<'a> CertificateRevocationList<'a> {
             })
     }
 
+    /// Return a reference to the raw bytes used to parse the Certificate Revocation List
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw.as_bytes2()
+    }
+
+    /// Return a reference to the raw input used to parse the Certificate Revocation List
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw_input(&self) -> Input<'a> {
+        self.raw.clone()
+    }
+
     /// Verify the cryptographic signature of this certificate revocation list
     ///
     /// `public_key` is the public key of the **signer**.
@@ -125,6 +137,49 @@ impl<'a> CertificateRevocationList<'a> {
             &self.signature_value,
             self.tbs_cert_list.raw.as_bytes2(),
         )
+    }
+}
+
+impl Tagged for CertificateRevocationList<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'a> DerParser<'a> for CertificateRevocationList<'a> {
+    type Error = X509Error;
+
+    fn parse_der(input: Input<'a>) -> IResult<Input<'a>, Self, Self::Error> {
+        let orig_input = input.clone();
+        let (rem, (header, content)) = Sequence::parse_der_as_input(input).map_err(Err::convert)?;
+        let (_, mut cert_list) = Self::from_der_content(&header, content)?;
+        // safe because this is parsed from same input and orig_input.len() > rem.len()
+        let total_len = orig_input.len() - rem.len();
+        // limit to real number of bytes, orig_input can contain more
+        cert_list.raw = orig_input.take(total_len);
+        Ok((rem, cert_list))
+    }
+
+    fn from_der_content(
+        header: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+        let orig_input = input.clone();
+        let (rem, tbs_cert_list) = TbsCertList::parse_der(input)?;
+        let (rem, signature_algorithm) = AlgorithmIdentifier::parse_der(rem)?;
+        let (rem, signature_value) = BitString::parse_der(rem).map_err(Err::convert)?;
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
+
+        let cert = CertificateRevocationList {
+            tbs_cert_list,
+            signature_algorithm,
+            signature_value,
+            raw,
+        };
+        Ok((rem, cert))
     }
 }
 

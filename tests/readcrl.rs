@@ -11,6 +11,9 @@ fn read_crl_verify() {
     let res = crl.verify_signature(&x509_ca.tbs_certificate.subject_pki);
     eprintln!("Verification: {res:?}");
     assert!(res.is_ok());
+
+    // check that `.as_raw()` returns the input bytes
+    assert_eq!(crl.as_raw(), CRL_DATA);
 }
 
 fn crl_idp<'a>(crl: &'a CertificateRevocationList) -> &'a IssuingDistributionPoint<'a> {
