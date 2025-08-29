@@ -20,12 +20,16 @@ pub struct X509CertificationRequest<'a> {
     pub signature_algorithm: AlgorithmIdentifier<'a>,
     pub signature_value: BitString<'a>,
 
+    /// Complete raw ASN.1 DER content (request info, signature algorithm and signature).
     pub(crate) raw: &'a [u8],
 }
 
 impl<'a> X509CertificationRequest<'a> {
-    /// Return a reference to the raw bytes used to parse the Certificate Request
-    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    /// Return the raw ASN.1 DER content of the complete signed certification request that was parsed.
+    ///
+    /// This includes the certification request info, the signature algorithm, and the signature.
+    ///
+    /// We avoid the `AsRef` trait in this instance to ensure the full lifetime of the `X509CertificationRequest` is used.
     pub fn as_raw(&self) -> &'a [u8] {
         self.raw
     }
