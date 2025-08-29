@@ -140,6 +140,12 @@ impl<'a> CertificateRevocationList<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for CertificateRevocationList<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_raw()
+    }
+}
+
 impl Tagged for CertificateRevocationList<'_> {
     const CONSTRUCTED: bool = true;
     const TAG: Tag = Tag::Sequence;

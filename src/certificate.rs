@@ -107,6 +107,12 @@ impl<'a> X509Certificate<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for X509Certificate<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_raw()
+    }
+}
+
 impl<'a> Deref for X509Certificate<'a> {
     type Target = TbsCertificate<'a>;
 
