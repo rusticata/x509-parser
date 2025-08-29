@@ -88,6 +88,12 @@ impl<'a> X509CertificationRequest<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for X509CertificationRequest<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_raw()
+    }
+}
+
 impl Tagged for X509CertificationRequest<'_> {
     const CONSTRUCTED: bool = true;
     const TAG: Tag = Tag::Sequence;
