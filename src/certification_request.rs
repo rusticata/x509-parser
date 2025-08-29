@@ -22,17 +22,28 @@ use std::collections::HashMap;
 ///     signature          BIT STRING
 /// }
 /// </pre>
-#[derive(Debug, PartialEq, Sequence)]
-#[asn1(parse = "DER", encode = "")]
-#[error(X509Error)]
+#[derive(Debug, PartialEq)]
 pub struct X509CertificationRequest<'a> {
     pub certification_request_info: X509CertificationRequestInfo<'a>,
     pub signature_algorithm: AlgorithmIdentifier<'a>,
-    #[asn1(parse = "parse_signature_value")]
     pub signature_value: BitString,
+
+    pub(crate) raw: Input<'a>,
 }
 
-impl X509CertificationRequest<'_> {
+impl<'a> X509CertificationRequest<'a> {
+    /// Return a reference to the raw bytes used to parse the Certification Request
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw(&self) -> &'a [u8] {
+        self.raw.as_bytes2()
+    }
+
+    /// Return a reference to the raw input used to parse the Certification Request
+    // Not using the AsRef trait, as that would not give back the full 'a lifetime
+    pub fn as_raw_input(&self) -> Input<'a> {
+        self.raw.clone()
+    }
+
     /// Return an iterator over the Requested Extensions
     ///
     /// The requested extensions can be specified in different attributes, each attribute being a set of values.
@@ -74,6 +85,49 @@ impl X509CertificationRequest<'_> {
             &self.signature_value,
             self.certification_request_info.raw.as_bytes2(),
         )
+    }
+}
+
+impl Tagged for X509CertificationRequest<'_> {
+    const CONSTRUCTED: bool = true;
+    const TAG: Tag = Tag::Sequence;
+}
+
+impl<'a> DerParser<'a> for X509CertificationRequest<'a> {
+    type Error = X509Error;
+
+    fn parse_der(input: Input<'a>) -> IResult<Input<'a>, Self, Self::Error> {
+        let orig_input = input.clone();
+        let (rem, (header, content)) = Sequence::parse_der_as_input(input).map_err(Err::convert)?;
+        let (_, mut cert_list) = Self::from_der_content(&header, content)?;
+        // safe because this is parsed from same input and orig_input.len() > rem.len()
+        let total_len = orig_input.len() - rem.len();
+        // limit to real number of bytes, orig_input can contain more
+        cert_list.raw = orig_input.take(total_len);
+        Ok((rem, cert_list))
+    }
+
+    fn from_der_content(
+        header: &'_ Header<'a>,
+        input: Input<'a>,
+    ) -> IResult<Input<'a>, Self, Self::Error> {
+        header
+            .assert_constructed_input(&input)
+            .map_err(|e| Err::Error(e.into()))?;
+        let orig_input = input.clone();
+        let (rem, certification_request_info) = X509CertificationRequestInfo::parse_der(input)?;
+        let (rem, signature_algorithm) = AlgorithmIdentifier::parse_der(rem)?;
+        let (rem, signature_value) = parse_signature_value(rem)?;
+        // this is safe because `rem` is built from `orig_input`
+        let raw = orig_input.take(rem.start() - orig_input.start());
+
+        let cert = X509CertificationRequest {
+            certification_request_info,
+            signature_algorithm,
+            signature_value,
+            raw,
+        };
+        Ok((rem, cert))
     }
 }
 

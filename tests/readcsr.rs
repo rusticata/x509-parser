@@ -118,8 +118,8 @@ fn read_csr_with_challenge_password() {
 #[cfg(feature = "verify")]
 #[test]
 fn read_csr_verify() {
-    let der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
-    let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
+    let pem = pem::parse_x509_pem(CSR_DATA).unwrap().1;
+    let (_, csr) = X509CertificationRequest::from_der(&pem.contents).expect("could not parse CSR");
     csr.verify_signature().unwrap();
 
     let mut der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
@@ -131,6 +131,9 @@ fn read_csr_verify() {
 
     let (_, csr) = X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
     csr.verify_signature().unwrap_err();
+
+    // check that `.as_raw()` returns the input bytes
+    assert_eq!(csr.as_raw(), &der.contents);
 }
 
 #[test]
