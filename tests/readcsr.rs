@@ -115,7 +115,7 @@ fn read_csr_with_challenge_password() {
     assert!(found_san);
 }
 
-#[cfg(feature = "verify")]
+#[cfg(any(feature = "verify", feature = "verify-aws"))]
 #[test]
 fn read_csr_verify() {
     let pem = pem::parse_x509_pem(CSR_DATA).unwrap().1;

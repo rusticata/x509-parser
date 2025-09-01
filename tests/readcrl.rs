@@ -1,6 +1,6 @@
 use x509_parser::prelude::*;
 
-#[cfg(feature = "verify")]
+#[cfg(any(feature = "verify", feature = "verify-aws"))]
 #[test]
 fn read_crl_verify() {
     const CA_DATA: &[u8] = include_bytes!("../assets/ca_minimalcrl.der");
