@@ -83,14 +83,14 @@ See also `examples/print-cert.rs`.
 
 # Features
 
-- The `verify` feature adds support for (cryptographic) signature verification, based on `ring`.
+- The `verify` and `verify-aws` features adds support for (cryptographic) signature verification, based on `ring` or `aws-lc` respectively.
   It adds the
   [`X509Certificate::verify_signature()`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.verify_signature)
   to `X509Certificate`.
 
 ```rust
 /// Cryptographic signature verification: returns true if certificate was signed by issuer
-#[cfg(feature = "verify")]
+#[cfg(any(feature = "verify", feature = "verify-aws"))]
 pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
     let issuer_public_key = issuer.public_key();
     cert

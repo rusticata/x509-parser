@@ -11,7 +11,7 @@ use crate::x509::{
     X509Version,
 };
 
-#[cfg(feature = "verify")]
+#[cfg(any(feature = "verify", feature = "verify-aws"))]
 use crate::verify::verify_signature;
 use asn1_rs::{BitString, FromDer, OptTaggedImplicit};
 use core::ops::Deref;
@@ -92,8 +92,8 @@ impl<'a> X509Certificate<'a> {
     /// It is usually an intermediate authority.
     ///
     /// Not all algorithms are supported, this function is limited to what `ring` supports.
-    #[cfg(feature = "verify")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "verify")))]
+    #[cfg(any(feature = "verify", feature = "verify-aws"))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "verify", feature = "verify-aws"))))]
     pub fn verify_signature(
         &self,
         public_key: Option<&SubjectPublicKeyInfo>,
