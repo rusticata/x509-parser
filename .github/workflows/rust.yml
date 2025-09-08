@@ -48,6 +48,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
+      - name: Cargo update (fix for MSRV)
+        run: cargo update -p time --precise 0.3.41
+        if: matrix.rust == '1.67.1'
       - run: RUSTFLAGS="-D warnings" cargo check --locked --all-targets --all-features
 
   test:
@@ -98,6 +101,17 @@ jobs:
         with:
           components: clippy
       - run: cargo clippy --locked --all-features -- -D warnings
+
+  readme:
+    name: Check if README is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - run: |
+          cargo install cargo-rdme
+          cargo rdme --check --no-fail-on-warnings
 
   doc:
     name: Build documentation
