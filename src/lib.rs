@@ -1,11 +1,3 @@
-//! [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE-MIT)
-//! [![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE-APACHE)
-//! [![docs.rs](https://docs.rs/x509-parser/badge.svg)](https://docs.rs/x509-parser)
-//! [![crates.io](https://img.shields.io/crates/v/x509-parser.svg)](https://crates.io/crates/x509-parser)
-//! [![Download numbers](https://img.shields.io/crates/d/x509-parser.svg)](https://crates.io/crates/x509-parser)
-//! [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
-//! [![Minimum rustc version](https://img.shields.io/badge/rustc-1.67.1+-lightgray.svg)](#rust-version-requirements)
-//!
 //! # X.509 Parser
 //!
 //! A X.509 v3 ([RFC5280]) parser, implemented with the [nom](https://github.com/Geal/nom)
@@ -20,25 +12,37 @@
 //!
 //! Certificates are usually encoded in two main formats: PEM (usually the most common format) or
 //! DER.  A PEM-encoded certificate is a container, storing a DER object. See the
-//! [`pem`](pem/index.html) module for more documentation.
+//! [`pem`] module for more documentation.
 //!
 //! To decode a DER-encoded certificate, the main parsing method is
-//! `X509Certificate::from_der` (
-//! part of the [`FromDer`](prelude/trait.FromDer.html) trait
-//! ), which builds a
-//! [`X509Certificate`](certificate/struct.X509Certificate.html) object.
+//! `X509Certificate::parse_der` (from the [`DerParser`](asn1_rs::DerParser) trait)
+//! which builds a [`X509Certificate`] object.
 //!
-//! An alternative method is to use [`X509CertificateParser`](certificate/struct.X509CertificateParser.html),
+//! The [`parse_der`](asn1_rs::DerParser) trait takes an [`Input`](asn1_rs::Input)
+//! object, which can be built from the input bytes. This helps tracking offsets (in case of
+//! error).
+//! For convenience,
+//! the [`X509Certificate::from_der`] method (part of the [`FromDer`] trait)
+//! does the same directly on the input bytes, but it can loose the precise error location.
+//!
+//! An alternative method is to use [`X509CertificateParser`](crate::certificate::X509CertificateParser),
 //! which allows specifying parsing options (for example, not automatically parsing option contents).
+//!
+//! Similar methods are provided for other X.509 objects:
+//! - [`X509Certificate`] for X.509 Certificates
+//! - [`CertificateRevocationList`] for X.509 v2 Certificate Revocation List (CRL)
+//! - [`X509CertificationRequest`](crate::certification_request::X509CertificationRequest) for Certification Signing Request (CSR)
+
 //!
 //! The returned objects for parsers follow the definitions of the RFC. This means that accessing
 //! fields is done by accessing struct members recursively. Some helper functions are provided, for
-//! example [`X509Certificate::issuer()`](certificate/struct.X509Certificate.html#method.issuer) returns the
+//! example [`X509Certificate::issuer()`](crate::certificate::TbsCertificate::issuer()) returns the
 //! same as accessing `<object>.tbs_certificate.issuer`.
 //!
-//! For PEM-encoded certificates, use the [`pem`](pem/index.html) module.
+//! For PEM-encoded certificates, use the [`pem`] module.
 //!
-//! This crate also provides visitor traits: [`X509CertificateVisitor`](crate::visitor::X509CertificateVisitor).
+//! This crate also provides visitor traits: [`X509CertificateVisitor`](crate::visitor::X509CertificateVisitor), [`CertificateRevocationListVisitor`](crate::visitor::CertificateRevocationListVisitor).
+//! See the [`visitor`] module.
 //!
 //! # Examples
 //!
@@ -50,7 +54,8 @@
 //! static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
 //!
 //! # fn main() {
-//! let res = X509Certificate::from_der(IGCA_DER);
+//! let input = Input::from(IGCA_DER);
+//! let res = X509Certificate::parse_der(input);
 //! match res {
 //!     Ok((rem, cert)) => {
 //!         assert!(rem.is_empty());
@@ -70,7 +75,8 @@
 //! # static DER: &[u8] = include_bytes!("../assets/example.crl");
 //! #
 //! # fn main() {
-//! let res = CertificateRevocationList::from_der(DER);
+//! let input = Input::from(DER);
+//! let res = CertificateRevocationList::parse_der(input);
 //! match res {
 //!     Ok((_rem, crl)) => {
 //!         for revoked in crl.iter_revoked_certificates() {
@@ -89,7 +95,7 @@
 //!
 //! - The `verify` and `verify-aws` features adds support for (cryptographic) signature verification, based on `ring` or `aws-lc` respectively.
 //!   It adds the
-//!   [`X509Certificate::verify_signature()`](certificate/struct.X509Certificate.html#method.verify_signature)
+//!   [`X509Certificate::verify_signature()`] method
 //!   to `X509Certificate`.
 //!
 //! ```rust
@@ -113,7 +119,7 @@
 //!   having a dependency on `ring`, even if it is not used.
 //!
 //! - The `validate` features add methods to run more validation functions on the certificate structure
-//!   and values using the [`Validate`](validate/trait.Validate.html) trait.
+//!   and values using the [`Validate`](crate::validate::Validate) trait.
 //!   It does not validate any cryptographic parameter (see `verify` above).
 //!
 //! ## Rust version requirements
