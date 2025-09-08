@@ -111,6 +111,16 @@ dependencies and for proc-macro attributes support.
 [RFC5280]: https://tools.ietf.org/html/rfc5280
 <!-- cargo-sync-readme end -->
 
+## MSRV policy
+
+This projects tries to maintain compatibility with older version of the rust compiler for the following
+durations:
+- `master` branch: _12 months_ minimum
+- older releases: about 24 months
+
+However, due to dependencies and the fact that some crate writers tend to require very recent
+versions of the compiler, this can prove to be difficult. These numbers are given as _best-effort_.
+
 ## Changes
 
 See [CHANGELOG.md](CHANGELOG.md) and [`UPGRADING.md`](UPGRADING.md) for instructions for upgrading major versions.
