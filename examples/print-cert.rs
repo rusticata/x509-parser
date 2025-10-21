@@ -219,12 +219,18 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
     {
         print!("Signature verification: ");
         if x509.subject().to_string() == x509.issuer().to_string() {
-            if x509.verify_signature(None).is_ok() {
-                println!("OK");
-                println!("  [I] certificate is self-signed");
-            } else if x509.subject() == x509.issuer() {
-                println!("FAIL");
-                println!("  [W] certificate looks self-signed, but signature verification failed");
+            match x509.verify_signature(None) {
+                Ok(_) => {
+                    println!("OK");
+                    println!("  [I] certificate is self-signed");
+                }
+                Err(e) => {
+                    println!("FAIL");
+                    println!("  [E] {:?}", e);
+                    println!(
+                        "  [W] certificate looks self-signed, but signature verification failed"
+                    );
+                }
             }
         } else {
             // if subject is different from issuer, we cannot verify certificate without the public key of the issuer
