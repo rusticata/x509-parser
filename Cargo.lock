@@ -825,7 +825,7 @@ dependencies = [
 
 [[package]]
 name = "x509-parser"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "asn1-rs",
  "aws-lc-rs",
