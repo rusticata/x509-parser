@@ -94,7 +94,7 @@ See also `examples/print-cert.rs`.
 
 # Features
 
-- The `verify` and `verify-aws` features adds support for (cryptographic) signature verification, based on `ring` or `aws-lc` respectively.
+- The `verify` and `verify-aws` features add support for (cryptographic) signature verification, based on `ring` or `aws-lc` respectively.
   It adds the
   [`X509Certificate::verify_signature()`] method
   to `X509Certificate`.
@@ -117,7 +117,7 @@ pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>)
   `--all-features`), the verification will use `aws-lc-rs`. It also has the side-effect of
   having a dependency on `ring`, even if it is not used.
 
-- The `validate` features add methods to run more validation functions on the certificate structure
+- The `validate` feature add methods to run more validation functions on the certificate structure
   and values using the [`Validate`](https://docs.rs/x509-parser/latest/x509_parser/validate/trait.Validate.html) trait.
   It does not validate any cryptographic parameter (see `verify` above).
 
