@@ -6,6 +6,13 @@
 
 ### Thanks
 
+## 0.18.1
+
+### Fixed
+
+- fix(verify): also enable all functions when using verify-aws, otherwise
+  par of the API is missing
+
 ## 0.18.0
 
 ### Added/Changed
