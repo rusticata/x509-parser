@@ -1,0 +1,3 @@
+[advisories]
+## RUSTSEC-2026-0009: this crate does not call `time` parsing functions
+ignore = ["RUSTSEC-2026-0009"] # advisory IDs to ignore e.g. ["RUSTSEC-2019-0001", ...]
