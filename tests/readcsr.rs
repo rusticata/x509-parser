@@ -167,7 +167,11 @@ fn test_iter_raw_values() {
     );
 }
 
-#[cfg(any(feature = "verify", feature = "verify-aws"))]
+#[cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
 #[test]
 fn read_csr_verify() {
     let pem = pem::parse_x509_pem(CSR_DATA).unwrap().1;

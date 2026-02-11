@@ -5,9 +5,17 @@ use crate::x509::{
     format_serial, parse_serial, AlgorithmIdentifier, ReasonCode, X509Name, X509Version,
 };
 
-#[cfg(any(feature = "verify", feature = "verify-aws"))]
+#[cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
 use crate::verify::verify_signature;
-#[cfg(any(feature = "verify", feature = "verify-aws"))]
+#[cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
 use crate::x509::SubjectPublicKeyInfo;
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{BitString, DerParser, FromDer, Header, Input, Sequence, Tag, Tagged};
@@ -137,8 +145,19 @@ impl<'a> CertificateRevocationList<'a> {
     /// `public_key` is the public key of the **signer**.
     ///
     /// Not all algorithms are supported, this function is limited to what `ring` supports.
-    #[cfg(any(feature = "verify", feature = "verify-aws"))]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "verify", feature = "verify-aws"))))]
+    #[cfg(any(
+        feature = "verify",
+        feature = "verify-aws",
+        feature = "verify-aws-fips"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "verify",
+            feature = "verify-aws",
+            feature = "verify-aws-fips"
+        )))
+    )]
     pub fn verify_signature(&self, public_key: &SubjectPublicKeyInfo) -> Result<(), X509Error> {
         verify_signature(
             public_key,

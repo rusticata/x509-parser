@@ -102,7 +102,7 @@ See also `examples/print-cert.rs`.
 
 ```rust
 /// Cryptographic signature verification: returns true if certificate was signed by issuer
-#[cfg(any(feature = "verify", feature = "verify-aws"))]
+#[cfg(any(feature = "verify", feature = "verify-aws", feature = "verify-aws-fips"))]
 pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
     let issuer_public_key = issuer.public_key();
     cert

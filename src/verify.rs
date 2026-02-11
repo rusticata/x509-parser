@@ -11,9 +11,12 @@ use oid_registry::{
 // Since the `signature` object is similar in ring and in aws-lc-rs, we just use simple logic
 // to determine which one to use.
 // If both verify and verify-aws features are enabled, aws will be used.
-#[cfg(feature = "verify-aws")]
+#[cfg(any(feature = "verify-aws", feature = "verify-aws-fips"))]
 use aws_lc_rs::signature;
-#[cfg(all(feature = "verify", not(feature = "verify-aws")))]
+#[cfg(all(
+    feature = "verify",
+    not(any(feature = "verify-aws", feature = "verify-aws-fips"))
+))]
 use ring::signature;
 
 /// Verify the cryptographic signature of the raw data (can be a certificate, a CRL or a CSR).
@@ -92,7 +95,7 @@ fn get_ec_curve_sha(
             _ => None,
         }
     } else {
-        #[cfg(feature = "verify-aws")]
+        #[cfg(any(feature = "verify-aws", feature = "verify-aws-fips"))]
         {
             if curve_oid == OID_NIST_EC_P521 {
                 match sha_len {
@@ -105,7 +108,7 @@ fn get_ec_curve_sha(
                 None
             }
         }
-        #[cfg(not(feature = "verify-aws"))]
+        #[cfg(not(any(feature = "verify-aws", feature = "verify-aws-fips")))]
         {
             None
         }

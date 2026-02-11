@@ -1,4 +1,8 @@
-#![cfg(any(feature = "verify", feature = "verify-aws"))]
+#![cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
 
 use x509_parser::parse_x509_certificate;
 
@@ -70,7 +74,7 @@ fn test_signature_verification_rsa_pss_sha512() {
 
 static P521_SELF_SIGNED_DER: &[u8] = include_bytes!("../assets/p521-selfsigned.der");
 
-#[cfg(feature = "verify-aws")]
+#[cfg(any(feature = "verify-aws", feature = "verify-aws-fips"))]
 #[test]
 fn test_signature_verification_p521() {
     let (_, x509_ca) =
