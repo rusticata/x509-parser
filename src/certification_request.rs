@@ -5,7 +5,11 @@ use crate::x509::{
     parse_signature_value, AlgorithmIdentifier, SubjectPublicKeyInfo, X509Name, X509Version,
 };
 
-#[cfg(any(feature = "verify", feature = "verify-aws"))]
+#[cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
 use crate::verify::verify_signature;
 use asn1_rs::{
     BitString, DerParser, FromDer, Header, Input, Oid, OptTaggedImplicit, Sequence, Tag, Tagged,
@@ -83,8 +87,19 @@ impl<'a> X509CertificationRequest<'a> {
     ///
     /// Uses the public key contained in the CSR, which must be the one of the entity
     /// requesting the certification for this verification to succeed.
-    #[cfg(any(feature = "verify", feature = "verify-aws"))]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "verify", feature = "verify-aws"))))]
+    #[cfg(any(
+        feature = "verify",
+        feature = "verify-aws",
+        feature = "verify-aws-fips"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "verify",
+            feature = "verify-aws",
+            feature = "verify-aws-fips"
+        )))
+    )]
     pub fn verify_signature(&self) -> Result<(), X509Error> {
         let spki = &self.certification_request_info.subject_pki;
         verify_signature(

@@ -71,12 +71,24 @@ jobs:
           - --all-features
           - --features=verify
           - --features=verify-aws
+          - --features=verify-aws-fips
           - --features=validate
     steps:
       - uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
       - run: cargo test --locked ${{ matrix.features }}
+
+  test_fips:
+    name: verify-aws-fips dependency on FIPS backend only
+    needs: check-all-features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - run: "if cargo tree --features=verify-aws-fips -i aws-lc-sys; then false; else [ $? -eq 101 ]; fi"
+      - run: "cargo tree --features=verify-aws-fips -i aws-lc-fips-sys"
 
   fmt:
     name: Rustfmt
