@@ -140,6 +140,11 @@ durations:
 However, due to dependencies and the fact that some crate writers tend to require very recent
 versions of the compiler, this can prove to be difficult. These numbers are given as _best-effort_.
 
+We do not consider MSRV changes to be breaking for the purposes of semver.
+
+We try to make no change to MSRV in stable branches and in security patches, with the exception of
+a dependency that must be updated for security and requires a new MSRV.
+
 ## Changes
 
 See [CHANGELOG.md](CHANGELOG.md) and [`UPGRADING.md`](UPGRADING.md) for instructions for upgrading major versions.
