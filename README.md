@@ -132,7 +132,7 @@ dependencies and for proc-macro attributes support.
 
 ## MSRV policy
 
-This projects tries to maintain compatibility with older version of the rust compiler for the following
+This projects tries to maintain compatibility with older versions of the rust compiler for the following
 durations:
 - `master` branch: _12 months_ minimum
 - older releases: about 24 months
