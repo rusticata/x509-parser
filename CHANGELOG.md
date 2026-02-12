@@ -13,15 +13,15 @@
 - Update lock file and dependencies
 - Fix clippy warnings
 - Visitor: add method to visit unknown extension and those with parse errors
-- Add new feature `verify-aws` to used `aws-lc-rs` as crypto provider instead of `ring`
+- Add new feature `verify-aws` to use `aws-lc-rs` as crypto provider instead of `ring`
   - The features are exclusive, so only one should be used
   - If both are specified, `aws-lc-rs` is used (but both dependencies are included)
 - Add `as_raw` methods to `X509Certificate`, `CertificateRevocationList` and `X509CertificationRequest`
   - This method exposes the raw ASN.1 DER bytes used to build the object (#217)
 
 Extensions:
-- Add support for SubjectInfoAccess extension
-- GeneralName: add a new variant `Invalid` so an invalid entry does not stop
+- Add support for `SubjectInfoAccess` extension
+- `GeneralName`: add a new variant `Invalid` so an invalid entry does not stop
   parsing for the entire list of names (for ex in SAN)
 
 ### Fixed
@@ -30,7 +30,7 @@ Extensions:
 
 ### Thanks
 
-- Daniel McCarney
+- Daniel McCarney, Lily Ballard, @stormshield-gt, @soundofspace
 
 ## 0.17.0
 
