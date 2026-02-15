@@ -250,9 +250,19 @@ mod tests {
         let input = Input::from(&gt_bytes[..]);
         let (_, t) =
             ASN1Time::from_der_content(&header, input).expect("should parse GeneralizedTime");
-        assert!(t.is_generalizedtime(), "GeneralizedTime should report is_generalizedtime=true");
-        assert!(!t.is_utctime(), "GeneralizedTime should report is_utctime=false");
-        assert_eq!(t.tag(), Tag::GeneralizedTime, "tag() should return GeneralizedTime");
+        assert!(
+            t.is_generalizedtime(),
+            "GeneralizedTime should report is_generalizedtime=true"
+        );
+        assert!(
+            !t.is_utctime(),
+            "GeneralizedTime should report is_utctime=false"
+        );
+        assert_eq!(
+            t.tag(),
+            Tag::GeneralizedTime,
+            "tag() should return GeneralizedTime"
+        );
         assert_eq!(t.to_datetime().year(), 2050);
     }
 }
