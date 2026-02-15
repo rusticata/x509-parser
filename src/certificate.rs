@@ -585,11 +585,19 @@ impl<'a> TbsCertificate<'a> {
     }
 
     /// Returns true if certificate has `basicConstraints CA:true`
+    ///
+    /// This is a convenience wrapper around [`try_is_ca`](Self::try_is_ca)
+    /// that returns `false` on error. Use `try_is_ca` if you need to
+    /// distinguish between "not a CA" and "error reading extensions".
     pub fn is_ca(&self) -> bool {
-        self.basic_constraints()
-            .unwrap_or(None)
-            .map(|ext| ext.value.ca)
-            .unwrap_or(false)
+        self.try_is_ca().unwrap_or(false)
+    }
+
+    /// Returns `Ok(true)` if certificate has `basicConstraints CA:true`,
+    /// `Ok(false)` if the extension is absent or `CA` is false,
+    /// or an error if the extension could not be read (e.g. duplicate extensions).
+    pub fn try_is_ca(&self) -> Result<bool, X509Error> {
+        Ok(self.basic_constraints()?.map_or(false, |ext| ext.value.ca))
     }
 
     /// Get the raw bytes of the certificate serial number
@@ -907,6 +915,45 @@ mod tests {
         // The following assumes this timing won't take 10 seconds... I
         // think that is safe.
         assert!(v.time_to_expiration().unwrap() > Duration::new(50, 0));
+    }
+
+    static IGCA_DER: &[u8] = include_bytes!("../assets/IGC_A.der");
+    static NO_EXTENSIONS_DER: &[u8] = include_bytes!("../assets/no_extensions.der");
+
+    #[test]
+    fn is_ca_true_for_ca_certificate() {
+        let (_, cert) = X509Certificate::from_der(IGCA_DER).expect("parsing failed");
+        let tbs = &cert.tbs_certificate;
+        assert!(tbs.is_ca());
+        assert_eq!(tbs.try_is_ca(), Ok(true));
+    }
+
+    #[test]
+    fn is_ca_false_for_certificate_without_extensions() {
+        let (_, cert) = X509Certificate::from_der(NO_EXTENSIONS_DER).expect("parsing failed");
+        let tbs = &cert.tbs_certificate;
+        assert!(!tbs.is_ca());
+        assert_eq!(tbs.try_is_ca(), Ok(false));
+    }
+
+    #[test]
+    fn try_is_ca_returns_error_on_duplicate_basic_constraints() {
+        let (_, cert) = X509Certificate::from_der(IGCA_DER).expect("parsing failed");
+        let mut tbs = cert.tbs_certificate.clone();
+        // Add a duplicate BasicConstraints extension (OID 2.5.29.19)
+        let bc_ext = X509Extension::new(
+            oid!(2.5.29 .19),
+            true,
+            Input::default(),
+            ParsedExtension::BasicConstraints(BasicConstraints {
+                ca: false,
+                path_len_constraint: None,
+            }),
+        );
+        tbs.extensions.push(bc_ext);
+        assert!(tbs.try_is_ca().is_err());
+        // is_ca() should return false when try_is_ca() errors
+        assert!(!tbs.is_ca());
     }
 
     #[test]
