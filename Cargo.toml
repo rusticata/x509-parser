@@ -54,6 +54,9 @@ rusticata-macros = "5.0"
 thiserror = "2.0"
 time = { version="0.3.35", features=["formatting"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+time = { version="0.3.35", features=["formatting", "wasm-bindgen"] }
+
 [dev-dependencies]
 hex-literal = "0.4"
 

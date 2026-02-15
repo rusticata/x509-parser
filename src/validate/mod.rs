@@ -84,7 +84,7 @@ pub trait Validate {
     /// Returns `true` if item was validated.
     ///
     /// Call `warn()` if a non-fatal error was encountered, and `err()`
-    /// if the error is fatal. These fucntions receive a description of the error.
+    /// if the error is fatal. These functions receive a description of the error.
     fn validate<W, E>(&self, warn: W, err: E) -> bool
     where
         W: FnMut(&str),

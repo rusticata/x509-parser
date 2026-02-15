@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
   merge_group:
+  workflow_dispatch:
   schedule:
     - cron: '0 18 * * *'
 
@@ -118,3 +119,16 @@ jobs:
         uses: actions/checkout@v4
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v2
+
+  wasm-test:
+    name: Wasm test Suite
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add wasm32-unknown-unknown
+      # TODO: If the MSRV is updated, we can remove this step and just add the dev-dependency to Cargo.toml
+      - run: cargo add wasm-bindgen-test --dev # ensure dependency is present for wasm tests
+      - run: cargo install wasm-pack --locked
+      - run: wasm-pack test --node
