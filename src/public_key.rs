@@ -60,7 +60,7 @@ impl RSAPublicKey<'_> {
     /// Return the key size (in bits) or 0
     pub fn key_size(&self) -> usize {
         if !self.modulus.is_empty() && self.modulus[0] & 0x80 == 0 {
-            // XXX len must substract leading zeroes
+            // XXX len must subtract leading zeroes
             let modulus = &self.modulus[1..];
             8 * modulus.len()
         } else {
