@@ -130,7 +130,7 @@ impl<'a> DerParser<'a> for ASN1Time {
                 let (rem, t) = GeneralizedTime::from_der_content(header, input)
                     .map_err(|_| X509Error::InvalidDate)?;
                 let dt = t.utc_datetime().map_err(|e| Err::Error(e.into()))?;
-                Ok((rem, ASN1Time::new_utc(dt)))
+                Ok((rem, ASN1Time::new_generalized(dt)))
             }
             Tag::UtcTime => {
                 if let Ok((rem, t)) = UtcTime::from_der_content(header, input.clone()) {
@@ -239,5 +239,20 @@ mod tests {
         let d = datetime!(1 - 1 - 1 00:00:00 UTC);
         let t = ASN1Time::from(d);
         assert!(t.to_rfc2822().is_err());
+    }
+
+    #[test]
+    fn test_generalizedtime_flags() {
+        use asn1_rs::{DerParser, DynTagged, Header, Input, Tag};
+        // GeneralizedTime encoding for 2050-01-01 00:00:00 UTC
+        let gt_bytes = b"20500101000000Z";
+        let header = Header::new_simple(Tag::GeneralizedTime);
+        let input = Input::from(&gt_bytes[..]);
+        let (_, t) =
+            ASN1Time::from_der_content(&header, input).expect("should parse GeneralizedTime");
+        assert!(t.is_generalizedtime(), "GeneralizedTime should report is_generalizedtime=true");
+        assert!(!t.is_utctime(), "GeneralizedTime should report is_utctime=false");
+        assert_eq!(t.tag(), Tag::GeneralizedTime, "tag() should return GeneralizedTime");
+        assert_eq!(t.to_datetime().year(), 2050);
     }
 }
