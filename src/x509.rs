@@ -483,7 +483,7 @@ impl<'a> From<X509Name<'a>> for Vec<RelativeDistinguishedName<'a>> {
 }
 
 impl Tagged for X509Name<'_> {
-    const CONSTRUCTED: bool = false;
+    const CONSTRUCTED: bool = true;
     const TAG: Tag = Tag::Sequence;
 }
 
