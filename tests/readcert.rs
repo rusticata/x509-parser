@@ -447,3 +447,38 @@ fn test_tbscert_unique_identifiers() {
         ]
     );
 }
+
+static EXTENSION1_DER: &[u8] = include_bytes!("../assets/extension1.der");
+
+#[test]
+fn rsa_key_size_2048_igca() {
+    let (_, cert) = parse_x509_certificate(IGCA_DER).expect("could not parse IGC_A");
+    let pkey = cert
+        .tbs_certificate
+        .subject_pki
+        .parsed()
+        .expect("could not parse public key");
+    assert_eq!(pkey.key_size(), 2048);
+}
+
+#[test]
+fn rsa_key_size_1024_unique_ids() {
+    let (_, cert) = parse_x509_certificate(UNIQUE_IDS_DER).expect("could not parse unique_ids");
+    let pkey = cert
+        .tbs_certificate
+        .subject_pki
+        .parsed()
+        .expect("could not parse public key");
+    assert_eq!(pkey.key_size(), 1024);
+}
+
+#[test]
+fn rsa_key_size_4096_extension1() {
+    let (_, cert) = parse_x509_certificate(EXTENSION1_DER).expect("could not parse extension1");
+    let pkey = cert
+        .tbs_certificate
+        .subject_pki
+        .parsed()
+        .expect("could not parse public key");
+    assert_eq!(pkey.key_size(), 4096);
+}

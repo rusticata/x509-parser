@@ -59,13 +59,17 @@ impl RSAPublicKey<'_> {
 
     /// Return the key size (in bits) or 0
     pub fn key_size(&self) -> usize {
-        if !self.modulus.is_empty() && self.modulus[0] & 0x80 == 0 {
-            // XXX len must substract leading zeroes
-            let modulus = &self.modulus[1..];
-            8 * modulus.len()
-        } else {
-            0
+        if self.modulus.is_empty() {
+            return 0;
         }
+        // DER encoding prepends a 0x00 byte to positive integers whose MSB is set.
+        // Strip only the leading zero padding byte, not arbitrary first bytes.
+        let modulus = if self.modulus[0] == 0x00 {
+            &self.modulus[1..]
+        } else {
+            self.modulus
+        };
+        8 * modulus.len()
     }
 }
 
@@ -126,5 +130,60 @@ impl<'a> ECPoint<'a> {
 impl<'a> From<&'a [u8]> for ECPoint<'a> {
     fn from(data: &'a [u8]) -> Self {
         ECPoint { data }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rsa_key(modulus: &[u8]) -> RSAPublicKey<'_> {
+        RSAPublicKey {
+            modulus,
+            exponent: &[0x01, 0x00, 0x01],
+        }
+    }
+
+    #[test]
+    fn key_size_empty_modulus() {
+        let key = rsa_key(&[]);
+        assert_eq!(key.key_size(), 0);
+    }
+
+    #[test]
+    fn key_size_strips_der_leading_zero() {
+        // DER encoding: 0x00 prefix followed by a byte with MSB set (e.g. 0x80..0xFF).
+        // The 0x00 is padding and should not count toward the key size.
+        let modulus = &[0x00, 0x80, 0x00, 0x00]; // 3 real bytes = 24 bits
+        let key = rsa_key(modulus);
+        assert_eq!(key.key_size(), 24);
+    }
+
+    #[test]
+    fn key_size_no_padding_msb_clear() {
+        // Modulus whose first byte has MSB clear (no DER padding needed).
+        let modulus = &[0x7F, 0xFF, 0xFF, 0xFF]; // 4 bytes = 32 bits
+        let key = rsa_key(modulus);
+        assert_eq!(key.key_size(), 32);
+    }
+
+    #[test]
+    fn key_size_no_padding_msb_set() {
+        // Modulus whose first byte has MSB set and is NOT 0x00.
+        // This represents a modulus that was stored without DER padding
+        // (e.g. raw key material). All bytes count.
+        let modulus = &[0xFF, 0xFF]; // 2 bytes = 16 bits
+        let key = rsa_key(modulus);
+        assert_eq!(key.key_size(), 16);
+    }
+
+    #[test]
+    fn key_size_realistic_2048() {
+        // Simulate a 2048-bit key: DER-padded modulus is 0x00 followed by 256 bytes.
+        let mut modulus = vec![0x00];
+        modulus.extend_from_slice(&[0x80]); // first real byte has MSB set
+        modulus.extend_from_slice(&vec![0xAB; 255]); // remaining 255 bytes
+        let key = rsa_key(&modulus);
+        assert_eq!(key.key_size(), 2048);
     }
 }
