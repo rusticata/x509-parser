@@ -17,7 +17,7 @@ pub fn parse_der_nscomment(input: Input<'_>) -> IResult<Input<'_>, &str, X509Err
             // Some implementations encode the comment directly, without
             // wrapping it in an IA5String
             if let Ok(s) = std::str::from_utf8(input.as_bytes2()) {
-                Ok((input.take(input.input_len()), s))
+                Ok((input.take_from(input.input_len()), s))
             } else {
                 Err(Err::Error(X509Error::DerParser(
                     InnerError::StringInvalidCharset,
