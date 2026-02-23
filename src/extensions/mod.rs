@@ -9,7 +9,7 @@ use asn1_rs::{
 };
 use nom::combinator::{all_consuming, complete, map};
 use nom::multi::many0;
-use nom::{Err, IResult, Input as _, Mode, Parser};
+use nom::{Err, IResult, Mode, Parser};
 use oid_registry::*;
 use std::collections::HashMap;
 
@@ -229,7 +229,6 @@ impl<'i> Parser<Input<'i>> for X509ExtensionParser {
             let parsed_extension = if self.deep_parse_extensions {
                 parser::parse_extension(value.clone(), &oid, critical)
             } else {
-                rem.take(rem.input_len());
                 ParsedExtension::Unparsed
             };
 
