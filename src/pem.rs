@@ -123,6 +123,7 @@ impl Pem {
                 Ok(line) => line,
                 Err(e) if e.kind() == ErrorKind::InvalidData => {
                     // some tools put invalid UTF-8 data in PEM comment section. Ignore line
+                    line.clear();
                     continue;
                 }
                 Err(e) => {
@@ -260,5 +261,23 @@ mod tests {
             b"-----BEGIN MULTI WORD LABEL-----\n-----END MULTI WORD LABEL-----";
         let (_, pem) = parse_x509_pem(PEM_BYTES).expect("should parse pem");
         assert_eq!(pem.label, "MULTI WORD LABEL");
+    }
+
+    #[test]
+    fn pem_invalid_utf8_in_comment_is_skipped() {
+        // Build PEM data with an invalid UTF-8 line before the BEGIN header.
+        // The parser should skip the invalid line and still parse the PEM block.
+        let mut data: Vec<u8> = Vec::new();
+        // A comment line with invalid UTF-8 bytes (0xFF is never valid in UTF-8)
+        data.extend_from_slice(b"# comment \xff\xff\n");
+        data.extend_from_slice(b"-----BEGIN CERTIFICATE-----\n");
+        // Minimal base64 content (one byte: 0x00)
+        data.extend_from_slice(b"AA==\n");
+        data.extend_from_slice(b"-----END CERTIFICATE-----\n");
+
+        let cursor = Cursor::new(data.as_slice());
+        let (pem, _) = Pem::read(cursor).expect("should skip invalid UTF-8 and parse PEM");
+        assert_eq!(pem.label, "CERTIFICATE");
+        assert_eq!(pem.contents, vec![0x00]);
     }
 }
