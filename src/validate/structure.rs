@@ -126,9 +126,16 @@ impl<'a> Validator<'a> for TbsCertificateStructureValidator {
             res = false;
         }
         // check for parse errors or unsupported extensions
+        // RFC 5280 4.2: "if a certificate contains a critical extension that
+        // is not recognized, it MUST be rejected"
         for ext in item.extensions() {
             if let ParsedExtension::UnsupportedExtension { .. } = &ext.parsed_extension {
-                l.warn(&format!("Unsupported extension {}", ext.oid));
+                if ext.critical {
+                    l.err(&format!("Unsupported critical extension {}", ext.oid));
+                    res = false;
+                } else {
+                    l.warn(&format!("Unsupported extension {}", ext.oid));
+                }
             }
             if let ParsedExtension::ParseError { error } = &ext.parsed_extension {
                 l.err(&format!("Parse error in extension {}: {}", ext.oid, error));
@@ -185,5 +192,84 @@ impl<'a> Validator<'a> for X509PublicKeyValidator {
             }
         }
         res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+
+    #[test]
+    fn validate_unsupported_noncritical_extension_warns() {
+        let der = include_bytes!("../../assets/unsupported_noncritical_ext.der");
+        let (_, cert) = X509Certificate::from_der(der).expect("could not parse certificate");
+        let mut logger = VecLogger::default();
+        let res = TbsCertificateStructureValidator.validate(&cert.tbs_certificate, &mut logger);
+
+        // Unsupported non-critical extension should produce a warning but not fail
+        assert!(
+            res,
+            "validator should return true for non-critical unsupported extension"
+        );
+        assert!(
+            logger
+                .warnings()
+                .iter()
+                .any(|w| w.contains("Unsupported extension")),
+            "expected warning about unsupported extension, got: {:?}",
+            logger.warnings()
+        );
+        assert!(
+            !logger
+                .errors()
+                .iter()
+                .any(|e| e.contains("Unsupported critical extension")),
+            "should not have critical extension error for non-critical extension"
+        );
+    }
+
+    #[test]
+    fn validate_unsupported_critical_extension_errors() {
+        let der = include_bytes!("../../assets/unsupported_critical_ext.der");
+        let (_, cert) = X509Certificate::from_der(der).expect("could not parse certificate");
+        let mut logger = VecLogger::default();
+        let res = TbsCertificateStructureValidator.validate(&cert.tbs_certificate, &mut logger);
+
+        // Unsupported critical extension must cause validation failure per RFC 5280 4.2
+        assert!(
+            !res,
+            "validator should return false for critical unsupported extension"
+        );
+        assert!(
+            logger
+                .errors()
+                .iter()
+                .any(|e| e.contains("Unsupported critical extension")),
+            "expected error about unsupported critical extension, got: {:?}",
+            logger.errors()
+        );
+    }
+
+    #[test]
+    fn validate_known_good_certificate() {
+        let der = include_bytes!("../../assets/IGC_A.der");
+        let (_, cert) = X509Certificate::from_der(der).expect("could not parse certificate");
+        let mut logger = VecLogger::default();
+        let res = X509StructureValidator.validate(&cert, &mut logger);
+
+        // Known good certificate should pass validation
+        assert!(
+            res,
+            "IGC_A.der should pass validation, errors: {:?}",
+            logger.errors()
+        );
+        assert!(
+            !logger
+                .errors()
+                .iter()
+                .any(|e| e.contains("Unsupported critical extension")),
+            "known good cert should not have unsupported critical extension errors"
+        );
     }
 }
