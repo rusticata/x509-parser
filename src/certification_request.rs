@@ -192,26 +192,26 @@ pub struct X509CertificationRequestInfo<'a> {
 }
 
 impl X509CertificationRequestInfo<'_> {
-    /// Get the CRL entry extensions.
+    /// Get the CSR attributes.
     #[inline]
     pub fn attributes(&self) -> &[X509CriAttribute<'_>] {
         &self.attributes
     }
 
-    /// Returns an iterator over the CRL entry extensions
+    /// Returns an iterator over the CSR attributes
     #[inline]
     pub fn iter_attributes(&self) -> impl Iterator<Item = &X509CriAttribute<'_>> {
         self.attributes.iter()
     }
 
-    /// Searches for a CRL entry extension with the given `Oid`.
+    /// Searches for a CSR attribute with the given `Oid`.
     ///
     /// Note: if there are several extensions with the same `Oid`, the first one is returned.
     pub fn find_attribute(&self, oid: &Oid) -> Option<&X509CriAttribute<'_>> {
         self.attributes.iter().find(|&ext| ext.oid == *oid)
     }
 
-    /// Builds and returns a map of CRL entry extensions.
+    /// Builds and returns a map of CSR attributes.
     ///
     /// If an extension is present twice, this will fail and return `DuplicateExtensions`.
     pub fn attributes_map(&self) -> Result<HashMap<Oid<'_>, &X509CriAttribute<'_>>, X509Error> {
