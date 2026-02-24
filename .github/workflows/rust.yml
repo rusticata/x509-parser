@@ -5,7 +5,7 @@ on:
   pull_request:
   merge_group:
   schedule:
-    - cron: '0 18 * * *'
+    - cron: "0 18 * * *"
 
 jobs:
   check:
@@ -87,7 +87,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
+      # Ensure the non-FIPS aws-lc-sys crate is not part of the dependency tree.
+      #
+      # "cargo tree" exists 101 when queried for a crate that's not in the tree.
       - run: "if cargo tree --features=verify-aws-fips -i aws-lc-sys; then false; else [ $? -eq 101 ]; fi"
+      # Ensure the optional FIPS crypto module is depended.
       - run: "cargo tree --features=verify-aws-fips -i aws-lc-fips-sys"
 
   fmt:
