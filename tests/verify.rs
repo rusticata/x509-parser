@@ -1,4 +1,8 @@
-#![cfg(any(feature = "verify", feature = "verify-aws"))]
+#![cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
 
 use x509_parser::parse_x509_certificate;
 

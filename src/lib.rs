@@ -93,10 +93,10 @@
 //!   to `X509Certificate`.
 //!
 //! ```rust
-//! # #[cfg(any(feature = "verify", feature = "verify-aws"))]
+//! # #[cfg(any(feature = "verify", feature = "verify-aws", feature = "verify-aws-fips"))]
 //! # use x509_parser::certificate::X509Certificate;
 //! /// Cryptographic signature verification: returns true if certificate was signed by issuer
-//! #[cfg(any(feature = "verify", feature = "verify-aws"))]
+//! #[cfg(any(feature = "verify", feature = "verify-aws", feature = "verify-aws-fips"))]
 //! pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> bool {
 //!     let issuer_public_key = issuer.public_key();
 //!     cert
@@ -157,8 +157,19 @@ pub mod time;
 #[cfg(feature = "validate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate")))]
 pub mod validate;
-#[cfg(any(feature = "verify", feature = "verify-aws"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "verify", feature = "verify-aws"))))]
+#[cfg(any(
+    feature = "verify",
+    feature = "verify-aws",
+    feature = "verify-aws-fips"
+))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(
+        feature = "verify",
+        feature = "verify-aws",
+        feature = "verify-aws-fips"
+    )))
+)]
 pub mod verify;
 pub mod visitor;
 pub mod x509;
