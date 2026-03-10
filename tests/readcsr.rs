@@ -115,6 +115,58 @@ fn read_csr_with_challenge_password() {
     assert!(found_san);
 }
 
+#[test]
+fn test_iter_raw_values() {
+    let der = pem::parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
+    let (_, csr) = X509CertificationRequest::from_der(&der.contents)
+        .expect("Could not parse CSR with challenge password");
+
+    // Test iter_raw_values on the challenge password attribute (single value)
+    let challenge_attr = csr
+        .certification_request_info
+        .find_attribute(&OID_PKCS9_CHALLENGE_PASSWORD)
+        .expect("Challenge password attribute not found");
+
+    let raw_values: Vec<_> = challenge_attr
+        .iter_raw_values()
+        .collect::<Result<Vec<_>, _>>()
+        .expect("iter_raw_values should yield parseable items");
+    // The challenge password SET has exactly one value
+    assert_eq!(raw_values.len(), 1);
+
+    // The parsed Any should be a UTF8String containing "A challenge password"
+    let (_, any_val) = &raw_values[0];
+    // Verify raw DER: tag should be UTF8String (0x0C), not SET (0x31)
+    assert_eq!(
+        any_val.header.tag(),
+        x509_parser::asn1_rs::Tag::Utf8String,
+        "iter_raw_values should yield individual values inside the SET, not the SET itself"
+    );
+    let s = std::str::from_utf8(any_val.data.as_bytes2())
+        .expect("challenge password value should be valid UTF-8");
+    assert_eq!(s, "A challenge password");
+
+    // Test iter_raw_values on the extension request attribute (single value: a SEQUENCE)
+    let ext_attr = csr
+        .certification_request_info
+        .find_attribute(&OID_PKCS9_EXTENSION_REQUEST)
+        .expect("Extension request attribute not found");
+
+    let raw_values: Vec<_> = ext_attr
+        .iter_raw_values()
+        .collect::<Result<Vec<_>, _>>()
+        .expect("iter_raw_values should yield parseable items");
+    // The extension request SET has exactly one value (the SEQUENCE of extensions)
+    assert_eq!(raw_values.len(), 1);
+    let (_, any_val) = &raw_values[0];
+    // Verify raw DER: tag should be SEQUENCE (0x30), not SET (0x31)
+    assert_eq!(
+        any_val.header.tag(),
+        x509_parser::asn1_rs::Tag::Sequence,
+        "iter_raw_values should yield SET contents, not the SET envelope"
+    );
+}
+
 #[cfg(any(feature = "verify", feature = "verify-aws"))]
 #[test]
 fn read_csr_verify() {
