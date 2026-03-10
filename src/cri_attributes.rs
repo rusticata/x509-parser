@@ -33,10 +33,21 @@ impl<'a> X509CriAttribute<'a> {
     }
 
     /// Iterate over the unparsed values of 'SET OF AttributeValue'
+    ///
+    /// Each item yields the raw DER content of an individual value within the SET,
+    /// returned as an [`Any`] object containing the DER-encoded tag, length, and value.
+    ///
+    /// If the SET header cannot be parsed, an empty iterator is returned.
     pub fn iter_raw_values(
         &self,
     ) -> impl Iterator<Item = Result<(Input<'a>, Any<'a>), BerError<Input<'a>>>> {
-        AnyIterator::<DerMode>::new(self.value.clone())
+        // `self.value` contains the full SET TLV; parse past the SET header
+        // to iterate over the individual values inside the SET
+        let content = match <Set>::parse_der_as_input(self.value.clone()) {
+            Ok((_, (_, content))) => content,
+            Err(_) => Input::default(),
+        };
+        AnyIterator::<DerMode>::new(content)
     }
 }
 
