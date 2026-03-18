@@ -167,6 +167,7 @@ pub fn verify_signature(
     }
 }
 
+/// Verify an RSA PKCS#1 v1.5 signature using the selected digest.
 #[cfg(all(
     feature = "verify-rustcrypto",
     not(feature = "verify"),
@@ -248,6 +249,7 @@ fn rc_verify_rsa_pss(
     }
 }
 
+/// Verify an RSA-PSS signature using the selected digest and salt length.
 #[cfg(all(
     feature = "verify-rustcrypto",
     not(feature = "verify"),
@@ -276,10 +278,11 @@ where
         .map_err(|_| X509Error::SignatureVerificationError)
 }
 
-/// Find the verification function for the given EC curve and SHA digest size.
+/// Verify an ECDSA signature using the curve from the signer's SPKI and the hash
+/// implied by the signature algorithm.
 ///
-/// Only the standard curve/hash pairings (P-256/SHA-256, P-384/SHA-384) are supported.
-/// Cross-pairings (P-256/SHA-384, P-384/SHA-256) are not supported by the RustCrypto backend.
+/// RustCrypto's `Verifier` trait uses the curve's default digest, so non-default
+/// curve/hash pairings are handled via `verify_prehash`.
 #[cfg(all(
     feature = "verify-rustcrypto",
     not(feature = "verify"),
@@ -306,6 +309,16 @@ fn rc_verify_ecdsa(
             .map_err(|_| X509Error::SignatureVerificationError)?;
         vk.verify(data, &sig)
             .map_err(|_| X509Error::SignatureVerificationError)
+    } else if curve_oid == OID_EC_P256 && sha_len == 384 {
+        use p256::ecdsa::signature::hazmat::PrehashVerifier;
+        use sha2::Digest;
+        let vk = p256::ecdsa::VerifyingKey::from_sec1_bytes(key_bytes)
+            .map_err(|_| X509Error::SignatureVerificationError)?;
+        let sig = p256::ecdsa::DerSignature::from_bytes(sig_bytes)
+            .map_err(|_| X509Error::SignatureVerificationError)?;
+        let digest = sha2::Sha384::digest(data);
+        vk.verify_prehash(&digest, &sig)
+            .map_err(|_| X509Error::SignatureVerificationError)
     } else if curve_oid == OID_NIST_EC_P384 && sha_len == 384 {
         use p384::ecdsa::signature::Verifier;
         let vk = p384::ecdsa::VerifyingKey::from_sec1_bytes(key_bytes)
@@ -313,6 +326,16 @@ fn rc_verify_ecdsa(
         let sig = p384::ecdsa::DerSignature::from_bytes(sig_bytes)
             .map_err(|_| X509Error::SignatureVerificationError)?;
         vk.verify(data, &sig)
+            .map_err(|_| X509Error::SignatureVerificationError)
+    } else if curve_oid == OID_NIST_EC_P384 && sha_len == 256 {
+        use p384::ecdsa::signature::hazmat::PrehashVerifier;
+        use sha2::Digest;
+        let vk = p384::ecdsa::VerifyingKey::from_sec1_bytes(key_bytes)
+            .map_err(|_| X509Error::SignatureVerificationError)?;
+        let sig = p384::ecdsa::DerSignature::from_bytes(sig_bytes)
+            .map_err(|_| X509Error::SignatureVerificationError)?;
+        let digest = sha2::Sha256::digest(data);
+        vk.verify_prehash(&digest, &sig)
             .map_err(|_| X509Error::SignatureVerificationError)
     } else {
         Err(X509Error::SignatureUnsupportedAlgorithm)

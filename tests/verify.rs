@@ -39,6 +39,8 @@ fn test_signature_verification_ed25519() {
 }
 
 static ECDSA_P256_SHA256_DER: &[u8] = include_bytes!("../assets/ecdsa_p256_sha256.der");
+static ECDSA_P256_SHA384_DER: &[u8] = include_bytes!("../assets/ecdsa_p256_sha384.der");
+static ECDSA_P384_SHA256_DER: &[u8] = include_bytes!("../assets/ecdsa_p384_sha256.der");
 static ECDSA_P384_SHA384_DER: &[u8] = include_bytes!("../assets/ecdsa_p384_sha384.der");
 
 #[test]
@@ -59,12 +61,35 @@ fn test_signature_verification_ecdsa_p384_sha384() {
     assert!(res.is_ok());
 }
 
+#[test]
+fn test_signature_verification_ecdsa_p256_sha384() {
+    let (_, x509) =
+        parse_x509_certificate(ECDSA_P256_SHA384_DER).expect("could not parse certificate");
+    let res = x509.verify_signature(None);
+    eprintln!("Verification: {res:?}");
+    assert!(res.is_ok());
+}
+
+#[test]
+fn test_signature_verification_ecdsa_p384_sha256() {
+    let (_, x509) =
+        parse_x509_certificate(ECDSA_P384_SHA256_DER).expect("could not parse certificate");
+    let res = x509.verify_signature(None);
+    eprintln!("Verification: {res:?}");
+    assert!(res.is_ok());
+}
+
 static RSA_PSS_SELF_SIGNED_SHA256: &[u8] =
     include_bytes!("../assets/rsa-pss/self_signed_sha256.der");
 static RSA_PSS_SELF_SIGNED_SHA384: &[u8] =
     include_bytes!("../assets/rsa-pss/self_signed_sha384.der");
 static RSA_PSS_SELF_SIGNED_SHA512: &[u8] =
     include_bytes!("../assets/rsa-pss/self_signed_sha512.der");
+#[cfg(all(
+    feature = "verify-rustcrypto",
+    not(feature = "verify"),
+    not(feature = "verify-aws")
+))]
 static RSA_PSS_SELF_SIGNED_SHA256_SALTLEN42: &[u8] =
     include_bytes!("../assets/rsa-pss/self_signed_sha256_saltlen42.der");
 
