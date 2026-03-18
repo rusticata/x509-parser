@@ -121,7 +121,7 @@ impl<'a> CertificateRevocationList<'a> {
     ///
     /// `public_key` is the public key of the **signer**.
     ///
-    /// Not all algorithms are supported, this function is limited to what `ring` supports.
+    /// Not all algorithms are supported, this function is limited to what the selected backend supports.
     #[cfg(any(
         feature = "verify",
         feature = "verify-aws",

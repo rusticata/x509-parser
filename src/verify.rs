@@ -79,7 +79,6 @@ fn get_ec_curve_sha(
     sha_len: usize,
 ) -> Option<&'static dyn signature::VerificationAlgorithm> {
     let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
-    // let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
     if curve_oid == OID_EC_P256 {
         match sha_len {
             256 => Some(&signature::ECDSA_P256_SHA256_ASN1),

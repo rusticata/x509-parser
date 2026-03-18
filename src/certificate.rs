@@ -95,7 +95,7 @@ impl<'a> X509Certificate<'a> {
     /// For a leaf certificate, this is the public key of the certificate that signed it.
     /// It is usually an intermediate authority.
     ///
-    /// Not all algorithms are supported, this function is limited to what `ring` supports.
+    /// Not all algorithms are supported, this function is limited to what the selected backend supports.
     #[cfg(any(
         feature = "verify",
         feature = "verify-aws",
