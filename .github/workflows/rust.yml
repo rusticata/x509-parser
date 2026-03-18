@@ -71,6 +71,7 @@ jobs:
           - --all-features
           - --features=verify
           - --features=verify-aws
+          - --features=verify-rustcrypto
           - --features=validate
     steps:
       - uses: actions/checkout@v4
