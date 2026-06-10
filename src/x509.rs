@@ -766,6 +766,9 @@ mod tests {
         // X.690 §8.1.2: tag class must match the expected type
         let data: &[u8] = &[0x82, 0x01, 0x01]; // CONTEXT-SPECIFIC [2], length 1, value 1
         let r = parse_serial(Input::from(data));
-        assert!(r.is_err(), "should reject CONTEXT-SPECIFIC tag for serial number");
+        assert!(
+            r.is_err(),
+            "should reject CONTEXT-SPECIFIC tag for serial number"
+        );
     }
 }
