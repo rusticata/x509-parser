@@ -52,7 +52,7 @@ oid-registry = { version="0.9.0-beta.1", features=["crypto", "x509", "x962"] }
 ring = { version="0.17.12", optional=true }
 rusticata-macros = "5.0"
 thiserror = "2.0"
-time = { version="0.3.35", features=["formatting"] }
+time = { version="0.3.47", features=["formatting"] }
 
 [dev-dependencies]
 hex-literal = "0.4"
