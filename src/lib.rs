@@ -124,7 +124,7 @@
 //!
 //! ## Rust version requirements
 //!
-//! `x509-parser` requires **Rustc version 1.85 or greater**
+//! `x509-parser` requires **Rustc version 1.88 or greater**
 //!
 //! [RFC5280]: https://tools.ietf.org/html/rfc5280
 
