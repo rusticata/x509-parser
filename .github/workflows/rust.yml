@@ -114,7 +114,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - run: |
           cargo install cargo-rdme
-          cargo rdme --check --no-fail-on-warnings
+          cargo rdme --check --intralinks-all-features
 
   doc:
     name: Build documentation
