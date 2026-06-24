@@ -6,6 +6,7 @@
 [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
 [![Minimum rustc version](https://img.shields.io/badge/rustc-1.67.1+-lightgray.svg)](#rust-version-requirements)
 
+<!-- To generate the README, use `cargo rdme --intralinks-all-features` -->
 <!-- cargo-rdme start -->
 
 # X.509 Parser
@@ -22,36 +23,36 @@ and is part of the [Rusticata](https://github.com/rusticata) project.
 
 Certificates are usually encoded in two main formats: PEM (usually the most common format) or
 DER.  A PEM-encoded certificate is a container, storing a DER object. See the
-[`pem`] module for more documentation.
+[`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/) module for more documentation.
 
 To decode a DER-encoded certificate, the main parsing method is
-`X509Certificate::parse_der` (from the [`DerParser`](asn1_rs::DerParser) trait)
-which builds a [`X509Certificate`] object.
+`X509Certificate::parse_der` (from the [`DerParser`](https://docs.rs/asn1_rs/latest/asn1_rs/from_der/trait.DerParser.html) trait)
+which builds a [`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html) object.
 
-The [`parse_der`](asn1_rs::DerParser) trait takes an [`Input`](asn1_rs::Input)
+The [`parse_der`](https://docs.rs/asn1_rs/latest/asn1_rs/from_der/trait.DerParser.html) trait takes an [`Input`](https://docs.rs/asn1_rs/latest/asn1_rs/input/struct.Input.html)
 object, which can be built from the input bytes. This helps tracking offsets (in case of
 error).
 For convenience,
-the [`X509Certificate::from_der`] method (part of the [`FromDer`] trait)
+the [`X509Certificate::from_der`] method (part of the [`FromDer`](https://docs.rs/asn1_rs/latest/asn1_rs/from_der/trait.FromDer.html) trait)
 does the same directly on the input bytes, but it can loose the precise error location.
 
 An alternative method is to use [`X509CertificateParser`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509CertificateParser.html),
 which allows specifying parsing options (for example, not automatically parsing option contents).
 
 Similar methods are provided for other X.509 objects:
-- [`X509Certificate`] for X.509 Certificates
-- [`CertificateRevocationList`] for X.509 v2 Certificate Revocation List (CRL)
+- [`X509Certificate`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html) for X.509 Certificates
+- [`CertificateRevocationList`](https://docs.rs/x509-parser/latest/x509_parser/revocation_list/struct.CertificateRevocationList.html) for X.509 v2 Certificate Revocation List (CRL)
 - [`X509CertificationRequest`](https://docs.rs/x509-parser/latest/x509_parser/certification_request/struct.X509CertificationRequest.html) for Certification Signing Request (CSR)
 
 The returned objects for parsers follow the definitions of the RFC. This means that accessing
 fields is done by accessing struct members recursively. Some helper functions are provided, for
-example `X509Certificate::issuer()` returns the
+example [`X509Certificate::issuer()`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.TbsCertificate.html#method.issuer) returns the
 same as accessing `<object>.tbs_certificate.issuer`.
 
-For PEM-encoded certificates, use the [`pem`] module.
+For PEM-encoded certificates, use the [`pem`](https://docs.rs/x509-parser/latest/x509_parser/pem/) module.
 
-This crate also provides visitor traits: `X509CertificateVisitor`, `CertificateRevocationListVisitor`.
-See the [`visitor`] module.
+This crate also provides visitor traits: [`X509CertificateVisitor`](https://docs.rs/x509-parser/latest/x509_parser/visitor/certificate_visitor/trait.X509CertificateVisitor.html), [`CertificateRevocationListVisitor`](https://docs.rs/x509-parser/latest/x509_parser/visitor/crl_visitor/trait.CertificateRevocationListVisitor.html).
+See the [`visitor`](https://docs.rs/x509-parser/latest/x509_parser/visitor/) module.
 
 # Examples
 
@@ -96,7 +97,7 @@ See also `examples/print-cert.rs`.
 
 - The `verify` and `verify-aws` features add support for (cryptographic) signature verification, based on `ring` or `aws-lc` respectively.
   It adds the
-  [`X509Certificate::verify_signature()`] method
+  [`X509Certificate::verify_signature()`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.verify_signature) method
   to `X509Certificate`.
 
 ```rust
