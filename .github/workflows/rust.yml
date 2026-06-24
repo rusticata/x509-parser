@@ -15,16 +15,13 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.67.1
+          - 1.85
           - nightly
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-      - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.41
-        if: matrix.rust == '1.67.1'
       - run: RUSTFLAGS="-D warnings" cargo check --locked
 
   check-notlocked:
@@ -51,9 +48,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-      - name: Cargo update (fix for MSRV)
-        run: cargo update -p time --precise 0.3.41
-        if: matrix.rust == '1.67.1'
       - run: RUSTFLAGS="-D warnings" cargo check --locked --all-targets --all-features
 
   test:
