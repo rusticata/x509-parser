@@ -6,7 +6,7 @@
 [![Github CI](https://github.com/rusticata/x509-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/x509-parser/actions)
 [![Minimum rustc version](https://img.shields.io/badge/rustc-1.88+-lightgray.svg)](#rust-version-requirements)
 
-<!-- To generate the README, use `cargo rdme --intralinks-all-features` -->
+<!-- To generate the README, use `cargo rdme install-rust-toolchain-for-intralinks && cargo rdme --intralinks-all-features` -->
 <!-- cargo-rdme start -->
 
 # X.509 Parser
