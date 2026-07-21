@@ -108,6 +108,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: |
           cargo install cargo-rdme
+          cargo rdme install-rust-toolchain-for-intralinks
           cargo rdme --check --intralinks-all-features
 
   doc:
