@@ -41,6 +41,8 @@ pub struct X509ExtensionsValidator;
 impl<'a> Validator<'a> for X509ExtensionsValidator {
     type Item = &'a [X509Extension<'a>];
 
+    // Tell clippy to _not_ suggest merging a long `if` check into an already long pattern match
+    #[expect(clippy::collapsible_match)]
     fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
         let mut res = true;
         // check for duplicate extensions

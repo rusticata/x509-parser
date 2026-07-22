@@ -65,6 +65,8 @@ pub struct TbsCertificateStructureValidator;
 impl<'a> Validator<'a> for TbsCertificateStructureValidator {
     type Item = TbsCertificate<'a>;
 
+    // Tell clippy to _not_ suggest merging a long `if` check into an already long pattern match
+    #[expect(clippy::collapsible_match)]
     fn validate<L: Logger>(&self, item: &'a Self::Item, l: &'_ mut L) -> bool {
         let mut res = true;
         // version must be 0, 1 or 2

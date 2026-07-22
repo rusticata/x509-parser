@@ -1,6 +1,6 @@
-## Upgrading from 0.17 to 0.18
+## Upgrading from 0.18 to 0.19
 
-The major changes in version 0.18 are described here.
+The major changes in version 0.19 are described here.
 
 ### Cargo and dependencies
 

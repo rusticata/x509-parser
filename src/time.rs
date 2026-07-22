@@ -197,7 +197,7 @@ impl Add<Duration> for ASN1Time {
 
     #[inline]
     fn add(self, rhs: Duration) -> Option<ASN1Time> {
-        Some(ASN1Time::new(self.time + rhs))
+        self.time.checked_add(rhs).map(ASN1Time::new)
     }
 }
 
@@ -223,6 +223,7 @@ impl From<OffsetDateTime> for ASN1Time {
 #[cfg(test)]
 mod tests {
     use time::macros::datetime;
+    use time::Duration;
 
     use super::ASN1Time;
 
@@ -239,5 +240,17 @@ mod tests {
         let d = datetime!(1 - 1 - 1 00:00:00 UTC);
         let t = ASN1Time::from(d);
         assert!(t.to_rfc2822().is_err());
+    }
+
+    #[test]
+    fn test_add_duration_overflow_returns_none() {
+        // `Add<Duration>` returns `Option`, so a date overflow must yield `None`,
+        // not panic (mirroring the `Sub` impl). Year 9999 is the max representable
+        // date and is a conventional certificate `notAfter` sentinel (RFC 5280).
+        let max = ASN1Time::from(datetime!(9999 - 12 - 31 23:59:59 UTC));
+        assert!((max + Duration::days(1)).is_none());
+        // A normal date still returns `Some`.
+        let d = ASN1Time::from(datetime!(2025 - 1 - 1 00:00:00 UTC));
+        assert!((d + Duration::days(1)).is_some());
     }
 }
