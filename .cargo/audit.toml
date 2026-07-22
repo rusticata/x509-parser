@@ -1,0 +1,5 @@
+
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0009", # not affected: `time` parsing functions not used
+]
