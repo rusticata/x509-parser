@@ -118,7 +118,7 @@ pub fn check_signature(cert: &X509Certificate<'_>, issuer: &X509Certificate<'_>)
   `--all-features`), the verification will use `aws-lc-rs`. It also has the side-effect of
   having a dependency on `ring`, even if it is not used.
 
-- The `validate` feature add methods to run more validation functions on the certificate structure
+- The `validate` feature adds methods to run more validation functions on the certificate structure
   and values using the [`Validate`](https://docs.rs/x509-parser/latest/x509_parser/validate/trait.Validate.html) trait.
   It does not validate any cryptographic parameter (see `verify` above).
 
