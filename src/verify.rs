@@ -2,10 +2,10 @@ use crate::prelude::*;
 use crate::signature_algorithm::RsaSsaPssParams;
 use asn1_rs::{Any, BitString, DerParser};
 use oid_registry::{
-    OID_EC_P256, OID_NIST_EC_P384, OID_NIST_HASH_SHA256, OID_NIST_HASH_SHA384,
+    OID_EC_P256, OID_NIST_EC_P384, OID_NIST_EC_P521, OID_NIST_HASH_SHA256, OID_NIST_HASH_SHA384,
     OID_NIST_HASH_SHA512, OID_PKCS1_RSASSAPSS, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA,
     OID_PKCS1_SHA384WITHRSA, OID_PKCS1_SHA512WITHRSA, OID_SHA1_WITH_RSA, OID_SIG_ECDSA_WITH_SHA256,
-    OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ED25519,
+    OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ECDSA_WITH_SHA512, OID_SIG_ED25519,
 };
 
 // Since the `signature` object is similar in ring and in aws-lc-rs, we just use simple logic
@@ -53,6 +53,9 @@ pub fn verify_signature(
     } else if *signature_algorithm == OID_SIG_ECDSA_WITH_SHA384 {
         get_ec_curve_sha(&public_key.algorithm, 384)
             .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
+    } else if *signature_algorithm == OID_SIG_ECDSA_WITH_SHA512 {
+        get_ec_curve_sha(&public_key.algorithm, 512)
+            .ok_or(X509Error::SignatureUnsupportedAlgorithm)?
     } else if *signature_algorithm == OID_SIG_ED25519 {
         &signature::ED25519
     } else {
@@ -76,7 +79,6 @@ fn get_ec_curve_sha(
     sha_len: usize,
 ) -> Option<&'static dyn signature::VerificationAlgorithm> {
     let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
-    // let curve_oid = pubkey_alg.parameters.as_ref()?.as_oid().ok()?;
     if curve_oid == OID_EC_P256 {
         match sha_len {
             256 => Some(&signature::ECDSA_P256_SHA256_ASN1),
@@ -90,7 +92,23 @@ fn get_ec_curve_sha(
             _ => None,
         }
     } else {
-        None
+        #[cfg(feature = "verify-aws")]
+        {
+            if curve_oid == OID_NIST_EC_P521 {
+                match sha_len {
+                    256 => Some(&signature::ECDSA_P521_SHA256_ASN1),
+                    384 => Some(&signature::ECDSA_P521_SHA384_ASN1),
+                    512 => Some(&signature::ECDSA_P521_SHA512_ASN1),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        #[cfg(not(feature = "verify-aws"))]
+        {
+            None
+        }
     }
 }
 

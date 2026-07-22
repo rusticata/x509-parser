@@ -341,94 +341,93 @@ impl ParsedExtension<'_> {
 }
 
 pub(crate) mod parser {
+    use std::sync::LazyLock;
+
     use crate::extensions::*;
     use asn1_rs::{GeneralizedTime, Integer};
-    use lazy_static::lazy_static;
 
     type ExtParser = fn(Input) -> IResult<Input, ParsedExtension, X509Error>;
 
-    lazy_static! {
-        static ref EXTENSION_PARSERS: HashMap<Oid<'static>, ExtParser> = {
-            macro_rules! add {
-                ($m:ident, $oid:ident, $p:ident) => {
-                    $m.insert($oid, $p as ExtParser);
-                };
-            }
+    static EXTENSION_PARSERS: LazyLock<HashMap<Oid<'static>, ExtParser>> = LazyLock::new(|| {
+        macro_rules! add {
+            ($m:ident, $oid:ident, $p:ident) => {
+                $m.insert($oid, $p as ExtParser);
+            };
+        }
 
-            let mut m = HashMap::new();
-            add!(
-                m,
-                OID_X509_EXT_SUBJECT_KEY_IDENTIFIER,
-                parse_keyidentifier_ext
-            );
-            add!(m, OID_X509_EXT_KEY_USAGE, parse_keyusage_ext);
-            add!(
-                m,
-                OID_X509_EXT_SUBJECT_ALT_NAME,
-                parse_subjectalternativename_ext
-            );
-            add!(
-                m,
-                OID_X509_EXT_ISSUER_ALT_NAME,
-                parse_issueralternativename_ext
-            );
-            add!(
-                m,
-                OID_X509_EXT_BASIC_CONSTRAINTS,
-                parse_basicconstraints_ext
-            );
-            add!(m, OID_X509_EXT_NAME_CONSTRAINTS, parse_nameconstraints_ext);
-            add!(
-                m,
-                OID_X509_EXT_CERTIFICATE_POLICIES,
-                parse_certificatepolicies_ext
-            );
-            add!(m, OID_X509_EXT_POLICY_MAPPINGS, parse_policymappings_ext);
-            add!(
-                m,
-                OID_X509_EXT_POLICY_CONSTRAINTS,
-                parse_policyconstraints_ext
-            );
-            add!(
-                m,
-                OID_X509_EXT_EXTENDED_KEY_USAGE,
-                parse_extendedkeyusage_ext
-            );
-            add!(
-                m,
-                OID_X509_EXT_CRL_DISTRIBUTION_POINTS,
-                parse_crldistributionpoints_ext
-            );
-            add!(
-                m,
-                OID_X509_EXT_INHIBIT_ANY_POLICY,
-                parse_inhibitanypolicy_ext
-            );
-            add!(
-                m,
-                OID_PKIX_AUTHORITY_INFO_ACCESS,
-                parse_authorityinfoaccess_ext
-            );
-            add!(m, OID_PKIX_SUBJECT_INFO_ACCESS, parse_subjectinfoaccess_ext);
-            add!(
-                m,
-                OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
-                parse_authoritykeyidentifier_ext
-            );
-            add!(m, OID_CT_LIST_SCT, parse_sct_ext);
-            add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype_ext);
-            add!(m, OID_X509_EXT_CERT_COMMENT, parse_nscomment_ext);
-            add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
-            add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
-            add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
-            add!(
-                m,
-                OID_X509_EXT_ISSUER_DISTRIBUTION_POINT,
-                parse_issuingdistributionpoint_ext
-            );
-            m
-        };
-    }
+        let mut m = HashMap::new();
+        add!(
+            m,
+            OID_X509_EXT_SUBJECT_KEY_IDENTIFIER,
+            parse_keyidentifier_ext
+        );
+        add!(m, OID_X509_EXT_KEY_USAGE, parse_keyusage_ext);
+        add!(
+            m,
+            OID_X509_EXT_SUBJECT_ALT_NAME,
+            parse_subjectalternativename_ext
+        );
+        add!(
+            m,
+            OID_X509_EXT_ISSUER_ALT_NAME,
+            parse_issueralternativename_ext
+        );
+        add!(
+            m,
+            OID_X509_EXT_BASIC_CONSTRAINTS,
+            parse_basicconstraints_ext
+        );
+        add!(m, OID_X509_EXT_NAME_CONSTRAINTS, parse_nameconstraints_ext);
+        add!(
+            m,
+            OID_X509_EXT_CERTIFICATE_POLICIES,
+            parse_certificatepolicies_ext
+        );
+        add!(m, OID_X509_EXT_POLICY_MAPPINGS, parse_policymappings_ext);
+        add!(
+            m,
+            OID_X509_EXT_POLICY_CONSTRAINTS,
+            parse_policyconstraints_ext
+        );
+        add!(
+            m,
+            OID_X509_EXT_EXTENDED_KEY_USAGE,
+            parse_extendedkeyusage_ext
+        );
+        add!(
+            m,
+            OID_X509_EXT_CRL_DISTRIBUTION_POINTS,
+            parse_crldistributionpoints_ext
+        );
+        add!(
+            m,
+            OID_X509_EXT_INHIBIT_ANY_POLICY,
+            parse_inhibitanypolicy_ext
+        );
+        add!(
+            m,
+            OID_PKIX_AUTHORITY_INFO_ACCESS,
+            parse_authorityinfoaccess_ext
+        );
+        add!(m, OID_PKIX_SUBJECT_INFO_ACCESS, parse_subjectinfoaccess_ext);
+        add!(
+            m,
+            OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER,
+            parse_authoritykeyidentifier_ext
+        );
+        add!(m, OID_CT_LIST_SCT, parse_sct_ext);
+        add!(m, OID_X509_EXT_CERT_TYPE, parse_nscerttype_ext);
+        add!(m, OID_X509_EXT_CERT_COMMENT, parse_nscomment_ext);
+        add!(m, OID_X509_EXT_CRL_NUMBER, parse_crl_number);
+        add!(m, OID_X509_EXT_REASON_CODE, parse_reason_code);
+        add!(m, OID_X509_EXT_INVALIDITY_DATE, parse_invalidity_date);
+        add!(
+            m,
+            OID_X509_EXT_ISSUER_DISTRIBUTION_POINT,
+            parse_issuingdistributionpoint_ext
+        );
+        m
+    });
 
     // look into the parser map if the extension is known, and parse it
     // otherwise, leave it as UnsupportedExtension
