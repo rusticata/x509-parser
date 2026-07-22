@@ -597,7 +597,7 @@ impl<'a> TbsCertificate<'a> {
     /// `Ok(false)` if the extension is absent or `CA` is false,
     /// or an error if the extension could not be read (e.g. duplicate extensions).
     pub fn try_is_ca(&self) -> Result<bool, X509Error> {
-        Ok(self.basic_constraints()?.map_or(false, |ext| ext.value.ca))
+        Ok(self.basic_constraints()?.is_some_and(|ext| ext.value.ca))
     }
 
     /// Get the raw bytes of the certificate serial number
