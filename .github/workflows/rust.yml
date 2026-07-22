@@ -15,7 +15,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.88
+          - 1.85
           - nightly
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.88
+          - 1.85
           - nightly
     steps:
       - uses: actions/checkout@v4
