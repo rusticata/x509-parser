@@ -123,6 +123,7 @@ impl Pem {
                 Ok(line) => line,
                 Err(e) if e.kind() == ErrorKind::InvalidData => {
                     // some tools put invalid UTF-8 data in PEM comment section. Ignore line
+                    line.clear();
                     continue;
                 }
                 Err(e) => {
@@ -144,7 +145,11 @@ impl Pem {
             let label = v[1].strip_prefix("BEGIN ").ok_or(PEMError::InvalidHeader)?;
             break label;
         };
-        let label = label.split('-').next().ok_or(PEMError::InvalidHeader)?;
+        let label = label
+            .split('-')
+            .next()
+            .ok_or(PEMError::InvalidHeader)?
+            .to_string();
         let mut s = String::new();
         loop {
             let mut l = String::new();
@@ -153,7 +158,13 @@ impl Pem {
                 return Err(PEMError::IncompletePEM);
             }
             if l.starts_with("-----END ") {
-                // finished reading
+                // validate that END label matches BEGIN label
+                let end_v: Vec<&str> = l.trim_end().split("-----").collect();
+                if let Some(end_label) = end_v.get(1).and_then(|s| s.strip_prefix("END ")) {
+                    if end_label != label {
+                        return Err(PEMError::InvalidHeader);
+                    }
+                }
                 break;
             }
             s.push_str(l.trim_end());
@@ -162,10 +173,7 @@ impl Pem {
         let contents = data_encoding::BASE64
             .decode(s.as_bytes())
             .or(Err(PEMError::Base64DecodeError))?;
-        let pem = Pem {
-            label: label.to_string(),
-            contents,
-        };
+        let pem = Pem { label, contents };
         Ok((pem, r.stream_position()? as usize))
     }
 
@@ -260,5 +268,39 @@ mod tests {
             b"-----BEGIN MULTI WORD LABEL-----\n-----END MULTI WORD LABEL-----";
         let (_, pem) = parse_x509_pem(PEM_BYTES).expect("should parse pem");
         assert_eq!(pem.label, "MULTI WORD LABEL");
+    }
+
+    #[test]
+    fn pem_invalid_utf8_in_comment_is_skipped() {
+        // Build PEM data with an invalid UTF-8 line before the BEGIN header.
+        // The parser should skip the invalid line and still parse the PEM block.
+        let mut data: Vec<u8> = Vec::new();
+        // A comment line with invalid UTF-8 bytes (0xFF is never valid in UTF-8)
+        data.extend_from_slice(b"# comment \xff\xff\n");
+        data.extend_from_slice(b"-----BEGIN CERTIFICATE-----\n");
+        // Minimal base64 content (one byte: 0x00)
+        data.extend_from_slice(b"AA==\n");
+        data.extend_from_slice(b"-----END CERTIFICATE-----\n");
+
+        let cursor = Cursor::new(data.as_slice());
+        let (pem, _) = Pem::read(cursor).expect("should skip invalid UTF-8 and parse PEM");
+        assert_eq!(pem.label, "CERTIFICATE");
+        assert_eq!(pem.contents, vec![0x00]);
+    }
+
+    #[test]
+    fn pem_mismatched_end_label_returns_error() {
+        // A PEM block where the END label does not match the BEGIN label should
+        // be rejected with an InvalidHeader error.
+        const PEM_BYTES: &[u8] = b"-----BEGIN CERTIFICATE-----\nAA==\n-----END PRIVATE KEY-----\n";
+        let cursor = Cursor::new(PEM_BYTES);
+        let result = Pem::read(cursor);
+        assert!(result.is_err(), "mismatched END label should return error");
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, PEMError::InvalidHeader),
+            "expected InvalidHeader, got: {:?}",
+            err
+        );
     }
 }
