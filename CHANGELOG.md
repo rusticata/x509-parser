@@ -4,6 +4,8 @@
 
 ### Added/Changed/Fixed
 
+- Add new feature `verify-aws-fips` to use the FIPS-approved crypto module of `aws-lc-rs` (#233)
+
 ### Thanks
 
 ## 0.18.0
