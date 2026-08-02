@@ -72,6 +72,7 @@ fn test_signature_verification_rsa_pss_sha512() {
     assert!(res.is_ok());
 }
 
+#[cfg(any(feature = "verify-aws", feature = "verify-aws-fips"))]
 static P521_SELF_SIGNED_DER: &[u8] = include_bytes!("../assets/p521-selfsigned.der");
 
 #[cfg(any(feature = "verify-aws", feature = "verify-aws-fips"))]

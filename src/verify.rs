@@ -2,11 +2,14 @@ use crate::prelude::*;
 use crate::signature_algorithm::RsaSsaPssParams;
 use asn1_rs::{Any, BitString, DerParser};
 use oid_registry::{
-    OID_EC_P256, OID_NIST_EC_P384, OID_NIST_EC_P521, OID_NIST_HASH_SHA256, OID_NIST_HASH_SHA384,
+    OID_EC_P256, OID_NIST_EC_P384, OID_NIST_HASH_SHA256, OID_NIST_HASH_SHA384,
     OID_NIST_HASH_SHA512, OID_PKCS1_RSASSAPSS, OID_PKCS1_SHA1WITHRSA, OID_PKCS1_SHA256WITHRSA,
     OID_PKCS1_SHA384WITHRSA, OID_PKCS1_SHA512WITHRSA, OID_SHA1_WITH_RSA, OID_SIG_ECDSA_WITH_SHA256,
     OID_SIG_ECDSA_WITH_SHA384, OID_SIG_ECDSA_WITH_SHA512, OID_SIG_ED25519,
 };
+// P-521 is only supported by aws-lc-rs
+#[cfg(any(feature = "verify-aws", feature = "verify-aws-fips"))]
+use oid_registry::OID_NIST_EC_P521;
 
 // Since the `signature` object is similar in ring and in aws-lc-rs, we just use simple logic
 // to determine which one to use.
