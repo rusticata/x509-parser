@@ -33,7 +33,8 @@ include = [
 ]
 
 [package.metadata.docs.rs]
-all-features = true
+# all features except verify-aws-fips (aws-lc-fips-sys cannot build on docs.rs)
+features = ["validate", "verify", "verify-aws"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
