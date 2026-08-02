@@ -50,6 +50,17 @@ jobs:
           toolchain: ${{ matrix.rust }}
       - run: RUSTFLAGS="-D warnings" cargo check --locked --all-targets --all-features
 
+  feature-powerset:
+    name: Check feature powerset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-hack
+      # The two aws-lc-rs backends are never used together outside of
+      # --all-features builds, so skip those combinations.
+      - run: RUSTFLAGS="-D warnings" cargo hack check --locked --feature-powerset --mutually-exclusive-features verify-aws,verify-aws-fips
+
   test:
     name: Test Suite
     needs: check
