@@ -40,7 +40,6 @@ jobs:
     strategy:
       matrix:
         rust:
-          - stable
           - 1.85
           - nightly
     steps:
@@ -50,6 +49,9 @@ jobs:
           toolchain: ${{ matrix.rust }}
       - run: RUSTFLAGS="-D warnings" cargo check --locked --all-targets --all-features
 
+  # Also covers `check-all-features` on stable: the powerset includes every
+  # combination except pairing the two aws-lc-rs backends, and the
+  # `--all-features` pairing is exercised by the `test_features` job.
   feature-powerset:
     name: Check feature powerset
     runs-on: ubuntu-latest
@@ -59,16 +61,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
       # The two aws-lc-rs backends are never used together outside of
       # --all-features builds, so skip those combinations.
-      - run: RUSTFLAGS="-D warnings" cargo hack check --locked --feature-powerset --mutually-exclusive-features verify-aws,verify-aws-fips
-
-  test:
-    name: Test Suite
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --locked --all-features
+      - run: RUSTFLAGS="-D warnings" cargo hack check --locked --all-targets --feature-powerset --mutually-exclusive-features verify-aws,verify-aws-fips
 
   test_features:
     name: Test suite (with features)
