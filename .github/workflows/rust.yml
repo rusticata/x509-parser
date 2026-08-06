@@ -16,7 +16,9 @@ jobs:
       - uses: actions/checkout@v6
       # tools used in pre-commit hooks
       - id: cargo-rdme
-        uses: rusticata/ci-action-rdme@v1
+        uses: rusticata/ci-action-rdme@v2
+        with:
+          rdme-args: --intralinks-features validate,verify,verify-aws
       # /tools
       - id: prek
         uses: rusticata/ci-action-prek@v1
