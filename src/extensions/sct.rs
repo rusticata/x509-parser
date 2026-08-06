@@ -97,6 +97,7 @@ pub(crate) fn parse_ct_signed_certificate_timestamp_content(
 }
 
 // Safety: cannot fail, take() returns exactly 32 bytes
+#[expect(clippy::expect_used)]
 fn parse_log_id(i: &[u8]) -> IResult<&[u8], CtLogID<'_>, Error> {
     let (i, key_id) = take(32usize)(i)?;
     Ok((
