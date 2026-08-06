@@ -1,3 +1,6 @@
+#![allow(clippy::unimplemented)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 use asn1_rs::Oid;
 use nom::HexDisplay;
 use std::cmp::min;
@@ -7,7 +10,7 @@ use x509_parser::prelude::*;
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {
     let m = min(bytes.len(), max_len);
-    print!("{}", &bytes[..m].to_hex(16));
+    print!("{}", bytes[..m].to_hex(16));
     if bytes.len() > max_len {
         println!("... <continued>");
     }
@@ -29,7 +32,7 @@ fn print_authority_key_identifier(aki: &AuthorityKeyIdentifier, level: usize) {
     }
     if let Some(serial) = &aki.authority_cert_serial {
         let s = format_serial(serial.as_raw_slice().unwrap());
-        println!("{:indent$}serial: {}", "", &s, indent = level);
+        println!("{:indent$}serial: {}", "", s, indent = level);
     }
 }
 

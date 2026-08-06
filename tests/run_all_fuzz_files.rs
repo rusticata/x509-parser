@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use std::fs::{self, DirEntry};
 use x509_parser::parse_x509_certificate;
 
