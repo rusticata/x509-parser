@@ -8,6 +8,19 @@ on:
     - cron: "0 18 * * *"
 
 jobs:
+  pre_commit:
+    timeout-minutes: 5
+    name: prek
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # tools used in pre-commit hooks
+      - id: cargo-rdme
+        uses: rusticata/ci-action-rdme@v1
+      # /tools
+      - id: prek
+        uses: rusticata/ci-action-prek@v1
+
   check:
     name: Check
     runs-on: ubuntu-latest
