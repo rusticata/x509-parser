@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 use x509_parser::prelude::*;
 
 #[cfg(any(

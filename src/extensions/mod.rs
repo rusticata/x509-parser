@@ -713,6 +713,7 @@ mod tests {
         assert!(!ku.decipher_only());
     }
 
+    #[expect(clippy::unreachable)]
     #[test]
     fn test_extensions1() {
         let crt = crate::parse_x509_certificate(include_bytes!("../../assets/extension1.der"))

@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+#![allow(clippy::unwrap_used)]
 use asn1_rs::Any;
 use asn1_rs::Input;
 use asn1_rs::Oid;

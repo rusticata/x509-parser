@@ -1,9 +1,10 @@
+#![allow(clippy::unreachable)]
 use asn1_rs::{oid, Oid, Set};
 use oid_registry::{
     OID_PKCS1_SHA256WITHRSA, OID_PKCS9_CHALLENGE_PASSWORD, OID_PKCS9_EXTENSION_REQUEST,
     OID_SIG_ECDSA_WITH_SHA256, OID_X509_COMMON_NAME,
 };
-use x509_parser::prelude::*;
+use x509_parser::{pem::parse_x509_pem, prelude::*};
 
 const CSR_DATA_EMPTY_ATTRIB: &[u8] = include_bytes!("../assets/csr-empty-attributes.csr");
 const CSR_DATA: &[u8] = include_bytes!("../assets/test.csr");
@@ -25,7 +26,7 @@ fn read_csr_empty_attrib() {
 
 #[test]
 fn read_csr_with_san() {
-    let der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
+    let der = parse_x509_pem(CSR_DATA).unwrap().1;
     let (rem, csr) =
         X509CertificationRequest::from_der(&der.contents).expect("could not parse CSR");
 
@@ -67,7 +68,7 @@ fn read_csr_with_san() {
 
 #[test]
 fn read_csr_with_challenge_password() {
-    let der = pem::parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
+    let der = parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
     let (rem, csr) = X509CertificationRequest::from_der(&der.contents)
         .expect("Could not parse CSR with challenge password");
 
@@ -117,7 +118,7 @@ fn read_csr_with_challenge_password() {
 
 #[test]
 fn test_iter_raw_values() {
-    let der = pem::parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
+    let der = parse_x509_pem(CSR_CHALLENGE_PASSWORD).unwrap().1;
     let (_, csr) = X509CertificationRequest::from_der(&der.contents)
         .expect("Could not parse CSR with challenge password");
 
@@ -139,7 +140,7 @@ fn test_iter_raw_values() {
     // Verify raw DER: tag should be UTF8String (0x0C), not SET (0x31)
     assert_eq!(
         any_val.header.tag(),
-        x509_parser::asn1_rs::Tag::Utf8String,
+        asn1_rs::Tag::Utf8String,
         "iter_raw_values should yield individual values inside the SET, not the SET itself"
     );
     let s = std::str::from_utf8(any_val.data.as_bytes2())
@@ -162,7 +163,7 @@ fn test_iter_raw_values() {
     // Verify raw DER: tag should be SEQUENCE (0x30), not SET (0x31)
     assert_eq!(
         any_val.header.tag(),
-        x509_parser::asn1_rs::Tag::Sequence,
+        asn1_rs::Tag::Sequence,
         "iter_raw_values should yield SET contents, not the SET envelope"
     );
 }
@@ -174,11 +175,11 @@ fn test_iter_raw_values() {
 ))]
 #[test]
 fn read_csr_verify() {
-    let pem = pem::parse_x509_pem(CSR_DATA).unwrap().1;
+    let pem = parse_x509_pem(CSR_DATA).unwrap().1;
     let (_, csr) = X509CertificationRequest::from_der(&pem.contents).expect("could not parse CSR");
     csr.verify_signature().unwrap();
 
-    let mut der = pem::parse_x509_pem(CSR_DATA).unwrap().1;
+    let mut der = parse_x509_pem(CSR_DATA).unwrap().1;
     assert_eq!(&der.contents[28..37], b"rusticata");
     for (i, b) in b"foobarbaz".iter().enumerate() {
         der.contents[28 + i] = *b;
@@ -192,14 +193,15 @@ fn read_csr_verify() {
     assert_eq!(csr.as_raw(), &der.contents);
 }
 
+#[expect(clippy::unreachable)]
 #[test]
 fn read_csr_with_custom_extension() {
-    let der = pem::parse_x509_pem(CSR_CUSTOM_EXTENSION).unwrap().1;
+    let der = parse_x509_pem(CSR_CUSTOM_EXTENSION).unwrap().1;
     let (rem, csr) = X509CertificationRequest::from_der(&der.contents)
         .expect("Could not parse CSR with custom extension");
 
     assert!(rem.is_empty());
-    dbg!(csr.certification_request_info.attributes());
+    //dbg!(csr.certification_request_info.attributes());
     let cri = &csr.certification_request_info;
     assert_eq!(cri.version, X509Version(0));
     assert_eq!(cri.attributes().len(), 1);

@@ -1,3 +1,6 @@
+#![allow(clippy::unimplemented)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 use asn1_rs::Oid;
 use nom::HexDisplay;
 use std::cmp::min;
