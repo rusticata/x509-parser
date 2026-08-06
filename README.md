@@ -33,7 +33,7 @@ The [`parse_der`](https://docs.rs/asn1_rs/latest/asn1_rs/from_der/trait.DerParse
 object, which can be built from the input bytes. This helps tracking offsets (in case of
 error).
 For convenience,
-the [`X509Certificate::from_der`] method (part of the [`FromDer`](https://docs.rs/asn1_rs/latest/asn1_rs/from_der/trait.FromDer.html) trait)
+the [`X509Certificate::from_der`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509Certificate.html#method.from_der) method (part of the [`FromDer`](https://docs.rs/asn1_rs/latest/asn1_rs/from_der/trait.FromDer.html) trait)
 does the same directly on the input bytes, but it can loose the precise error location.
 
 An alternative method is to use [`X509CertificateParser`](https://docs.rs/x509-parser/latest/x509_parser/certificate/struct.X509CertificateParser.html),
