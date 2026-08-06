@@ -18,7 +18,7 @@ const VALIDATE_ERRORS_FATAL: bool = false;
 
 fn print_hex_dump(bytes: &[u8], max_len: usize) {
     let m = min(bytes.len(), max_len);
-    print!("{}", &bytes[..m].to_hex(16));
+    print!("{}", bytes[..m].to_hex(16));
     if bytes.len() > max_len {
         println!("... <continued>");
     }
@@ -208,7 +208,7 @@ fn print_x509_info(x509: &X509Certificate) -> io::Result<()> {
         }
         println!();
         if VALIDATE_ERRORS_FATAL && !logger.errors().is_empty() {
-            return Err(io::Error::new(io::ErrorKind::Other, "validation failed"));
+            return Err(io::Error::other("validation failed"));
         }
     }
     #[cfg(not(feature = "validate"))]
@@ -390,7 +390,7 @@ fn handle_certificate(file_name: &str, data: &[u8]) -> io::Result<()> {
         Err(e) => {
             let s = format!("Error while parsing {file_name}: {e}");
             if PARSE_ERRORS_FATAL {
-                Err(io::Error::new(io::ErrorKind::Other, s))
+                Err(io::Error::other(s))
             } else {
                 eprintln!("{s}");
                 Ok(())
