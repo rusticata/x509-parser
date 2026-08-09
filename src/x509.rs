@@ -10,9 +10,9 @@ use crate::public_key::*;
 
 use asn1_rs::num_bigint::BigUint;
 use asn1_rs::{
-    Alias, Any, BerError, BitString, BmpString, Choice, DerParser, Enumerated, FromDer, Header,
-    Input, Integer, OptTaggedExplicit, PrintableString, Sequence, Tag, Tagged, TeletexString,
-    UniversalString, Utf8String,
+    Alias, Any, BerError, BitString, BmpString, Choice, Class, DerParser, Enumerated, FromDer,
+    Header, Input, Integer, OptTaggedExplicit, PrintableString, Sequence, Tag, Tagged,
+    TeletexString, UniversalString, Utf8String,
 };
 use core::convert::TryFrom;
 use data_encoding::HEXUPPER;
@@ -612,6 +612,10 @@ pub(crate) fn parse_serial(input: Input<'_>) -> IResult<Input<'_>, (&[u8], BigUi
     // RFC 5280 4.1.2.2: "The serial number MUST be a positive integer"
     // however, many CAs do not respect this and send integers with MSB set,
     // so we do not use `as_biguint()`
+    // X.690 §8.1.2: tag class must be UNIVERSAL for INTEGER
+    if any.class() != Class::Universal {
+        return Err(Err::Error(X509Error::InvalidSerial));
+    }
     any.tag()
         .assert_eq(Tag::Integer)
         .map_err(|_| X509Error::InvalidSerial)?;
@@ -754,5 +758,17 @@ mod tests {
         assert!(v.not_after.is_utctime());
         assert_eq!(v.not_before.to_datetime().year(), 2019);
         assert_eq!(v.not_after.to_datetime().year(), 2029);
+    }
+
+    #[test]
+    fn test_serial_rejects_context_specific_tag() {
+        // Tag byte 0x02 (UNIVERSAL INTEGER) → 0x82 (CONTEXT-SPECIFIC [2])
+        // X.690 §8.1.2: tag class must match the expected type
+        let data: &[u8] = &[0x82, 0x01, 0x01]; // CONTEXT-SPECIFIC [2], length 1, value 1
+        let r = parse_serial(Input::from(data));
+        assert!(
+            r.is_err(),
+            "should reject CONTEXT-SPECIFIC tag for serial number"
+        );
     }
 }
